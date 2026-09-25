@@ -7,7 +7,7 @@
     "api/baileys-proxy.js": { "maxDuration": 30 },
     "api/config.js": { "maxDuration": 10 }
   },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+  "redirects": [
+    { "source": "/", "destination": "/login.html", "permanent": false }
   ]
 }
