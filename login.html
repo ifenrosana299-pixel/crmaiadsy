@@ -15,18 +15,60 @@
       <div class="login-title">AI CRM Adsy</div>
       <div class="login-sub">Follow-up Engine</div>
     </div>
-    <div class="login-err" id="login-err"></div>
-    <div class="form-group">
-      <label class="form-label">Username</label>
-      <input type="text" class="form-input" id="inp-user" placeholder="Masukkan username" autocomplete="username">
+
+    <!-- TABS LOGIN / DAFTAR -->
+    <div style="display:flex;background:var(--bg3);border-radius:10px;padding:4px;margin-bottom:24px;gap:4px">
+      <button id="tab-login" onclick="switchTab('login')"
+        style="flex:1;padding:8px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:var(--bg2);color:var(--text);transition:all .15s">
+        Masuk
+      </button>
+      <button id="tab-daftar" onclick="switchTab('daftar')"
+        style="flex:1;padding:8px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--text2);transition:all .15s">
+        Daftar
+      </button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Password</label>
-      <input type="password" class="form-input" id="inp-pass" placeholder="Masukkan password" autocomplete="current-password">
+
+    <div class="login-err" id="form-err"></div>
+    <div id="form-success" style="background:rgba(16,185,129,.1);border:1px solid var(--green);border-radius:8px;padding:10px 14px;color:#34d399;font-size:13px;margin-bottom:16px;display:none"></div>
+
+    <!-- FORM LOGIN -->
+    <div id="form-login">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" class="form-input" id="inp-user" placeholder="Masukkan username" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="inp-pass" placeholder="Masukkan password" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" id="btn-login" onclick="doLogin()">
+        Masuk
+      </button>
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" id="btn-login" onclick="doLogin()">
-      Masuk
-    </button>
+
+    <!-- FORM DAFTAR -->
+    <div id="form-daftar" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Nama Toko / Brand *</label>
+        <input type="text" class="form-input" id="reg-nama" placeholder="Contoh: Toko Herbal Adsy">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <input type="text" class="form-input" id="reg-user" placeholder="Huruf kecil, tanpa spasi" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input type="password" class="form-input" id="reg-pass" placeholder="Minimal 6 karakter" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Konfirmasi Password *</label>
+        <input type="password" class="form-input" id="reg-pass2" placeholder="Ulangi password">
+      </div>
+      <button class="btn btn-success" style="width:100%;justify-content:center" id="btn-daftar" onclick="doDaftar()">
+        Buat Akun
+      </button>
+    </div>
+
     <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--text3)">
       AI CRM Adsy v1.0 · Follow-up Engine
     </div>
@@ -34,47 +76,45 @@
 </div>
 
 <script>
-// Load config
 async function initConfig() {
   try {
     const r = await fetch('/api/config');
     const c = await r.json();
     window.__SB_URL = c.supabase_url;
     window.__SB_KEY = c.supabase_anon_key;
-    window.__BAILEYS_URL = c.baileys_url;
   } catch {}
 }
 
-async function doLogin() {
-  const username = document.getElementById('inp-user').value.trim();
-  const password = document.getElementById('inp-pass').value;
-  const btn = document.getElementById('btn-login');
-  const err = document.getElementById('login-err');
-
-  err.style.display = 'none';
-  if (!username || !password) {
-    err.textContent = 'Username dan password wajib diisi.';
-    err.style.display = 'block'; return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Memuat...';
-
-  try {
-    await initConfig();
-    const rows = await sbGet('users', `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}&select=id,username,nama_toko`);
-    if (!rows || rows.length === 0) throw new Error('Username atau password salah.');
-    localStorage.setItem('crm_user', JSON.stringify(rows[0]));
-    window.location.href = 'dashboard.html';
-  } catch (e) {
-    err.textContent = e.message || 'Login gagal.';
-    err.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Masuk';
-  }
+// ---- TAB SWITCH ----
+function switchTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('form-login').style.display  = isLogin ? '' : 'none';
+  document.getElementById('form-daftar').style.display = isLogin ? 'none' : '';
+  document.getElementById('tab-login').style.background  = isLogin ? 'var(--bg2)' : 'transparent';
+  document.getElementById('tab-login').style.color       = isLogin ? 'var(--text)' : 'var(--text2)';
+  document.getElementById('tab-daftar').style.background = isLogin ? 'transparent' : 'var(--bg2)';
+  document.getElementById('tab-daftar').style.color      = isLogin ? 'var(--text2)' : 'var(--text)';
+  clearMsg();
 }
 
-// sbGet helper (minimal, sebelum app.js loaded)
+function showErr(msg) {
+  const el = document.getElementById('form-err');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('form-success').style.display = 'none';
+}
+
+function showSuccess(msg) {
+  const el = document.getElementById('form-success');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('form-err').style.display = 'none';
+}
+
+function clearMsg() {
+  document.getElementById('form-err').style.display = 'none';
+  document.getElementById('form-success').style.display = 'none';
+}
+
+// ---- HELPERS ----
 async function sbGet(table, params) {
   const r = await fetch(`${window.__SB_URL}/rest/v1/${table}?${params}`, {
     headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
@@ -83,7 +123,98 @@ async function sbGet(table, params) {
   return r.json();
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+async function sbPost(table, body) {
+  const r = await fetch(`${window.__SB_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      apikey: window.__SB_KEY,
+      Authorization: `Bearer ${window.__SB_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ---- LOGIN ----
+async function doLogin() {
+  const username = document.getElementById('inp-user').value.trim();
+  const password = document.getElementById('inp-pass').value;
+  clearMsg();
+
+  if (!username || !password) { showErr('Username dan password wajib diisi.'); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;margin-right:6px"></span> Memuat...';
+
+  try {
+    await initConfig();
+    const rows = await sbGet('users', `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}&select=id,username,nama_toko`);
+    if (!rows || rows.length === 0) throw new Error('Username atau password salah.');
+    localStorage.setItem('crm_user', JSON.stringify(rows[0]));
+    window.location.href = 'dashboard.html';
+  } catch(e) {
+    showErr(e.message || 'Login gagal.');
+    btn.disabled = false;
+    btn.textContent = 'Masuk';
+  }
+}
+
+// ---- DAFTAR ----
+async function doDaftar() {
+  const nama  = document.getElementById('reg-nama').value.trim();
+  const user  = document.getElementById('reg-user').value.trim().toLowerCase();
+  const pass  = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  clearMsg();
+
+  if (!nama || !user || !pass || !pass2) { showErr('Semua field wajib diisi.'); return; }
+  if (!/^[a-z0-9_]+$/.test(user)) { showErr('Username hanya boleh huruf kecil, angka, dan underscore.'); return; }
+  if (pass.length < 6) { showErr('Password minimal 6 karakter.'); return; }
+  if (pass !== pass2) { showErr('Konfirmasi password tidak cocok.'); return; }
+
+  const btn = document.getElementById('btn-daftar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;margin-right:6px"></span> Mendaftar...';
+
+  try {
+    await initConfig();
+
+    // Cek username sudah ada belum
+    const existing = await sbGet('users', `username=eq.${encodeURIComponent(user)}&select=id`);
+    if (existing && existing.length > 0) throw new Error('Username sudah dipakai, coba username lain.');
+
+    // Insert user baru
+    const created = await sbPost('users', {
+      username: user,
+      password: pass,
+      nama_toko: nama,
+    });
+
+    if (!created || !created[0]) throw new Error('Gagal membuat akun.');
+
+    showSuccess('Akun berhasil dibuat! Silakan login.');
+    // Auto-fill username di form login
+    document.getElementById('inp-user').value = user;
+    document.getElementById('inp-pass').value = '';
+    setTimeout(() => switchTab('login'), 1500);
+  } catch(e) {
+    showErr(e.message || 'Pendaftaran gagal.');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Buat Akun';
+}
+
+// Enter key
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const loginVisible = document.getElementById('form-login').style.display !== 'none';
+  if (loginVisible) doLogin(); else doDaftar();
+});
 
 // Check already logged in
 try {
