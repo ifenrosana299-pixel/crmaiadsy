@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — AI CRM Adsy</title>
+<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar"></div>
+
+  <div class="main-content">
+    <div class="page-header" style="padding-bottom:16px">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub" id="greeting">Selamat datang!</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+        <div id="today-badge" class="badge badge-blue" style="font-size:12px"></div>
+        <button class="btn btn-primary btn-sm" onclick="window.location.href='customers.html'">+ Tambah Customer</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- STATS -->
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-label">FU Hari Ini</div><div class="stat-val" id="st-fu-today">-</div><div class="stat-sub">Harus dihubungi</div></div>
+        <div class="stat-card"><div class="stat-label">Total Customer</div><div class="stat-val" id="st-total">-</div><div class="stat-sub">Semua status</div></div>
+        <div class="stat-card"><div class="stat-label">Data Sukses</div><div class="stat-val" id="st-sukses">-</div><div class="stat-sub">Sudah delivered</div></div>
+        <div class="stat-card"><div class="stat-label">FU Aktif</div><div class="stat-val" id="st-fu-aktif">-</div><div class="stat-sub">Sedang difollow-up</div></div>
+        <div class="stat-card"><div class="stat-label">Repeat Order</div><div class="stat-val" id="st-repeat">-</div><div class="stat-sub">Customer loyal</div></div>
+      </div>
+
+      <!-- TWO COLUMN LAYOUT -->
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:20px">
+
+        <!-- LEFT: FU HARI INI -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div class="fw-700" style="font-size:15px">📅 Follow-up Hari Ini</div>
+            <a href="followup.html" class="text-accent text-sm">Lihat semua →</a>
+          </div>
+          <div id="fu-today-list">
+            <div class="empty-state">
+              <div class="spinner" style="margin:0 auto 12px"></div>
+              <div>Memuat jadwal...</div>
+            </div>
+          </div>
+
+          <!-- INBOX CHAT -->
+          <div style="margin-top:28px">
+            <div class="flex items-center justify-between mb-3" id="inbox">
+              <div class="fw-700" style="font-size:15px">💬 Inbox Chat</div>
+              <div id="inbox-unread-badge"></div>
+            </div>
+            <!-- Chat Layout -->
+            <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;height:520px;display:grid;grid-template-columns:280px 1fr">
+              <!-- Chat List -->
+              <div style="border-right:1px solid var(--border);overflow-y:auto;background:var(--bg2)" id="inbox-list">
+                <div class="empty-state" style="padding:30px 16px;font-size:12px">Memuat...</div>
+              </div>
+              <!-- Chat Main -->
+              <div id="chat-main" style="display:flex;flex-direction:column;background:var(--bg)">
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">
+                  Pilih percakapan
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: SIDEBAR INFO -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- FU SUMMARY PIE -->
+          <div class="card">
+            <div class="fw-700 mb-3">Pipeline Customer</div>
+            <div id="pipeline-breakdown" style="display:flex;flex-direction:column;gap:8px">
+              <div class="text-dim text-sm">Memuat...</div>
+            </div>
+          </div>
+
+          <!-- UPCOMING FU -->
+          <div class="card">
+            <div class="fw-700 mb-3">📆 FU Besok <span class="text-dim text-sm fw-600" id="tomorrow-count">(0)</span></div>
+            <div id="fu-tomorrow-list" style="display:flex;flex-direction:column;gap:8px">
+              <div class="text-dim text-sm">Memuat...</div>
+            </div>
+          </div>
+
+          <!-- RECENT CUSTOMERS -->
+          <div class="card">
+            <div class="fw-700 mb-3">🆕 Customer Baru</div>
+            <div id="recent-customers" style="display:flex;flex-direction:column;gap:8px">
+              <div class="text-dim text-sm">Memuat...</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT MODAL (full conversation) -->
+<div class="modal-overlay" id="chat-modal">
+  <div class="modal modal-lg" style="max-width:640px;height:80vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="chat-modal-name">-</div>
+        <div class="text-sm text-muted" id="chat-modal-sub">-</div>
+      </div>
+      <button class="modal-close" onclick="closeChatModal()">✕</button>
+    </div>
+    <div id="chat-modal-messages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px">
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end">
+      <textarea id="chat-modal-input" class="chat-textarea" placeholder="Ketik pesan..." rows="2" onkeydown="chatInputKeydown(event)"></textarea>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-ghost btn-sm" title="AI Suggest" onclick="aiSuggest()" id="btn-ai-suggest">🤖</button>
+        <button class="btn btn-primary btn-sm" onclick="sendChatMessage()">Kirim</button>
+      </div>
+    </div>
+    <div id="chat-modal-err" style="padding:8px 16px;color:var(--red);font-size:12px;display:none"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+async function initConfig() {
+  const r = await fetch('/api/config');
+  const c = await r.json();
+  window.__SB_URL = c.supabase_url;
+  window.__SB_KEY = c.supabase_anon_key;
+  window.__BAILEYS_URL = c.baileys_url;
+}
+</script>
+<script src="js/app.js"></script>
+<script>
+let currentUser = null;
+let conversations = [];
+let activeChatConvId = null;
+
+// ---- INIT ----
+async function init() {
+  await initConfig();
+  currentUser = requireAuth();
+  if (!currentUser) return;
+
+  renderSidebar('dashboard');
+
+  const now = new Date();
+  document.getElementById('greeting').textContent =
+    `${now.getHours() < 12 ? 'Selamat pagi' : now.getHours() < 17 ? 'Selamat siang' : 'Selamat malam'}, ${currentUser.username}!`;
+  document.getElementById('today-badge').textContent = fmtDate(new Date().toISOString());
+
+  await Promise.all([loadStats(), loadFUToday(), loadFUTomorrow(), loadPipeline(), loadRecentCustomers(), loadInbox()]);
+}
+
+// ---- STATS ----
+async function loadStats() {
+  try {
+    const custs = await sbGet('customers', `user_id=eq.${currentUser.id}&select=status`);
+    const total   = custs.length;
+    const sukses  = custs.filter(c => c.status === 'sukses').length;
+    const fuAktif = custs.filter(c => c.status === 'fu_aktif').length;
+    const repeat  = custs.filter(c => c.status === 'repeat').length;
+
+    const today = todayStr();
+    const fuToday = await sbGet('followup_schedule', `user_id=eq.${currentUser.id}&scheduled_date=eq.${today}&status=eq.pending&select=id`);
+
+    document.getElementById('st-fu-today').textContent = fuToday.length;
+    document.getElementById('st-total').textContent = total;
+    document.getElementById('st-sukses').textContent = sukses;
+    document.getElementById('st-fu-aktif').textContent = fuAktif;
+    document.getElementById('st-repeat').textContent = repeat;
+  } catch(e) { console.error(e); }
+}
+
+// ---- FU TODAY ----
+async function loadFUToday() {
+  const el = document.getElementById('fu-today-list');
+  try {
+    const today = todayStr();
+    const rows = await sbGet('followup_schedule',
+      `user_id=eq.${currentUser.id}&scheduled_date=eq.${today}&status=eq.pending&select=*,customers(nama,wa_number,produk)&order=id.asc`);
+
+    if (!rows.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">Tidak ada FU hari ini</div><div class="empty-sub">Semua sudah beres!</div></div>`;
+      return;
+    }
+
+    el.innerHTML = rows.map(r => `
+      <div class="fu-card" id="fucard-${r.id}">
+        <div style="font-size:28px">📞</div>
+        <div class="fu-card-info">
+          <div class="fu-card-name">${r.customers?.nama || '-'}</div>
+          <div class="fu-card-sub">${r.customers?.wa_number || '-'} · ${r.customers?.produk || '-'}</div>
+          <div class="fu-card-rule">${r.rule_nama || 'Follow-up'}</div>
+        </div>
+        <div class="fu-card-actions">
+          <button class="btn btn-primary btn-sm" onclick="openFUChat('${r.id}','${r.customer_id}','${r.customers?.nama}','${r.customers?.wa_number}','${r.rule_nama}')">
+            💬 Chat
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="skipFU('${r.id}')">Skip</button>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-sub text-red">${e.message}</div></div>`;
+  }
+}
+
+// ---- FU TOMORROW ----
+async function loadFUTomorrow() {
+  const el = document.getElementById('fu-tomorrow-list');
+  try {
+    const tomorrow = addDays(todayStr(), 1);
+    const rows = await sbGet('followup_schedule',
+      `user_id=eq.${currentUser.id}&scheduled_date=eq.${tomorrow}&status=eq.pending&select=*,customers(nama,produk)&order=id.asc&limit=5`);
+    document.getElementById('tomorrow-count').textContent = `(${rows.length})`;
+    if (!rows.length) { el.innerHTML = '<div class="text-dim text-sm">Tidak ada jadwal besok</div>'; return; }
+    el.innerHTML = rows.map(r => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:18px">🕐</div>
+        <div style="flex:1">
+          <div class="fw-600 text-sm">${r.customers?.nama || '-'}</div>
+          <div class="text-xs text-muted">${r.rule_nama || '-'} · ${r.customers?.produk || '-'}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { el.innerHTML = `<div class="text-dim text-sm">${e.message}</div>`; }
+}
+
+// ---- PIPELINE BREAKDOWN ----
+async function loadPipeline() {
+  const el = document.getElementById('pipeline-breakdown');
+  try {
+    const custs = await sbGet('customers', `user_id=eq.${currentUser.id}&select=status`);
+    const total = custs.length || 1;
+    const groups = {};
+    custs.forEach(c => { groups[c.status] = (groups[c.status] || 0) + 1; });
+
+    const order = ['baru','sukses','fu_aktif','repeat','dormant','selesai'];
+    const colors = { baru:'var(--text3)', sukses:'var(--green)', fu_aktif:'var(--yellow)', repeat:'var(--accent)', dormant:'var(--red)', selesai:'var(--purple)' };
+
+    el.innerHTML = order.map(s => {
+      const n = groups[s] || 0;
+      const pct = Math.round(n / total * 100);
+      return `
+        <div>
+          <div class="flex items-center justify-between text-sm mb-1">
+            <span>${STATUS_LABELS[s] || s}</span>
+            <span class="fw-600">${n} <span class="text-dim">(${pct}%)</span></span>
+          </div>
+          <div style="background:var(--bg3);border-radius:99px;height:6px">
+            <div style="background:${colors[s]};width:${pct}%;height:100%;border-radius:99px;transition:width .3s"></div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = `<div class="text-dim text-sm">${e.message}</div>`; }
+}
+
+// ---- RECENT CUSTOMERS ----
+async function loadRecentCustomers() {
+  const el = document.getElementById('recent-customers');
+  try {
+    const rows = await sbGet('customers',
+      `user_id=eq.${currentUser.id}&order=created_at.desc&limit=5&select=nama,produk,status,created_at`);
+    if (!rows.length) { el.innerHTML = '<div class="text-dim text-sm">Belum ada customer</div>'; return; }
+    el.innerHTML = rows.map(r => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div class="sb-avatar" style="width:28px;height:28px;font-size:11px">${(r.nama||'?')[0].toUpperCase()}</div>
+        <div style="flex:1">
+          <div class="fw-600 text-sm">${r.nama || '-'}</div>
+          <div class="text-xs text-muted">${r.produk || '-'}</div>
+        </div>
+        ${statusBadge(r.status)}
+      </div>
+    `).join('');
+  } catch(e) { el.innerHTML = `<div class="text-dim text-sm">${e.message}</div>`; }
+}
+
+// ---- INBOX ----
+async function loadInbox() {
+  const el = document.getElementById('inbox-list');
+  try {
+    const convs = await sbGet('conversations',
+      `user_id=eq.${currentUser.id}&status=neq.selesai&order=updated_at.desc&limit=30&select=*,customers(nama,wa_number,produk)`);
+    conversations = convs;
+
+    if (!convs.length) {
+      el.innerHTML = '<div style="padding:30px 16px;text-align:center;color:var(--text3);font-size:12px">Belum ada chat</div>';
+      return;
+    }
+
+    el.innerHTML = convs.map(c => `
+      <div class="chat-item ${activeChatConvId === c.id ? 'active' : ''}" onclick="openChat('${c.id}')">
+        <div class="chat-item-name">${c.customers?.nama || '-'}</div>
+        <div class="chat-item-preview">${c.customers?.produk || ''}</div>
+        <div class="chat-item-time">${fmtDateTime(c.updated_at)}</div>
+      </div>
+    `).join('');
+
+    // Kalau ada hash #inbox + conv param
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('conv')) openChat(urlParams.get('conv'));
+  } catch(e) {
+    el.innerHTML = `<div style="padding:16px;color:var(--red);font-size:12px">${e.message}</div>`;
+  }
+}
+
+// ---- OPEN CHAT ----
+async function openChat(convId) {
+  activeChatConvId = convId;
+  const conv = conversations.find(c => c.id === convId);
+  const main = document.getElementById('chat-main');
+
+  if (!conv) return;
+  const nama = conv.customers?.nama || '-';
+  const wa   = conv.customers?.wa_number || '-';
+
+  main.innerHTML = `
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px">
+      <div class="sb-avatar" style="width:34px;height:34px">${nama[0].toUpperCase()}</div>
+      <div>
+        <div class="fw-600 text-sm">${nama}</div>
+        <div class="text-xs text-muted">${wa}</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" style="margin-left:auto" onclick="openFullChat('${convId}','${nama}','${wa}')">Buka ↗</button>
+    </div>
+    <div id="inline-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div class="text-dim text-sm" style="text-align:center">Memuat...</div>
+    </div>
+    <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <textarea id="inline-input" class="chat-textarea" style="min-height:38px" placeholder="Ketik pesan..." rows="1" onkeydown="inlineKeydown(event,'${convId}')"></textarea>
+      <button class="btn btn-primary btn-sm" onclick="sendInline('${convId}')">→</button>
+    </div>`;
+
+  await loadMessages(convId, 'inline-msgs');
+
+  // Re-render list to show active
+  document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll(`.chat-item`).forEach(el => {
+    if (el.onclick?.toString().includes(convId)) el.classList.add('active');
+  });
+}
+
+async function loadMessages(convId, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  try {
+    const msgs = await sbGet('conv_messages',
+      `conversation_id=eq.${convId}&order=created_at.asc&limit=50`);
+    if (!msgs.length) { el.innerHTML = '<div class="text-dim text-sm" style="text-align:center">Belum ada pesan</div>'; return; }
+    el.innerHTML = msgs.map(m => {
+      const isOut = m.role !== 'customer';
+      return `
+        <div class="msg ${isOut ? 'msg-out' : 'msg-in'} ${m.role === 'ai' ? 'ai' : ''}">
+          <div class="msg-bubble">${(m.isi || '').replace(/\n/g, '<br>')}</div>
+          <div class="msg-time">${fmtDateTime(m.created_at)} ${m.role === 'ai' ? '· AI' : ''}</div>
+        </div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  } catch(e) { el.innerHTML = `<div class="text-dim text-sm text-red">${e.message}</div>`; }
+}
+
+function inlineKeydown(e, convId) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendInline(convId); }
+}
+
+async function sendInline(convId) {
+  const inp = document.getElementById('inline-input');
+  const isi = inp.value.trim();
+  if (!isi) return;
+  inp.value = '';
+  try {
+    await sbPost('conv_messages', { conversation_id: convId, isi, role: 'cs' });
+    await sbPatch('conversations', `id=eq.${convId}`, { updated_at: new Date().toISOString() });
+    await loadMessages(convId, 'inline-msgs');
+    // Kirim via Baileys jika ada WA
+    const conv = conversations.find(c => c.id === convId);
+    if (conv?.customers?.wa_number) {
+      await sendWA(conv.customers.wa_number, isi, currentUser.id);
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- OPEN FU CHAT ----
+async function openFUChat(fuId, customerId, nama, waNum, ruleName) {
+  // Cari atau buat conversation
+  let convId;
+  try {
+    let convs = await sbGet('conversations', `user_id=eq.${currentUser.id}&customer_id=eq.${customerId}&status=neq.selesai&limit=1`);
+    if (convs.length) {
+      convId = convs[0].id;
+    } else {
+      // Buat conv baru
+      const cust = await sbGet('customers', `id=eq.${customerId}&select=product_id`);
+      const newConv = await sbPost('conversations', {
+        user_id: currentUser.id,
+        customer_id: customerId,
+        product_id: cust[0]?.product_id || null,
+        status: 'aktif',
+        sumber: 'fu',
+        state: {}
+      });
+      convId = newConv[0].id;
+      // Generate pesan FU dengan AI
+      await generateAndSendFU(fuId, customerId, convId, ruleName, waNum);
+    }
+
+    // Open chat modal
+    openFullChat(convId, nama, waNum);
+
+    // Update followup_schedule jadi sent
+    await sbPatch('followup_schedule', `id=eq.${fuId}`, { status: 'sent', sent_at: new Date().toISOString() });
+    document.getElementById(`fucard-${fuId}`)?.remove();
+    loadStats();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function generateAndSendFU(fuId, customerId, convId, ruleName, waNum) {
+  try {
+    // Ambil rule templates
+    const rules = await sbGet('followup_rules', `nama=eq.${encodeURIComponent(ruleName)}&user_id=eq.${currentUser.id}&select=templates`);
+    const templates = rules[0]?.templates || [];
+    let pesan = '';
+
+    if (templates.length) {
+      // Random pilih template
+      pesan = templates[Math.floor(Math.random() * templates.length)];
+    }
+
+    if (!pesan) return; // Kalau tidak ada template, tidak kirim otomatis
+
+    // Simpan ke conv_messages
+    await sbPost('conv_messages', { conversation_id: convId, isi: pesan, role: 'ai' });
+    // Update fu schedule dengan pesan terkirim
+    await sbPatch('followup_schedule', `id=eq.${fuId}`, { pesan_terkirim: pesan });
+    // Kirim WA
+    if (waNum) await sendWA(waNum, pesan, currentUser.id);
+  } catch(e) { console.error('generateAndSendFU', e); }
+}
+
+async function skipFU(fuId) {
+  if (!confirm('Skip FU ini?')) return;
+  try {
+    await sbPatch('followup_schedule', `id=eq.${fuId}`, { status: 'skipped' });
+    document.getElementById(`fucard-${fuId}`)?.remove();
+    toast('FU di-skip', 'info');
+    loadStats();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- FULL CHAT MODAL ----
+let fullChatConvId = null;
+
+function openFullChat(convId, nama, wa) {
+  fullChatConvId = convId;
+  document.getElementById('chat-modal-name').textContent = nama || '-';
+  document.getElementById('chat-modal-sub').textContent = wa || '-';
+  document.getElementById('chat-modal').classList.add('show');
+  loadMessages(convId, 'chat-modal-messages');
+}
+
+function closeChatModal() {
+  document.getElementById('chat-modal').classList.remove('show');
+  fullChatConvId = null;
+}
+
+function chatInputKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+}
+
+async function sendChatMessage() {
+  const inp = document.getElementById('chat-modal-input');
+  const isi = inp.value.trim();
+  if (!isi || !fullChatConvId) return;
+  inp.value = '';
+  try {
+    await sbPost('conv_messages', { conversation_id: fullChatConvId, isi, role: 'cs' });
+    await sbPatch('conversations', `id=eq.${fullChatConvId}`, { updated_at: new Date().toISOString() });
+    await loadMessages(fullChatConvId, 'chat-modal-messages');
+    const conv = conversations.find(c => c.id === fullChatConvId);
+    if (conv?.customers?.wa_number) {
+      await sendWA(conv.customers.wa_number, isi, currentUser.id);
+    }
+  } catch(e) {
+    document.getElementById('chat-modal-err').textContent = e.message;
+    document.getElementById('chat-modal-err').style.display = 'block';
+  }
+}
+
+async function aiSuggest() {
+  if (!fullChatConvId) return;
+  const btn = document.getElementById('btn-ai-suggest');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'ai-suggest', conv_id: fullChatConvId, user_id: currentUser.id })
+    });
+    const d = await r.json();
+    if (d.pesan) document.getElementById('chat-modal-input').value = d.pesan;
+  } catch(e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '🤖';
+}
+
+// ---- SEND WA via Baileys ----
+async function sendWA(to, text, userId) {
+  try {
+    await fetch('/api/baileys-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: '/send', session_id: userId, to: to + '@s.whatsapp.net', text })
+    });
+  } catch(e) { console.warn('sendWA failed', e.message); }
+}
+
+init();
+</script>
+</body>
+</html>

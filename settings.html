@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pengaturan — AI CRM Adsy</title>
+<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar"></div>
+  <div class="main-content">
+    <div class="page-header" style="padding-bottom:16px">
+      <div><div class="page-title">Pengaturan</div><div class="page-sub">Konfigurasi akun, WA, dan AI</div></div>
+    </div>
+    <div class="page-body" style="max-width:720px">
+
+      <!-- AKUN -->
+      <div class="card mb-3">
+        <div class="fw-700 mb-3">👤 Akun</div>
+        <div class="form-group">
+          <label class="form-label">Nama Toko / Brand</label>
+          <input type="text" class="form-input" id="inp-nama-toko" placeholder="Nama toko atau brand">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password Baru (kosongkan jika tidak ingin ganti)</label>
+          <input type="password" class="form-input" id="inp-password" placeholder="Password baru">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveAkun()">Simpan Akun</button>
+      </div>
+
+      <!-- WA CONNECTION -->
+      <div class="card mb-3">
+        <div class="fw-700 mb-3">📱 Koneksi WhatsApp</div>
+        <div class="flex items-center gap-3 mb-3">
+          <div id="wa-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--text3)"></div>
+          <div id="wa-status-text" class="text-sm">Mengecek status...</div>
+          <button class="btn btn-ghost btn-sm" onclick="checkWA()">↻ Cek</button>
+          <button class="btn btn-danger btn-sm" id="btn-logout-wa" onclick="logoutWA()" style="display:none">Logout WA</button>
+        </div>
+        <div id="qr-section" style="display:none">
+          <div class="text-sm text-muted mb-2">Scan QR Code dengan WhatsApp:</div>
+          <div id="qr-container" style="background:#fff;border-radius:10px;padding:16px;display:inline-block">
+            <div class="spinner" style="margin:40px"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <button class="btn btn-primary btn-sm" onclick="startQR()" id="btn-connect-wa">Hubungkan WA</button>
+        </div>
+      </div>
+
+      <!-- AI KEY -->
+      <div class="card mb-3">
+        <div class="fw-700 mb-3">🤖 Anthropic API Key</div>
+        <div class="text-sm text-muted mb-2">Kunci API untuk AI bot yang membalas customer.</div>
+        <div class="form-group">
+          <input type="password" class="form-input" id="inp-ai-key" placeholder="sk-ant-api...">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveAIKey()">Simpan API Key</button>
+      </div>
+
+      <!-- REKENING -->
+      <div class="card mb-3">
+        <div class="fw-700 mb-3">🏦 Info Rekening / Pembayaran</div>
+        <textarea class="form-textarea" id="inp-rekening" rows="4" placeholder="Contoh:&#10;BCA 1234567890 a.n. Toko Adsy&#10;Mandiri 0987654321 a.n. Toko Adsy"></textarea>
+        <button class="btn btn-primary btn-sm mt-2" onclick="saveRekening()">Simpan</button>
+      </div>
+
+      <!-- CRON INFO -->
+      <div class="card">
+        <div class="fw-700 mb-3">⏰ Cron Job (Auto Follow-up)</div>
+        <div class="text-sm text-muted mb-3">Setup cron job di <strong>cron-job.org</strong> untuk kirim FU otomatis setiap hari:</div>
+        <div style="background:var(--bg3);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8">
+          <div><span class="text-dim">URL:</span> <span class="text-accent" id="cron-url">https://aicrmadsy.vercel.app/api/followup-sender</span></div>
+          <div><span class="text-dim">Method:</span> POST</div>
+          <div><span class="text-dim">Header:</span> x-cron-secret: <span id="cron-secret" class="text-yellow">adsysukses2026</span></div>
+          <div><span class="text-dim">Schedule:</span> 0 2 * * * (09:00 WIB)</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+async function initConfig() {
+  const r = await fetch('/api/config');
+  const c = await r.json();
+  window.__SB_URL = c.supabase_url;
+  window.__SB_KEY = c.supabase_anon_key;
+  window.__BAILEYS_URL = c.baileys_url;
+}
+</script>
+<script src="js/app.js"></script>
+<script>
+let currentUser = null;
+let userData = null;
+let qrInterval = null;
+
+async function init() {
+  await initConfig();
+  currentUser = requireAuth();
+  if (!currentUser) return;
+  renderSidebar('settings');
+  await loadUserData();
+  await checkWA();
+}
+
+async function loadUserData() {
+  try {
+    const rows = await sbGet('users', `id=eq.${currentUser.id}&select=*`);
+    userData = rows[0];
+    if (!userData) return;
+    document.getElementById('inp-nama-toko').value = userData.nama_toko || '';
+    document.getElementById('inp-ai-key').value = userData.anthropic_key ? '••••••••••••••••' : '';
+    document.getElementById('inp-rekening').value = userData.rekening || '';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function checkWA() {
+  try {
+    const r = await fetch(`/api/baileys-proxy?path=/session/status/${currentUser.id}&session_id=${currentUser.id}`);
+    const d = await r.json();
+    const connected = d?.status === 'connected' || d?.connected === true;
+    document.getElementById('wa-status-dot').style.background = connected ? 'var(--green)' : 'var(--red)';
+    document.getElementById('wa-status-text').textContent = connected
+      ? `✅ Terhubung${d.phone ? ' · ' + d.phone : ''}`
+      : '❌ Tidak terhubung';
+    document.getElementById('btn-logout-wa').style.display = connected ? '' : 'none';
+    document.getElementById('btn-connect-wa').style.display = connected ? 'none' : '';
+  } catch {
+    document.getElementById('wa-status-text').textContent = 'Gagal cek status';
+  }
+}
+
+async function startQR() {
+  document.getElementById('qr-section').style.display = 'block';
+  document.getElementById('btn-connect-wa').disabled = true;
+  document.getElementById('btn-connect-wa').textContent = 'Menghubungkan...';
+  clearInterval(qrInterval);
+  fetchQR();
+  qrInterval = setInterval(fetchQR, 10000);
+}
+
+async function fetchQR() {
+  try {
+    const r = await fetch(`/api/baileys-proxy?path=/qr/${currentUser.id}&session_id=${currentUser.id}`);
+    const d = await r.json();
+    if (d.qr) {
+      // Load QR code library
+      if (!window.QRCode) {
+        await loadScript('https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js');
+      }
+      const container = document.getElementById('qr-container');
+      container.innerHTML = '<canvas id="qr-canvas"></canvas>';
+      await QRCode.toCanvas(document.getElementById('qr-canvas'), d.qr, { width: 220 });
+    } else if (d.status === 'connected') {
+      clearInterval(qrInterval);
+      document.getElementById('qr-section').style.display = 'none';
+      document.getElementById('btn-connect-wa').disabled = false;
+      document.getElementById('btn-connect-wa').textContent = 'Hubungkan WA';
+      await checkWA();
+      toast('WhatsApp terhubung!', 'success');
+    }
+  } catch(e) { console.warn('fetchQR', e); }
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function logoutWA() {
+  if (!confirm('Logout WhatsApp? Kamu perlu scan ulang QR.')) return;
+  try {
+    await fetch(`/api/baileys-proxy?path=/logout/${currentUser.id}&session_id=${currentUser.id}`, { method: 'DELETE' });
+    toast('WA logout berhasil', 'info');
+    await checkWA();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveAkun() {
+  const payload = { nama_toko: document.getElementById('inp-nama-toko').value.trim() };
+  const pw = document.getElementById('inp-password').value;
+  if (pw) payload.password = pw;
+  try {
+    await sbPatch('users', `id=eq.${currentUser.id}`, payload);
+    toast('Akun disimpan!', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveAIKey() {
+  const key = document.getElementById('inp-ai-key').value.trim();
+  if (!key || key.startsWith('•')) { toast('Masukkan API key baru', 'info'); return; }
+  try {
+    const r = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save-ai-key', anthropic_key: key, user_id: currentUser.id })
+    });
+    const d = await r.json();
+    if (d.ok) { toast('API Key disimpan!', 'success'); document.getElementById('inp-ai-key').value = '••••••••••••••••'; }
+    else throw new Error(d.error);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveRekening() {
+  const rekening = document.getElementById('inp-rekening').value.trim();
+  try {
+    await sbPatch('users', `id=eq.${currentUser.id}`, { rekening });
+    toast('Rekening disimpan!', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+init();
+</script>
+</body>
+</html>

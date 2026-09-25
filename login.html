@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login — AI CRM Adsy</title>
+<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🤖</div>
+      <div class="login-title">AI CRM Adsy</div>
+      <div class="login-sub">Follow-up Engine</div>
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-input" id="inp-user" placeholder="Masukkan username" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="inp-pass" placeholder="Masukkan password" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" id="btn-login" onclick="doLogin()">
+      Masuk
+    </button>
+    <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--text3)">
+      AI CRM Adsy v1.0 · Follow-up Engine
+    </div>
+  </div>
+</div>
+
+<script>
+// Load config
+async function initConfig() {
+  try {
+    const r = await fetch('/api/config');
+    const c = await r.json();
+    window.__SB_URL = c.supabase_url;
+    window.__SB_KEY = c.supabase_anon_key;
+    window.__BAILEYS_URL = c.baileys_url;
+  } catch {}
+}
+
+async function doLogin() {
+  const username = document.getElementById('inp-user').value.trim();
+  const password = document.getElementById('inp-pass').value;
+  const btn = document.getElementById('btn-login');
+  const err = document.getElementById('login-err');
+
+  err.style.display = 'none';
+  if (!username || !password) {
+    err.textContent = 'Username dan password wajib diisi.';
+    err.style.display = 'block'; return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Memuat...';
+
+  try {
+    await initConfig();
+    const rows = await sbGet('users', `username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}&select=id,username,nama_toko`);
+    if (!rows || rows.length === 0) throw new Error('Username atau password salah.');
+    localStorage.setItem('crm_user', JSON.stringify(rows[0]));
+    window.location.href = 'dashboard.html';
+  } catch (e) {
+    err.textContent = e.message || 'Login gagal.';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Masuk';
+  }
+}
+
+// sbGet helper (minimal, sebelum app.js loaded)
+async function sbGet(table, params) {
+  const r = await fetch(`${window.__SB_URL}/rest/v1/${table}?${params}`, {
+    headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// Check already logged in
+try {
+  const u = JSON.parse(localStorage.getItem('crm_user') || 'null');
+  if (u) window.location.href = 'dashboard.html';
+} catch {}
+</script>
+</body>
+</html>

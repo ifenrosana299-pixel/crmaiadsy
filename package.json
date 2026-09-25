@@ -1,0 +1,9 @@
+{
+  "name": "aicrmadsy",
+  "version": "1.0.0",
+  "description": "AI CRM Adsy — Follow-up Engine post-purchase",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/webhook-baileys.js": { "maxDuration": 60, "memory": 1024 },
+    "api/followup-sender.js": { "maxDuration": 60 },
+    "api/import.js": { "maxDuration": 60 },
+    "api/save-settings.js": { "maxDuration": 30 },
+    "api/baileys-proxy.js": { "maxDuration": 30 },
+    "api/config.js": { "maxDuration": 10 }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ]
+}

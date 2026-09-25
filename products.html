@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produk — AI CRM Adsy</title>
+<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar"></div>
+  <div class="main-content">
+    <div class="page-header" style="padding-bottom:16px">
+      <div>
+        <div class="page-title">Produk</div>
+        <div class="page-sub">Product knowledge untuk AI bot CRM</div>
+      </div>
+      <div style="margin-left:auto">
+        <button class="btn btn-primary" onclick="openAddModal()">+ Tambah Produk</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="prod-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="prod-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="prod-modal-title">Tambah Produk</div>
+      <button class="modal-close" onclick="closeProdModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="prod-edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Nama Produk *</label>
+          <input type="text" class="form-input" id="inp-pnama">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Harga (Rp)</label>
+          <input type="number" class="form-input" id="inp-pharga" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Berat (gram)</label>
+          <input type="number" class="form-input" id="inp-pberat" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nama Persona CS</label>
+          <input type="text" class="form-input" id="inp-ppersona" placeholder="contoh: Kak Sari">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Product Knowledge (untuk AI) *</label>
+        <textarea class="form-textarea" id="inp-ppk" rows="10" placeholder="Masukkan informasi produk, manfaat, cara pakai, FAQ, dll yang perlu diketahui AI saat follow-up customer..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          <input type="checkbox" id="inp-paktif" checked> Aktif
+        </label>
+      </div>
+      <div id="prod-err" style="color:var(--red);font-size:12px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeProdModal()">Batal</button>
+      <button class="btn btn-primary" onclick="saveProd()" id="btn-save-prod">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+async function initConfig() {
+  const r = await fetch('/api/config');
+  const c = await r.json();
+  window.__SB_URL = c.supabase_url;
+  window.__SB_KEY = c.supabase_anon_key;
+}
+</script>
+<script src="js/app.js"></script>
+<script>
+let currentUser = null;
+let products = [];
+
+async function init() {
+  await initConfig();
+  currentUser = requireAuth();
+  if (!currentUser) return;
+  renderSidebar('products');
+  await loadProducts();
+}
+
+async function loadProducts() {
+  try {
+    products = await sbGet('products', `user_id=eq.${currentUser.id}&order=created_at.asc`);
+    renderProducts();
+  } catch(e) { document.getElementById('prod-list').innerHTML = `<div class="text-red">${e.message}</div>`; }
+}
+
+function renderProducts() {
+  const el = document.getElementById('prod-list');
+  if (!products.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">Belum ada produk</div><div class="empty-sub">Tambahkan produk untuk mulai FU</div></div>`;
+    return;
+  }
+  el.innerHTML = products.map(p => `
+    <div class="card" style="${!p.aktif ? 'opacity:.5' : ''}">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="fw-700" style="font-size:15px">${p.nama}</div>
+          <div class="text-xs text-muted">${p.persona_cs_nama || 'AI'} · Rp ${(p.harga||0).toLocaleString('id-ID')}</div>
+        </div>
+        <span class="badge ${p.aktif ? 'badge-green' : 'badge-gray'}">${p.aktif ? 'Aktif' : 'Nonaktif'}</span>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;font-size:12px;color:var(--text2);max-height:100px;overflow:hidden;line-height:1.6">
+        ${(p.product_knowledge || 'Belum ada product knowledge').slice(0, 200)}${(p.product_knowledge||'').length > 200 ? '...' : ''}
+      </div>
+      <div class="flex gap-2 mt-3" style="justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal('${p.id}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleProd('${p.id}',${!p.aktif})">${p.aktif ? 'Nonaktif' : 'Aktifkan'}</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProd('${p.id}')">Hapus</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAddModal() {
+  document.getElementById('prod-modal-title').textContent = 'Tambah Produk';
+  document.getElementById('prod-edit-id').value = '';
+  document.getElementById('inp-pnama').value = '';
+  document.getElementById('inp-pharga').value = '';
+  document.getElementById('inp-pberat').value = '';
+  document.getElementById('inp-ppersona').value = '';
+  document.getElementById('inp-ppk').value = '';
+  document.getElementById('inp-paktif').checked = true;
+  document.getElementById('prod-err').style.display = 'none';
+  document.getElementById('prod-modal').classList.add('show');
+}
+
+function openEditModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('prod-modal-title').textContent = 'Edit Produk';
+  document.getElementById('prod-edit-id').value = p.id;
+  document.getElementById('inp-pnama').value = p.nama || '';
+  document.getElementById('inp-pharga').value = p.harga || '';
+  document.getElementById('inp-pberat').value = p.berat_gram || '';
+  document.getElementById('inp-ppersona').value = p.persona_cs_nama || '';
+  document.getElementById('inp-ppk').value = p.product_knowledge || '';
+  document.getElementById('inp-paktif').checked = p.aktif !== false;
+  document.getElementById('prod-err').style.display = 'none';
+  document.getElementById('prod-modal').classList.add('show');
+}
+
+function closeProdModal() { document.getElementById('prod-modal').classList.remove('show'); }
+
+async function saveProd() {
+  const nama = document.getElementById('inp-pnama').value.trim();
+  if (!nama) {
+    document.getElementById('prod-err').textContent = 'Nama produk wajib diisi.';
+    document.getElementById('prod-err').style.display = 'block'; return;
+  }
+  const btn = document.getElementById('btn-save-prod');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const payload = {
+    user_id: currentUser.id, nama,
+    harga: parseInt(document.getElementById('inp-pharga').value) || 0,
+    berat_gram: parseInt(document.getElementById('inp-pberat').value) || 0,
+    persona_cs_nama: document.getElementById('inp-ppersona').value.trim(),
+    product_knowledge: document.getElementById('inp-ppk').value.trim(),
+    aktif: document.getElementById('inp-paktif').checked,
+  };
+  try {
+    const editId = document.getElementById('prod-edit-id').value;
+    if (editId) await sbPatch('products', `id=eq.${editId}`, payload);
+    else await sbPost('products', payload, { prefer: 'return=minimal' });
+    toast('Produk disimpan!', 'success');
+    closeProdModal();
+    await loadProducts();
+  } catch(e) {
+    document.getElementById('prod-err').textContent = e.message;
+    document.getElementById('prod-err').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Simpan';
+}
+
+async function toggleProd(id, aktif) {
+  try { await sbPatch('products', `id=eq.${id}`, { aktif }); await loadProducts(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteProd(id) {
+  if (!confirm('Hapus produk ini?')) return;
+  try { await sbDelete('products', `id=eq.${id}`); await loadProducts(); } catch(e) { toast(e.message, 'error'); }
+}
+
+init();
+</script>
+</body>
+</html>

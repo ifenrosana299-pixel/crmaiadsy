@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Follow-up — AI CRM Adsy</title>
+<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar"></div>
+
+  <div class="main-content">
+    <div class="page-header" style="padding-bottom:16px">
+      <div>
+        <div class="page-title">Follow-up Engine</div>
+        <div class="page-sub">Jadwal & aturan follow-up otomatis</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="openRuleModal()">+ Buat Rule FU</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:20px">
+
+        <!-- LEFT: JADWAL FU -->
+        <div>
+          <!-- TABS -->
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('hari_ini',this)">📅 Hari Ini</button>
+            <button class="tab-btn" onclick="switchTab('besok',this)">Besok</button>
+            <button class="tab-btn" onclick="switchTab('minggu_ini',this)">Minggu Ini</button>
+            <button class="tab-btn" onclick="switchTab('semua',this)">Semua</button>
+            <button class="tab-btn" onclick="switchTab('selesai',this)">Selesai</button>
+          </div>
+
+          <div class="filter-bar">
+            <input type="text" class="search-input" id="search-fu" placeholder="🔍 Cari nama / produk..." oninput="renderSchedule()">
+            <select class="form-select" style="width:auto" id="rule-filter" onchange="renderSchedule()">
+              <option value="">Semua Rule</option>
+            </select>
+            <div style="margin-left:auto">
+              <span class="text-dim text-sm" id="fu-count-label">-</span>
+            </div>
+          </div>
+
+          <div id="fu-schedule-list" style="display:flex;flex-direction:column;gap:10px">
+            <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat...</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: RULES -->
+        <div>
+          <div class="fw-700 mb-3" style="font-size:15px">⚙️ Rules Follow-up</div>
+          <div id="rules-list" style="display:flex;flex-direction:column;gap:10px">
+            <div class="text-dim text-sm">Memuat rules...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RULE MODAL -->
+<div class="modal-overlay" id="rule-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="rule-modal-title">Buat Rule Follow-up</div>
+      <button class="modal-close" onclick="closeRuleModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rule-edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Nama Rule *</label>
+          <input type="text" class="form-input" id="rule-nama" placeholder="contoh: FU Hari ke-1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hari Setelah Delivered (D+) *</label>
+          <input type="number" class="form-input" id="rule-hari" placeholder="1" min="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Produk (opsional, kosong = berlaku semua produk)</label>
+        <select class="form-select" id="rule-produk">
+          <option value="">Semua Produk</option>
+        </select>
+      </div>
+
+      <hr class="divider">
+
+      <div class="flex items-center justify-between mb-2">
+        <div class="fw-600">Template Pesan</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="addTemplate()">+ Tambah Variasi</button>
+          <button class="btn btn-ghost btn-sm" onclick="generateTemplates()" id="btn-gen-tmpl">🤖 Generate AI</button>
+        </div>
+      </div>
+      <div class="text-xs text-muted mb-3">Tambahkan beberapa variasi pesan — bot akan random pilih salah satu supaya tidak kelihatan spam.</div>
+
+      <div id="templates-list" style="display:flex;flex-direction:column;gap:10px">
+      </div>
+
+      <div class="form-group mt-3">
+        <label class="form-label">Variabel yang tersedia:</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge badge-blue" style="cursor:pointer" onclick="insertVar('{nama}')">&#123;nama&#125;</span>
+          <span class="badge badge-blue" style="cursor:pointer" onclick="insertVar('{produk}')">&#123;produk&#125;</span>
+          <span class="badge badge-blue" style="cursor:pointer" onclick="insertVar('{hari}')">&#123;hari&#125;</span>
+        </div>
+      </div>
+      <div id="rule-err" style="color:var(--red);font-size:12px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRuleModal()">Batal</button>
+      <button class="btn btn-primary" onclick="saveRule()" id="btn-save-rule">Simpan Rule</button>
+    </div>
+  </div>
+</div>
+
+<!-- FU SEND MODAL -->
+<div class="modal-overlay" id="send-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="send-nama">-</div>
+        <div class="text-sm text-muted" id="send-sub">-</div>
+      </div>
+      <button class="modal-close" onclick="closeSendModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Pesan Follow-up</label>
+        <textarea class="form-textarea" id="send-pesan" rows="5" placeholder="Ketik pesan atau biarkan AI generate..."></textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="generatePesan()">🤖 Generate AI</button>
+      </div>
+      <div id="send-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSendModal()">Batal</button>
+      <button class="btn btn-primary" onclick="doSendFU()" id="btn-do-send">📤 Kirim WA</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+async function initConfig() {
+  const r = await fetch('/api/config');
+  const c = await r.json();
+  window.__SB_URL = c.supabase_url;
+  window.__SB_KEY = c.supabase_anon_key;
+  window.__BAILEYS_URL = c.baileys_url;
+}
+</script>
+<script src="js/app.js"></script>
+<script>
+let currentUser = null;
+let allSchedules = [];
+let allRules = [];
+let activeTab = 'hari_ini';
+let sendFUId = null;
+let sendCustomerId = null;
+let lastTemplateIdx = null;
+
+async function init() {
+  await initConfig();
+  currentUser = requireAuth();
+  if (!currentUser) return;
+  renderSidebar('followup');
+  await Promise.all([loadSchedules(), loadRules()]);
+}
+
+// ---- SCHEDULES ----
+async function loadSchedules() {
+  try {
+    const rows = await sbGet('followup_schedule',
+      `user_id=eq.${currentUser.id}&order=scheduled_date.asc&select=*,customers(nama,wa_number,produk,status)`);
+    allSchedules = rows;
+    loadRuleFilter();
+    renderSchedule();
+  } catch(e) { document.getElementById('fu-schedule-list').innerHTML = `<div class="text-red text-sm">${e.message}</div>`; }
+}
+
+function loadRuleFilter() {
+  const names = [...new Set(allSchedules.map(s => s.rule_nama).filter(Boolean))];
+  const sel = document.getElementById('rule-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Semua Rule</option>' +
+    names.map(n => `<option value="${n}" ${n===cur?'selected':''}>${n}</option>`).join('');
+}
+
+function switchTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderSchedule();
+}
+
+function renderSchedule() {
+  const today     = todayStr();
+  const tomorrow  = addDays(today, 1);
+  const weekEnd   = addDays(today, 6);
+  const search    = document.getElementById('search-fu').value.toLowerCase();
+  const ruleFilter= document.getElementById('rule-filter').value;
+
+  let filtered = allSchedules.filter(s => {
+    if (ruleFilter && s.rule_nama !== ruleFilter) return false;
+    if (search) {
+      const hay = `${s.customers?.nama} ${s.customers?.wa_number} ${s.customers?.produk}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    switch (activeTab) {
+      case 'hari_ini':   return s.status === 'pending' && s.scheduled_date === today;
+      case 'besok':      return s.status === 'pending' && s.scheduled_date === tomorrow;
+      case 'minggu_ini': return s.status === 'pending' && s.scheduled_date >= today && s.scheduled_date <= weekEnd;
+      case 'semua':      return s.status === 'pending';
+      case 'selesai':    return s.status !== 'pending';
+      default: return true;
+    }
+  });
+
+  document.getElementById('fu-count-label').textContent = `${filtered.length} jadwal`;
+
+  const el = document.getElementById('fu-schedule-list');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">${activeTab === 'hari_ini' ? 'Tidak ada FU hari ini!' : 'Tidak ada jadwal'}</div></div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(s => {
+    const isToday  = s.scheduled_date === today;
+    const isPast   = s.scheduled_date < today && s.status === 'pending';
+    const isDone   = s.status !== 'pending';
+    return `
+      <div class="fu-card" style="${isPast ? 'border-color:var(--red)' : ''}">
+        <div style="text-align:center;min-width:50px">
+          <div class="text-xs text-dim">${s.scheduled_date}</div>
+          <div style="font-size:20px;margin-top:2px">${isPast ? '⚠️' : isDone ? '✅' : isToday ? '📞' : '🕐'}</div>
+        </div>
+        <div class="fu-card-info">
+          <div class="fu-card-name">${s.customers?.nama || '-'}</div>
+          <div class="fu-card-sub">${s.customers?.wa_number || '-'} · ${s.customers?.produk || '-'}</div>
+          <div class="fu-card-rule">${s.rule_nama || '-'}${isPast ? ' · <span style="color:var(--red)">Terlambat!</span>' : ''}</div>
+          ${isDone ? `<div class="text-xs text-dim mt-1">${s.status} ${s.sent_at ? '· ' + fmtDateTime(s.sent_at) : ''}</div>` : ''}
+          ${s.pesan_terkirim ? `<div class="text-xs text-muted mt-1" style="font-style:italic">"${s.pesan_terkirim.slice(0,60)}..."</div>` : ''}
+        </div>
+        ${!isDone ? `
+          <div class="fu-card-actions">
+            <button class="btn btn-primary btn-sm" onclick="openSendModal('${s.id}','${s.customer_id}','${(s.customers?.nama||'').replace(/'/g,"\\'")}','${s.customers?.wa_number||''}','${s.rule_nama||''}')">
+              📤 Kirim
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="skipSchedule('${s.id}')">Skip</button>
+          </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function skipSchedule(id) {
+  if (!confirm('Skip jadwal ini?')) return;
+  try {
+    await sbPatch('followup_schedule', `id=eq.${id}`, { status: 'skipped' });
+    toast('Di-skip', 'info');
+    await loadSchedules();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- SEND MODAL ----
+let sendWaNum = '';
+let sendRuleName = '';
+
+async function openSendModal(fuId, custId, nama, waNum, ruleName) {
+  sendFUId = fuId;
+  sendCustomerId = custId;
+  sendWaNum = waNum;
+  sendRuleName = ruleName;
+  document.getElementById('send-nama').textContent = nama || '-';
+  document.getElementById('send-sub').textContent = `${waNum} · ${ruleName}`;
+  document.getElementById('send-pesan').value = '';
+  document.getElementById('send-err').style.display = 'none';
+
+  // Auto-load template
+  await autoLoadTemplate(custId, ruleName);
+  document.getElementById('send-modal').classList.add('show');
+}
+
+async function autoLoadTemplate(custId, ruleName) {
+  try {
+    const rules = await sbGet('followup_rules',
+      `user_id=eq.${currentUser.id}&nama=eq.${encodeURIComponent(ruleName)}&limit=1`);
+    const templates = rules[0]?.templates || [];
+    if (templates.length) {
+      const pesan = templates[Math.floor(Math.random() * templates.length)];
+      // Replace variabel
+      const cust = await sbGet('customers', `id=eq.${custId}&select=nama,produk`);
+      let filled = pesan
+        .replace(/{nama}/g, cust[0]?.nama || 'Kak')
+        .replace(/{produk}/g, cust[0]?.produk || 'produk')
+        .replace(/{hari}/g, rules[0]?.hari_setelah_delivered || '');
+      document.getElementById('send-pesan').value = filled;
+    }
+  } catch(e) { console.warn(e); }
+}
+
+async function generatePesan() {
+  const btn = document.querySelector('#send-modal button[onclick="generatePesan()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const r = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'generate-fu-pesan', customer_id: sendCustomerId, rule_nama: sendRuleName, user_id: currentUser.id })
+    });
+    const d = await r.json();
+    if (d.pesan) document.getElementById('send-pesan').value = d.pesan;
+  } catch(e) { toast(e.message, 'error'); }
+  if (btn) { btn.disabled = false; btn.textContent = '🤖 Generate AI'; }
+}
+
+function closeSendModal() { document.getElementById('send-modal').classList.remove('show'); }
+
+async function doSendFU() {
+  const pesan = document.getElementById('send-pesan').value.trim();
+  if (!pesan || !sendWaNum) return;
+  const btn = document.getElementById('btn-do-send');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Mengirim...';
+
+  try {
+    // Kirim WA
+    const r = await fetch('/api/baileys-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: '/send', session_id: currentUser.id, to: sendWaNum + '@s.whatsapp.net', text: pesan })
+    });
+    const d = await r.json();
+    if (!d.success && !d.ok) throw new Error(d.error || 'Gagal kirim WA');
+
+    // Buat / update conversation
+    let convs = await sbGet('conversations', `user_id=eq.${currentUser.id}&customer_id=eq.${sendCustomerId}&status=neq.selesai&limit=1`);
+    let convId;
+    if (convs.length) {
+      convId = convs[0].id;
+      await sbPatch('conversations', `id=eq.${convId}`, { updated_at: new Date().toISOString() });
+    } else {
+      const cust = await sbGet('customers', `id=eq.${sendCustomerId}&select=product_id`);
+      const newConv = await sbPost('conversations', {
+        user_id: currentUser.id, customer_id: sendCustomerId,
+        product_id: cust[0]?.product_id || null,
+        status: 'aktif', sumber: 'fu', state: {}
+      });
+      convId = newConv[0].id;
+    }
+
+    // Simpan pesan
+    await sbPost('conv_messages', { conversation_id: convId, isi: pesan, role: 'ai' }, { prefer: 'return=minimal' });
+
+    // Update schedule
+    await sbPatch('followup_schedule', `id=eq.${sendFUId}`, {
+      status: 'sent', sent_at: new Date().toISOString(), pesan_terkirim: pesan
+    });
+
+    // Update last_fu_at
+    await sbPatch('customers', `id=eq.${sendCustomerId}`, {
+      last_fu_at: new Date().toISOString(), status: 'fu_aktif'
+    });
+
+    toast('Pesan terkirim!', 'success');
+    closeSendModal();
+    await loadSchedules();
+  } catch(e) {
+    document.getElementById('send-err').textContent = e.message;
+    document.getElementById('send-err').style.display = 'block';
+  }
+  btn.disabled = false; btn.innerHTML = '📤 Kirim WA';
+}
+
+// ---- RULES ----
+async function loadRules() {
+  try {
+    const rows = await sbGet('followup_rules',
+      `user_id=eq.${currentUser.id}&order=urutan.asc`);
+    allRules = rows;
+    renderRules();
+    loadRuleProdukOptions();
+  } catch(e) { document.getElementById('rules-list').innerHTML = `<div class="text-red text-sm">${e.message}</div>`; }
+}
+
+function renderRules() {
+  const el = document.getElementById('rules-list');
+  if (!allRules.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:30px"><div class="empty-icon">⚙️</div><div class="empty-title">Belum ada rule</div><div class="empty-sub">Klik "+ Buat Rule FU" untuk mulai</div></div>`;
+    return;
+  }
+  el.innerHTML = allRules.map(r => `
+    <div class="card card-sm" style="${!r.aktif ? 'opacity:.5' : ''}">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="fw-600">${r.nama}</div>
+          <div class="text-xs text-muted mt-1">D+${r.hari_setelah_delivered} · ${r.templates?.length || 0} variasi template</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <label class="text-xs text-dim">${r.aktif ? '✅' : '⏸️'}</label>
+          <button class="btn btn-ghost btn-xs" onclick="openEditRule('${r.id}')">Edit</button>
+          <button class="btn btn-ghost btn-xs" onclick="toggleRule('${r.id}',${!r.aktif})">${r.aktif ? 'Nonaktif' : 'Aktif'}</button>
+          <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="deleteRule('${r.id}')">✕</button>
+        </div>
+      </div>
+      ${r.templates?.length ? `
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+          ${r.templates.slice(0,2).map(t => `<div class="text-xs text-muted" style="font-style:italic;margin-bottom:4px">"${t.slice(0,80)}${t.length>80?'...':''}"</div>`).join('')}
+          ${r.templates.length > 2 ? `<div class="text-xs text-dim">+${r.templates.length-2} variasi lainnya</div>` : ''}
+        </div>` : ''}
+    </div>
+  `).join('');
+}
+
+async function loadRuleProdukOptions() {
+  try {
+    const prods = await sbGet('products', `user_id=eq.${currentUser.id}&aktif=eq.true&select=id,nama`);
+    const sel = document.getElementById('rule-produk');
+    if (sel) {
+      sel.innerHTML = '<option value="">Semua Produk</option>' +
+        prods.map(p => `<option value="${p.id}">${p.nama}</option>`).join('');
+    }
+  } catch {}
+}
+
+// ---- RULE MODAL ----
+let templateCount = 0;
+
+function openRuleModal() {
+  document.getElementById('rule-modal-title').textContent = 'Buat Rule Follow-up';
+  document.getElementById('rule-edit-id').value = '';
+  document.getElementById('rule-nama').value = '';
+  document.getElementById('rule-hari').value = '';
+  document.getElementById('rule-produk').value = '';
+  document.getElementById('templates-list').innerHTML = '';
+  templateCount = 0;
+  addTemplate();
+  document.getElementById('rule-err').style.display = 'none';
+  document.getElementById('rule-modal').classList.add('show');
+}
+
+function openEditRule(id) {
+  const r = allRules.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('rule-modal-title').textContent = 'Edit Rule';
+  document.getElementById('rule-edit-id').value = r.id;
+  document.getElementById('rule-nama').value = r.nama;
+  document.getElementById('rule-hari').value = r.hari_setelah_delivered;
+  document.getElementById('rule-produk').value = r.product_id || '';
+  document.getElementById('templates-list').innerHTML = '';
+  templateCount = 0;
+  (r.templates || []).forEach(t => addTemplate(t));
+  if (!r.templates?.length) addTemplate();
+  document.getElementById('rule-err').style.display = 'none';
+  document.getElementById('rule-modal').classList.add('show');
+}
+
+function closeRuleModal() { document.getElementById('rule-modal').classList.remove('show'); }
+
+function addTemplate(val = '') {
+  templateCount++;
+  const idx = templateCount;
+  const el = document.getElementById('templates-list');
+  const div = document.createElement('div');
+  div.id = `tmpl-wrap-${idx}`;
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <div style="min-width:22px;text-align:center;padding-top:10px;color:var(--text3);font-size:12px">${idx}</div>
+      <textarea class="form-textarea tmpl-input" id="tmpl-${idx}" placeholder="Ketik pesan variasi ${idx}..." rows="3">${val}</textarea>
+      <button class="btn btn-ghost btn-xs" style="margin-top:8px;color:var(--red)" onclick="removeTmpl(${idx})">✕</button>
+    </div>`;
+  el.appendChild(div);
+  lastTemplateIdx = idx;
+}
+
+function removeTmpl(idx) {
+  document.getElementById(`tmpl-wrap-${idx}`)?.remove();
+}
+
+function insertVar(v) {
+  const inputs = document.querySelectorAll('.tmpl-input');
+  const last = inputs[inputs.length - 1];
+  if (last) last.value += v;
+}
+
+async function generateTemplates() {
+  const nama  = document.getElementById('rule-nama').value.trim();
+  const hari  = document.getElementById('rule-hari').value;
+  const btn   = document.getElementById('btn-gen-tmpl');
+  if (!nama || !hari) { toast('Isi nama rule dan hari dulu', 'info'); return; }
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'generate-templates', rule_nama: nama, hari, user_id: currentUser.id })
+    });
+    const d = await r.json();
+    if (d.templates?.length) {
+      document.getElementById('templates-list').innerHTML = '';
+      templateCount = 0;
+      d.templates.forEach(t => addTemplate(t));
+    }
+  } catch(e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '🤖 Generate AI';
+}
+
+async function saveRule() {
+  const nama = document.getElementById('rule-nama').value.trim();
+  const hari = parseInt(document.getElementById('rule-hari').value);
+  if (!nama || !hari) {
+    document.getElementById('rule-err').textContent = 'Nama rule dan hari wajib diisi.';
+    document.getElementById('rule-err').style.display = 'block'; return;
+  }
+
+  const templates = [...document.querySelectorAll('.tmpl-input')]
+    .map(el => el.value.trim()).filter(Boolean);
+  if (!templates.length) {
+    document.getElementById('rule-err').textContent = 'Minimal satu template pesan.';
+    document.getElementById('rule-err').style.display = 'block'; return;
+  }
+
+  const btn = document.getElementById('btn-save-rule');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  const payload = {
+    user_id: currentUser.id,
+    nama, hari_setelah_delivered: hari,
+    product_id: document.getElementById('rule-produk').value || null,
+    templates,
+    aktif: true,
+    urutan: hari
+  };
+
+  try {
+    const editId = document.getElementById('rule-edit-id').value;
+    if (editId) {
+      await sbPatch('followup_rules', `id=eq.${editId}`, payload);
+    } else {
+      await sbPost('followup_rules', payload, { prefer: 'return=minimal' });
+    }
+    toast('Rule disimpan!', 'success');
+    closeRuleModal();
+    await loadRules();
+  } catch(e) {
+    document.getElementById('rule-err').textContent = e.message;
+    document.getElementById('rule-err').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Simpan Rule';
+}
+
+async function toggleRule(id, aktif) {
+  try {
+    await sbPatch('followup_rules', `id=eq.${id}`, { aktif });
+    await loadRules();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteRule(id) {
+  if (!confirm('Hapus rule ini? Jadwal FU yang belum terkirim juga akan terhapus.')) return;
+  try {
+    await sbDelete('followup_schedule', `rule_id=eq.${id}&status=eq.pending`);
+    await sbDelete('followup_rules', `id=eq.${id}`);
+    toast('Rule dihapus', 'info');
+    await loadRules();
+    await loadSchedules();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+init();
+</script>
+</body>
+</html>
