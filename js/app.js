@@ -2,25 +2,33 @@
 // AICRMADSY — Shared App JS
 // =============================================
 
-const SUPABASE_URL  = window.__SB_URL  || '';
-const SUPABASE_KEY  = window.__SB_KEY  || '';
-const BAILEYS_URL   = window.__BAILEYS_URL || '';
+// Pakai window.__SB_URL secara dinamis (bukan const) supaya
+// nilai terbaru setelah initConfig() langsung terpakai
+
+function getSB() {
+  return {
+    url: window.__SB_URL || '',
+    key: window.__SB_KEY || ''
+  };
+}
 
 // Supabase REST helper
 async function sbGet(table, params = '') {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+  const { url, key } = getSB();
+  const r = await fetch(`${url}/rest/v1/${table}?${params}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` }
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
 async function sbPost(table, body, opts = {}) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+  const { url, key } = getSB();
+  const r = await fetch(`${url}/rest/v1/${table}`, {
     method: 'POST',
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
       Prefer: opts.prefer || 'return=representation'
     },
@@ -31,11 +39,12 @@ async function sbPost(table, body, opts = {}) {
 }
 
 async function sbPatch(table, params, body) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+  const { url, key } = getSB();
+  const r = await fetch(`${url}/rest/v1/${table}?${params}`, {
     method: 'PATCH',
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal'
     },
@@ -45,9 +54,10 @@ async function sbPatch(table, params, body) {
 }
 
 async function sbDelete(table, params) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+  const { url, key } = getSB();
+  const r = await fetch(`${url}/rest/v1/${table}?${params}`, {
     method: 'DELETE',
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    headers: { apikey: key, Authorization: `Bearer ${key}` }
   });
   if (!r.ok) throw new Error(await r.text());
 }
