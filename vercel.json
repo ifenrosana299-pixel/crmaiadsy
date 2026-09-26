@@ -1,5 +1,6 @@
 {
   "functions": {
+    "api/track-resi.js": { "maxDuration": 15 },
     "api/webhook-baileys.js": { "maxDuration": 60, "memory": 1024 },
     "api/followup-sender.js": { "maxDuration": 60 },
     "api/import.js": { "maxDuration": 60 },

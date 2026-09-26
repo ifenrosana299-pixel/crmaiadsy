@@ -2,38 +2,72 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Customer — AI CRM Adsy</title>
-
+<title>Data Order — AI CRM Adsy</title>
 <link rel="stylesheet" href="css/style.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-#sidebar{width:220px;min-width:220px;background:#1e293b;height:100vh;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07)}
-.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
-.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
-.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
-.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
-.sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}
-.sb-nav::-webkit-scrollbar{display:none}
-.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
-.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
-.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;text-decoration:none;transition:all .12s}
-.sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
-.sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
-.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sb-item .si svg{width:16px;height:16px;display:block}
-.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
-.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
-.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
-body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
-body.light .sb-title{color:#0f172a}
-body.light .sb-item{color:#475569!important}
-body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
-body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
-body.light .sb-divider{background:rgba(0,0,0,.07)}
-body.light .bot-online{background:rgba(34,197,94,.06)}
+/* ── Status Resi Badges ── */
+.bdg { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
+.bdg-gray    { background:rgba(100,116,139,.1); color:#94a3b8; border:1px solid rgba(100,116,139,.2); }
+.bdg-blue    { background:rgba(59,130,246,.1);  color:#60a5fa; border:1px solid rgba(59,130,246,.2); }
+.bdg-indigo  { background:rgba(99,102,241,.1);  color:#818cf8; border:1px solid rgba(99,102,241,.2); }
+.bdg-amber   { background:rgba(245,158,11,.1);  color:#fbbf24; border:1px solid rgba(245,158,11,.2); }
+.bdg-green   { background:rgba(16,185,129,.1);  color:#34d399; border:1px solid rgba(16,185,129,.2); }
+.bdg-orange  { background:rgba(249,115,22,.1);  color:#fb923c; border:1px solid rgba(249,115,22,.2); }
+.bdg-red     { background:rgba(239,68,68,.1);   color:#f87171; border:1px solid rgba(239,68,68,.2); }
+.bdg-spin { width:10px; height:10px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+body.light .bdg-gray   { background:rgba(100,116,139,.08); color:#64748b; }
+body.light .bdg-blue   { background:rgba(59,130,246,.08);  color:#2563eb; }
+body.light .bdg-indigo { background:rgba(99,102,241,.08);  color:#4f46e5; }
+body.light .bdg-amber  { background:rgba(245,158,11,.08);  color:#d97706; }
+body.light .bdg-green  { background:rgba(16,185,129,.08);  color:#059669; }
+body.light .bdg-orange { background:rgba(249,115,22,.08);  color:#ea580c; }
+body.light .bdg-red    { background:rgba(239,68,68,.08);   color:#dc2626; }
+
+/* ── Tracking stepper ── */
+.stepper { display:flex; align-items:center; gap:0; margin:16px 0; }
+.step-item { display:flex; flex-direction:column; align-items:center; flex:1; position:relative; }
+.step-circle { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; z-index:1; }
+.step-done   { background:#10b981; color:#fff; }
+.step-active { background:#3b82f6; color:#fff; box-shadow:0 0 0 3px rgba(59,130,246,.2); }
+.step-wait   { background:rgba(255,255,255,.06); color:#475569; border:1px solid rgba(255,255,255,.1); }
+body.light .step-wait { background:#f1f5f9; border-color:#e2e8f0; }
+.step-label { font-size:10px; color:var(--text-2); margin-top:5px; text-align:center; }
+.step-line { position:absolute; top:14px; left:50%; right:-50%; height:2px; background:rgba(255,255,255,.06); z-index:0; }
+body.light .step-line { background:#e2e8f0; }
+.step-line-done { background:#10b981; }
+.step-item:last-child .step-line { display:none; }
+
+/* ── Financial breakdown in detail ── */
+.fin-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.fin-row:last-child { border-bottom:none; }
+.fin-label { color:var(--text-2); }
+.fin-val { font-weight:600; color:var(--text); }
+.fin-val.minus { color:var(--red); }
+.fin-val.total { color:#10b981; font-size:15px; }
+.fin-divider { border-top:2px solid var(--border); margin:4px 0; }
+
+/* ── Table adjustments ── */
+.resi-cell { font-family:monospace; font-size:12px; color:var(--text); }
+.cust-cell { display:flex; flex-direction:column; }
+.cust-name { font-weight:600; color:var(--text); font-size:13px; }
+.cust-hp   { font-size:11px; color:var(--text-2); margin-top:1px; }
+
+/* ── Tracking overlay on badge ── */
+.track-wrap { display:flex; align-items:center; gap:6px; }
+.track-btn { background:none; border:none; cursor:pointer; color:var(--text-2); font-size:11px; padding:2px 6px; border-radius:5px; transition:.12s; }
+.track-btn:hover { background:rgba(59,130,246,.1); color:#60a5fa; }
+
+/* ── Sidebar dark override (local) ── */
+body.light .sb-title { color:#0f172a; }
+body.light .sb-item  { color:#475569 !important; }
+body.light .sb-item:hover  { background:rgba(0,0,0,.04) !important; color:#0f172a !important; }
+body.light .sb-item.active { background:rgba(59,130,246,.1) !important; color:#2563eb !important; }
+body.light .sb-divider     { background:rgba(0,0,0,.07); }
+body.light .bot-online     { background:rgba(34,197,94,.06); }
 </style>
 </head>
 <body>
@@ -42,14 +76,15 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
   <div id="sidebar"></div>
 
   <div class="main-content">
-    <div class="page-header" style="padding-bottom:16px">
+    <div class="page-header">
       <div>
-        <div class="page-title">Customer</div>
-        <div class="page-sub">Data Baru & Data Sukses (Delivered)</div>
+        <div class="page-title">📦 Data Order</div>
+        <div class="page-sub">Tracking resi otomatis · Auto-update status pengiriman</div>
       </div>
-      <div style="margin-left:auto;display:flex;gap:10px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost" onclick="trackAllPending()" id="btn-track-all">🔄 Track Semua</button>
         <button class="btn btn-ghost" onclick="openImportModal()">📥 Import Excel</button>
-        <button class="btn btn-primary" onclick="openAddModal()">+ Tambah Manual</button>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Tambah</button>
       </div>
     </div>
 
@@ -57,39 +92,39 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
 
       <!-- STATS -->
       <div class="stats-row" id="stats-row">
-        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-val" id="st-total">-</div></div>
-        <div class="stat-card"><div class="stat-label">Data Baru</div><div class="stat-val" id="st-baru">-</div></div>
-        <div class="stat-card"><div class="stat-label">Sukses</div><div class="stat-val" id="st-sukses">-</div></div>
-        <div class="stat-card"><div class="stat-label">FU Aktif</div><div class="stat-val" id="st-fu">-</div></div>
-        <div class="stat-card"><div class="stat-label">Repeat</div><div class="stat-val" id="st-repeat">-</div></div>
-        <div class="stat-card"><div class="stat-label">Dormant</div><div class="stat-val" id="st-dormant">-</div></div>
+        <div class="stat-card"><div class="stat-label">Total Order</div><div class="stat-val" id="st-total">-</div></div>
+        <div class="stat-card"><div class="stat-label">Menunggu Resi</div><div class="stat-val" id="st-pending">-</div></div>
+        <div class="stat-card"><div class="stat-label">Dalam Pengiriman</div><div class="stat-val" id="st-otw">-</div></div>
+        <div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-val" id="st-sampai" style="color:#10b981">-</div></div>
+        <div class="stat-card"><div class="stat-label">Bermasalah</div><div class="stat-val" id="st-masalah" style="color:#f59e0b">-</div></div>
+        <div class="stat-card"><div class="stat-label">Retur</div><div class="stat-val" id="st-retur" style="color:#ef4444">-</div></div>
       </div>
 
       <!-- TABS -->
-      <div class="tabs" id="tabs-status">
+      <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('semua',this)">Semua</button>
-        <button class="tab-btn" onclick="switchTab('baru',this)">Data Baru</button>
-        <button class="tab-btn" onclick="switchTab('sukses',this)">✅ Sukses</button>
-        <button class="tab-btn" onclick="switchTab('fu_aktif',this)">📅 FU Aktif</button>
-        <button class="tab-btn" onclick="switchTab('repeat',this)">🔁 Repeat</button>
-        <button class="tab-btn" onclick="switchTab('dormant',this)">💤 Dormant</button>
+        <button class="tab-btn" onclick="switchTab('MENUNGGU_RESI',this)">⏳ Menunggu Resi</button>
+        <button class="tab-btn" onclick="switchTab('dikirim',this)">📦 Dikirim</button>
+        <button class="tab-btn" onclick="switchTab('SAMPAI',this)">✅ Delivered</button>
+        <button class="tab-btn" onclick="switchTab('BERMASALAH',this)">⚠️ Bermasalah</button>
+        <button class="tab-btn" onclick="switchTab('RETUR',this)">↩️ Retur</button>
       </div>
 
       <!-- FILTERS -->
       <div class="filter-bar">
-        <input type="text" class="search-input" id="search-inp" placeholder="🔍 Cari nama / HP / produk..." oninput="renderTable()">
-        <select class="form-select" style="width:auto" id="produk-filter" onchange="renderTable()">
-          <option value="">Semua Produk</option>
+        <input type="text" class="search-input" id="search-inp" placeholder="🔍 Cari nama, HP, resi, produk, CS..." oninput="renderTable()">
+        <select class="form-select" style="width:auto" id="cs-filter" onchange="renderTable()">
+          <option value="">Semua CS</option>
         </select>
         <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
           <span class="text-dim text-sm" id="count-label">-</span>
-          <button class="btn btn-ghost btn-sm" onclick="loadCustomers()">↻ Refresh</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↻ Refresh</button>
         </div>
       </div>
 
       <!-- TABLE -->
       <div class="table-wrap" id="table-wrap">
-        <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat...</div>
+        <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat order...</div>
       </div>
 
       <!-- PAGINATION -->
@@ -101,131 +136,153 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
         </div>
       </div>
 
-    </div>
-  </div>
-</div>
+    </div><!-- /page-body -->
+  </div><!-- /main-content -->
+</div><!-- /app-layout -->
 
-<!-- ADD CUSTOMER MODAL -->
+<!-- ══════════════════════════════════════
+     ADD / EDIT ORDER MODAL
+══════════════════════════════════════ -->
 <div class="modal-overlay" id="add-modal">
-  <div class="modal">
+  <div class="modal modal-lg">
     <div class="modal-header">
-      <div class="modal-title" id="add-modal-title">Tambah Customer</div>
+      <div class="modal-title" id="add-modal-title">Tambah Order</div>
       <button class="modal-close" onclick="closeAddModal()">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="edit-id">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
-          <label class="form-label">Nama *</label>
-          <input type="text" class="form-input" id="inp-nama" placeholder="Nama customer">
+          <label class="form-label">Tanggal *</label>
+          <input type="date" class="form-input" id="inp-tanggal">
         </div>
         <div class="form-group">
-          <label class="form-label">No. WhatsApp *</label>
-          <input type="text" class="form-input" id="inp-wa" placeholder="628xxxxxxxxx">
+          <label class="form-label">CS</label>
+          <input type="text" class="form-input" id="inp-cs" placeholder="Nama CS">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Nama Customer *</label>
+          <input type="text" class="form-input" id="inp-nama" placeholder="Nama penerima">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nomer HP *</label>
+          <input type="text" class="form-input" id="inp-hp" placeholder="08xxxxxxxxxx">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
         <div class="form-group">
           <label class="form-label">Produk</label>
           <input type="text" class="form-input" id="inp-produk" placeholder="Nama produk">
         </div>
         <div class="form-group">
-          <label class="form-label">Qty</label>
-          <input type="number" class="form-input" id="inp-qty" value="1" min="1">
+          <label class="form-label">Jumlah</label>
+          <input type="number" class="form-input" id="inp-jumlah" value="1" min="1">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
-          <label class="form-label">No. Resi</label>
-          <input type="text" class="form-input" id="inp-resi" placeholder="Nomor resi">
+          <label class="form-label">Payment</label>
+          <input type="text" class="form-input" id="inp-payment" placeholder="COD / Transfer / dll">
         </div>
+        <div class="form-group">
+          <label class="form-label">Promo</label>
+          <input type="text" class="form-input" id="inp-promo" placeholder="Kode promo / diskon">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label class="form-label">Ekspedisi</label>
-          <input type="text" class="form-input" id="inp-eks" placeholder="J&T / JNE / SiCepat...">
+          <input type="text" class="form-input" id="inp-ekspedisi" placeholder="JNE / J&T / SiCepat...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nomer Resi</label>
+          <input type="text" class="form-input" id="inp-resi" placeholder="Nomor resi pengiriman">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
-          <label class="form-label">Tgl Order</label>
-          <input type="date" class="form-input" id="inp-tgl-order">
+          <label class="form-label">Ongkir (Rp)</label>
+          <input type="number" class="form-input" id="inp-ongkir" value="0" min="0">
         </div>
         <div class="form-group">
-          <label class="form-label">Tgl Delivered</label>
-          <input type="date" class="form-input" id="inp-tgl-del">
+          <label class="form-label">Potongan Ongkir (Rp)</label>
+          <input type="number" class="form-input" id="inp-pot-ongkir" value="0" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Admin (Rp)</label>
+          <input type="number" class="form-input" id="inp-admin" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Potongan Admin (Rp)</label>
+          <input type="number" class="form-input" id="inp-pot-admin" value="0" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Harga Produk (Rp)</label>
+          <input type="number" class="form-input" id="inp-harga" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jumlah COD (Rp)</label>
+          <input type="number" class="form-input" id="inp-cod" value="0" min="0">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Alamat</label>
-        <textarea class="form-textarea" id="inp-alamat" placeholder="Alamat lengkap" rows="2"></textarea>
+        <label class="form-label">Alamat Penerima</label>
+        <textarea class="form-textarea" id="inp-alamat" placeholder="Alamat lengkap penerima" rows="2"></textarea>
       </div>
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" id="inp-status">
-          <option value="baru">Data Baru</option>
-          <option value="sukses">Sukses (Delivered)</option>
-          <option value="fu_aktif">FU Aktif</option>
-          <option value="repeat">Repeat</option>
-          <option value="dormant">Dormant</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Catatan</label>
-        <textarea class="form-textarea" id="inp-catatan" placeholder="Catatan tambahan" rows="2"></textarea>
-      </div>
-      <div id="add-err" style="color:var(--red);font-size:12px;display:none"></div>
+      <div id="add-err" style="color:var(--red);font-size:12px;display:none;margin-top:4px"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeAddModal()">Batal</button>
-      <button class="btn btn-primary" onclick="saveCustomer()" id="btn-save-cust">Simpan</button>
+      <button class="btn btn-primary" onclick="saveOrder()" id="btn-save-order">Simpan</button>
     </div>
   </div>
 </div>
 
-<!-- IMPORT EXCEL MODAL -->
+<!-- ══════════════════════════════════════
+     IMPORT EXCEL MODAL
+══════════════════════════════════════ -->
 <div class="modal-overlay" id="import-modal">
   <div class="modal modal-lg">
     <div class="modal-header">
-      <div class="modal-title">📥 Import Excel</div>
+      <div class="modal-title">📥 Import Excel / CSV</div>
       <button class="modal-close" onclick="closeImportModal()">✕</button>
     </div>
     <div class="modal-body">
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div class="fw-600">Format Kolom yang Didukung:</div>
-          <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()" style="gap:5px">⬇️ Download Template</button>
+          <div class="fw-600">Kolom yang didukung:</div>
+          <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇️ Download Template</button>
         </div>
-        <div class="text-sm text-muted" style="line-height:1.8">
-          <code>nama</code> · <code>hp</code> · <code>produk</code> · <code>qty</code> ·
-          <code>harga</code> · <code>resi</code> · <code>ekspedisi</code> ·
-          <code>tgl_order</code> · <code>tgl_delivered</code> · <code>alamat</code>
+        <div class="text-sm text-muted" style="line-height:2">
+          <code>tanggal</code> · <code>ekspedisi</code> · <code>nomer_resi</code> · <code>payment</code> · <code>produk</code> · <code>jumlah_produk</code> ·
+          <code>promo</code> · <code>nama_customer</code> · <code>nomer_hp</code> · <code>alamat</code> · <code>cs</code> ·
+          <code>ongkir</code> · <code>potongan_ongkir</code> · <code>admin</code> · <code>potongan_admin</code> · <code>harga_produk</code> · <code>jumlah_cod</code>
         </div>
-        <div class="text-xs text-dim mt-2">Minimal wajib: <strong>nama</strong> dan <strong>hp</strong>. Format tanggal: YYYY-MM-DD atau DD/MM/YYYY.</div>
+        <div class="text-xs text-dim mt-2">Wajib: <strong>nama_customer</strong> dan <strong>nomer_hp</strong>. Format tanggal: YYYY-MM-DD atau DD/MM/YYYY.</div>
       </div>
 
-      <div id="drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:40px;text-align:center;cursor:pointer;transition:border-color .15s"
+      <div id="drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:border-color .15s"
            onclick="document.getElementById('file-excel').click()"
            ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
            ondragleave="this.style.borderColor='var(--border)'"
            ondrop="handleDrop(event)">
-        <div style="font-size:40px;margin-bottom:10px">📂</div>
-        <div class="fw-600">Drag & drop file Excel di sini</div>
-        <div class="text-sm text-muted mt-1">atau klik untuk pilih file (.xlsx, .xls, .csv)</div>
+        <div style="font-size:36px;margin-bottom:10px">📂</div>
+        <div class="fw-600">Drag & drop file di sini</div>
+        <div class="text-sm text-muted mt-1">atau klik untuk pilih (.xlsx, .xls, .csv)</div>
       </div>
       <input type="file" id="file-excel" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileSelect(this)">
 
-      <!-- PREVIEW TABLE -->
       <div id="preview-section" style="display:none;margin-top:16px">
         <div class="flex items-center justify-between mb-2">
           <div class="fw-600" id="preview-count">-</div>
-          <div>
-            <label class="form-label" style="display:inline;margin-right:8px">Status import:</label>
-            <select class="form-select" id="import-status-sel" style="width:auto;display:inline-block">
-              <option value="baru">Data Baru</option>
-              <option value="sukses">Sukses (Delivered)</option>
-            </select>
-          </div>
         </div>
-        <div class="table-wrap" style="max-height:300px;overflow:auto">
+        <div class="table-wrap" style="max-height:280px;overflow:auto">
           <table id="preview-table">
             <thead><tr id="preview-head"></tr></thead>
             <tbody id="preview-body"></tbody>
@@ -237,34 +294,38 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeImportModal()">Batal</button>
       <button class="btn btn-success" onclick="doImport()" id="btn-do-import" style="display:none">
-        ✅ Import <span id="import-count-btn">0</span> Data
+        ✅ Import <span id="import-count-btn">0</span> Order
       </button>
     </div>
   </div>
 </div>
 
-<!-- DETAIL CUSTOMER MODAL -->
+<!-- ══════════════════════════════════════
+     DETAIL ORDER MODAL
+══════════════════════════════════════ -->
 <div class="modal-overlay" id="detail-modal">
   <div class="modal modal-lg">
     <div class="modal-header">
       <div>
         <div class="modal-title" id="detail-nama">-</div>
-        <div class="text-sm text-muted" id="detail-wa">-</div>
+        <div class="text-sm text-muted" id="detail-sub">-</div>
       </div>
       <button class="modal-close" onclick="closeDetailModal()">✕</button>
     </div>
-    <div class="modal-body" id="detail-body">
-    </div>
+    <div class="modal-body" id="detail-body"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeDetailModal()">Tutup</button>
-      <button class="btn btn-primary" onclick="goToChat()" id="btn-go-chat">💬 Buka Chat</button>
+      <button class="btn btn-ghost" id="btn-edit-detail" onclick="editFromDetail()">✏️ Edit</button>
+      <button class="btn btn-primary" id="btn-track-detail" onclick="trackFromDetail()">🔄 Update Tracking</button>
     </div>
   </div>
 </div>
 
 <div id="toast"></div>
 
-<!-- XLSX dimuat lazy saat import modal dibuka -->
+<!-- ══════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════ -->
 <script>
 async function initConfig() {
   const r = await fetch('/api/config');
@@ -272,72 +333,109 @@ async function initConfig() {
   window.__SB_URL = c.supabase_url;
   window.__SB_KEY = c.supabase_anon_key;
 }
-function fmtDateTime(iso) { if (!iso) return '-'; return new Date(iso).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
-function fmtDate(iso) { if (!iso) return '-'; return new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }); }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-function addDays(dateStr, n) { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
-function normalizePhone(p) { if (!p) return ''; p = String(p).replace(/\D/g,''); if (p.startsWith('0')) p = '62' + p.slice(1); if (!p.startsWith('62')) p = '62' + p; return p; }
-function statusBadge(s) {
-  const map = {
-    baru:     ['badge-blue',  'Baru'],
-    sukses:   ['badge-green', '✅ Sukses'],
-    fu_aktif: ['badge-amber', '📅 FU Aktif'],
-    repeat:   ['badge-blue',  '🔁 Repeat'],
-    dormant:  ['badge-gray',  '💤 Dormant'],
-  };
-  const [cls, label] = map[s] || ['badge-gray', s || '-'];
-  return `<span class="badge ${cls}">${label}</span>`;
+function fmtDate(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+}
+function fmtRupiah(n) {
+  if (!n && n !== 0) return '-';
+  return 'Rp ' + Number(n).toLocaleString('id-ID');
+}
+function normalizePhone(p) {
+  if (!p) return '';
+  p = String(p).replace(/\D/g,'');
+  if (p.startsWith('0')) p = '62' + p.slice(1);
+  if (!p.startsWith('62')) p = '62' + p;
+  return p;
+}
+function fmtDateForDB(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val.toISOString().slice(0,10);
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) { const y = m[3].length===2?'20'+m[3]:m[3]; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+  return null;
 }
 </script>
 <script src="js/app.js"></script>
 <script>
-let currentUser = null;
-let allCustomers = [];
-let filteredCustomers = [];
-let activeTab = 'semua';
-let currentPage = 1;
-const PAGE_SIZE = 30;
-let importRows = [];
+// ── State ──────────────────────────────────────────────────────────
+let currentUser  = null;
+let allOrders    = [];
+let filteredOrders = [];
+let activeTab    = 'semua';
+let currentPage  = 1;
+const PAGE_SIZE  = 30;
+let importData   = [];
 let currentDetailId = null;
+let trackingInProgress = new Set();
 
+// ── Status helpers ──────────────────────────────────────────────────
+const STATUS_INFO = {
+  MENUNGGU_RESI: { cls:'bdg-gray',   label:'⏳ Menunggu Resi' },
+  DIKIRIM:       { cls:'bdg-blue',   label:'📦 Dikirim' },
+  KOTA_TUJUAN:   { cls:'bdg-indigo', label:'🏙️ Kota Tujuan' },
+  OTW:           { cls:'bdg-amber',  label:'🚚 OTW' },
+  SAMPAI:        { cls:'bdg-green',  label:'✅ Delivered' },
+  BERMASALAH:    { cls:'bdg-orange', label:'⚠️ Bermasalah' },
+  RETUR:         { cls:'bdg-red',    label:'↩️ Retur' },
+};
+function statusBadge(s) {
+  const info = STATUS_INFO[s] || { cls:'bdg-gray', label: s || '-' };
+  return `<span class="bdg ${info.cls}">${info.label}</span>`;
+}
+function isDone(s) { return s === 'SAMPAI' || s === 'RETUR'; }
+function isOngoing(s) { return s === 'DIKIRIM' || s === 'KOTA_TUJUAN' || s === 'OTW'; }
+
+// ── Init ────────────────────────────────────────────────────────────
 async function init() {
   await initConfig();
   currentUser = requireAuth();
   if (!currentUser) return;
   renderSidebar('customers');
-  await loadCustomers();
+  checkBotStatus();
+  await loadOrders();
+  // Auto-track pending orders (non-blocking)
+  setTimeout(autoTrackPending, 1500);
 }
 
-async function loadCustomers() {
-  document.getElementById('table-wrap').innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat customer...</div>';
+// ── Load orders ─────────────────────────────────────────────────────
+async function loadOrders() {
+  document.getElementById('table-wrap').innerHTML =
+    '<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat order...</div>';
   try {
-    const rows = await sbGet('customers',
-      `user_id=eq.${currentUser.id}&order=created_at.desc&select=*`);
-    allCustomers = rows;
+    allOrders = await sbGet('orders', `user_id=eq.${currentUser.id}&order=tanggal.desc,created_at.desc&select=*`);
     updateStats();
-    loadProdukFilter();
+    loadCsFilter();
     renderTable();
-  } catch(e) { document.getElementById('table-wrap').innerHTML = `<div class="empty-state"><div class="text-red">${e.message}</div></div>`; }
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="empty-state"><div class="text-red">${e.message}</div></div>`;
+  }
 }
 
+// ── Stats ───────────────────────────────────────────────────────────
 function updateStats() {
-  const c = allCustomers;
-  document.getElementById('st-total').textContent  = c.length;
-  document.getElementById('st-baru').textContent   = c.filter(x => x.status === 'baru').length;
-  document.getElementById('st-sukses').textContent = c.filter(x => x.status === 'sukses').length;
-  document.getElementById('st-fu').textContent     = c.filter(x => x.status === 'fu_aktif').length;
-  document.getElementById('st-repeat').textContent = c.filter(x => x.status === 'repeat').length;
-  document.getElementById('st-dormant').textContent= c.filter(x => x.status === 'dormant').length;
+  const c = allOrders;
+  document.getElementById('st-total').textContent   = c.length;
+  document.getElementById('st-pending').textContent = c.filter(x => x.status_resi === 'MENUNGGU_RESI' || !x.status_resi).length;
+  document.getElementById('st-otw').textContent     = c.filter(x => isOngoing(x.status_resi)).length;
+  document.getElementById('st-sampai').textContent  = c.filter(x => x.status_resi === 'SAMPAI').length;
+  document.getElementById('st-masalah').textContent = c.filter(x => x.status_resi === 'BERMASALAH').length;
+  document.getElementById('st-retur').textContent   = c.filter(x => x.status_resi === 'RETUR').length;
 }
 
-function loadProdukFilter() {
-  const produkSet = new Set(allCustomers.map(c => c.produk).filter(Boolean));
-  const sel = document.getElementById('produk-filter');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Semua Produk</option>' +
-    [...produkSet].map(p => `<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
+// ── CS Filter ───────────────────────────────────────────────────────
+function loadCsFilter() {
+  const csSet = new Set(allOrders.map(o => o.cs).filter(Boolean));
+  const sel   = document.getElementById('cs-filter');
+  const cur   = sel.value;
+  sel.innerHTML = '<option value="">Semua CS</option>' +
+    [...csSet].sort().map(cs => `<option value="${cs}" ${cs===cur?'selected':''}>${cs}</option>`).join('');
 }
 
+// ── Tab switch ──────────────────────────────────────────────────────
 function switchTab(tab, el) {
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -346,33 +444,39 @@ function switchTab(tab, el) {
   renderTable();
 }
 
+// ── Render table ────────────────────────────────────────────────────
 function renderTable() {
-  const search = document.getElementById('search-inp').value.toLowerCase();
-  const prodFilter = document.getElementById('produk-filter').value;
+  const search    = document.getElementById('search-inp').value.toLowerCase();
+  const csFilter  = document.getElementById('cs-filter').value;
 
-  filteredCustomers = allCustomers.filter(c => {
-    if (activeTab !== 'semua' && c.status !== activeTab) return false;
-    if (prodFilter && c.produk !== prodFilter) return false;
+  filteredOrders = allOrders.filter(o => {
+    // Tab filter
+    if (activeTab === 'dikirim' && !isOngoing(o.status_resi)) return false;
+    if (activeTab !== 'semua' && activeTab !== 'dikirim' && o.status_resi !== activeTab) return false;
+    // CS filter
+    if (csFilter && o.cs !== csFilter) return false;
+    // Search
     if (search) {
-      const hay = `${c.nama} ${c.wa_number} ${c.produk} ${c.no_resi}`.toLowerCase();
+      const hay = `${o.nama_customer} ${o.nomer_hp} ${o.nomer_resi} ${o.produk} ${o.cs} ${o.ekspedisi}`.toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
   });
 
-  const total = filteredCustomers.length;
+  const total      = filteredOrders.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (currentPage > totalPages) currentPage = 1;
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageData = filteredCustomers.slice(start, start + PAGE_SIZE);
+  const start    = (currentPage - 1) * PAGE_SIZE;
+  const pageData = filteredOrders.slice(start, start + PAGE_SIZE);
 
-  document.getElementById('count-label').textContent = `${total} customer`;
-  document.getElementById('page-info').textContent = `Halaman ${currentPage} / ${totalPages}`;
+  document.getElementById('count-label').textContent = `${total} order`;
+  document.getElementById('page-info').textContent   = `Halaman ${currentPage} / ${totalPages}`;
   document.getElementById('btn-prev').disabled = currentPage <= 1;
   document.getElementById('btn-next').disabled = currentPage >= totalPages;
 
   if (!pageData.length) {
-    document.getElementById('table-wrap').innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Tidak ada customer</div><div class="empty-sub">Coba ubah filter atau tambahkan data</div></div>`;
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">Tidak ada order</div><div class="empty-sub">Coba ubah filter atau import data</div></div>`;
     return;
   }
 
@@ -380,181 +484,318 @@ function renderTable() {
     <table>
       <thead><tr>
         <th>#</th>
-        <th>Nama</th>
-        <th>No. WA</th>
+        <th>Tanggal</th>
+        <th>Customer</th>
         <th>Produk</th>
-        <th>Resi</th>
-        <th>Tgl Order</th>
-        <th>Tgl Delivered</th>
-        <th>Status</th>
+        <th>CS</th>
+        <th>Ekspedisi / Resi</th>
+        <th>Jumlah COD</th>
+        <th>Status Resi</th>
         <th>Aksi</th>
       </tr></thead>
-      <tbody>${pageData.map((c, i) => `
-        <tr>
+      <tbody>${pageData.map((o, i) => {
+        const st = o.status_resi || 'MENUNGGU_RESI';
+        const isTracking = trackingInProgress.has(o.id);
+        const badgeHtml  = isTracking
+          ? `<span class="bdg bdg-gray"><span class="bdg-spin"></span> Tracking...</span>`
+          : statusBadge(st);
+        return `<tr>
           <td class="text-dim">${start + i + 1}</td>
-          <td><div class="fw-600">${c.nama || '-'}</div><div class="text-xs text-muted">${c.catatan || ''}</div></td>
-          <td>${c.wa_number || '-'}</td>
-          <td>${c.produk || '-'}${c.qty > 1 ? ` <span class="text-dim">×${c.qty}</span>` : ''}</td>
-          <td class="text-sm">${c.no_resi || '-'}</td>
-          <td class="text-sm">${fmtDate(c.tgl_order)}</td>
-          <td class="text-sm">${c.tgl_delivered ? `<span class="text-green">${fmtDate(c.tgl_delivered)}</span>` : '-'}</td>
-          <td>${statusBadge(c.status)}</td>
+          <td class="text-sm">${fmtDate(o.tanggal)}</td>
           <td>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-ghost btn-xs" onclick="openDetail('${c.id}')">Detail</button>
-              <button class="btn btn-ghost btn-xs" onclick="openEditModal('${c.id}')">Edit</button>
-              ${c.status === 'baru' ? `<button class="btn btn-success btn-xs" onclick="markSukses('${c.id}')">✓ Sukses</button>` : ''}
-              ${c.status === 'sukses' ? `<button class="btn btn-primary btn-xs" onclick="activateFU('${c.id}')">📅 FU</button>` : ''}
+            <div class="cust-cell">
+              <div class="cust-name">${escH(o.nama_customer || '-')}</div>
+              <div class="cust-hp">${fmtHp(o.nomer_hp)}</div>
             </div>
           </td>
-        </tr>`).join('')}
+          <td class="text-sm">${escH(o.produk || '-')}${o.jumlah_produk > 1 ? ` <span class="text-dim">×${o.jumlah_produk}</span>` : ''}</td>
+          <td class="text-sm text-dim">${escH(o.cs || '-')}</td>
+          <td>
+            <div class="text-xs text-dim">${escH(o.ekspedisi || '-')}</div>
+            <div class="resi-cell">${escH(o.nomer_resi || '-')}</div>
+          </td>
+          <td class="fw-600">${o.jumlah_cod ? fmtRupiah(o.jumlah_cod) : '-'}</td>
+          <td id="badge-${o.id}">${badgeHtml}</td>
+          <td>
+            <div style="display:flex;gap:5px">
+              <button class="btn btn-ghost btn-xs" onclick="openDetail('${o.id}')">Detail</button>
+              ${!isDone(st) && o.nomer_resi ? `<button class="btn btn-ghost btn-xs" onclick="trackOne('${o.id}')">🔄</button>` : ''}
+            </div>
+          </td>
+        </tr>`;
+      }).join('')}
       </tbody>
     </table>`;
 }
 
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtHp(raw) {
+  let n = String(raw||'').replace(/\D/g,'');
+  if (!n) return '-';
+  if (n.startsWith('62')) n = '0' + n.slice(2);
+  return n.replace(/^(\d{4})(\d{4})(\d+)$/, '$1-$2-$3');
+}
+
 function changePage(dir) {
-  const total = filteredCustomers.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+  const tp = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  currentPage = Math.max(1, Math.min(tp, currentPage + dir));
   renderTable();
 }
 
-// ---- MARK SUKSES ----
-async function markSukses(id) {
-  const tgl = prompt('Masukkan tanggal delivered (YYYY-MM-DD):', todayStr());
-  if (!tgl) return;
+// ── Tracking ────────────────────────────────────────────────────────
+async function trackOne(id) {
+  const order = allOrders.find(o => o.id === id);
+  if (!order || !order.nomer_resi || !order.ekspedisi) {
+    toast('Resi atau ekspedisi belum ada', 'error'); return;
+  }
+  trackingInProgress.add(id);
+  renderTable();
   try {
-    await sbPatch('customers', `id=eq.${id}`, { status: 'sukses', tgl_delivered: tgl, updated_at: new Date().toISOString() });
-    // Generate followup schedule
-    await generateFUSchedule(id, tgl);
-    toast('Status diupdate ke Sukses & jadwal FU dibuat!', 'success');
-    await loadCustomers();
-  } catch(e) { toast(e.message, 'error'); }
+    const r = await fetch(`/api/track-resi?resi=${encodeURIComponent(order.nomer_resi)}&ekspedisi=${encodeURIComponent(order.ekspedisi)}`);
+    if (!r.ok) throw new Error(await r.text());
+    const { stage, step } = await r.json();
+    // Update Supabase
+    await sbPatch('orders', `id=eq.${id}`, {
+      status_resi: stage,
+      status_resi_step: step,
+      last_tracked_at: new Date().toISOString()
+    });
+    // Update local state
+    const idx = allOrders.findIndex(o => o.id === id);
+    if (idx >= 0) { allOrders[idx].status_resi = stage; allOrders[idx].status_resi_step = step; }
+    toast(`Status: ${STATUS_INFO[stage]?.label || stage}`, 'success');
+  } catch(e) {
+    toast('Tracking gagal: ' + e.message, 'error');
+  } finally {
+    trackingInProgress.delete(id);
+    updateStats();
+    renderTable();
+  }
 }
 
-// ---- ACTIVATE FU (manual) ----
-async function activateFU(id) {
-  try {
-    await sbPatch('customers', `id=eq.${id}`, { status: 'fu_aktif', updated_at: new Date().toISOString() });
-    // Re-generate FU schedule
-    const cust = allCustomers.find(c => c.id === id);
-    if (cust?.tgl_delivered) await generateFUSchedule(id, cust.tgl_delivered);
-    toast('FU Aktif!', 'success');
-    await loadCustomers();
-  } catch(e) { toast(e.message, 'error'); }
+async function trackAllPending() {
+  const pending = allOrders.filter(o => o.nomer_resi && o.ekspedisi && !isDone(o.status_resi));
+  if (!pending.length) { toast('Tidak ada order yang perlu di-track', 'info'); return; }
+  const btn = document.getElementById('btn-track-all');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px"></span> Tracking...';
+  pending.forEach(o => trackingInProgress.add(o.id));
+  renderTable();
+  // Batch 5 concurrent
+  const BATCH = 5;
+  for (let i = 0; i < pending.length; i += BATCH) {
+    await Promise.all(pending.slice(i, i+BATCH).map(o => trackOne(o.id).catch(()=>{})));
+  }
+  btn.disabled = false; btn.innerHTML = '🔄 Track Semua';
+  toast(`✅ Selesai tracking ${pending.length} order`, 'success');
 }
 
-// ---- GENERATE FU SCHEDULE ----
-async function generateFUSchedule(customerId, tglDelivered) {
-  try {
-    const cust = allCustomers.find(c => c.id === customerId) ||
-      (await sbGet('customers', `id=eq.${customerId}`))[0];
-    const prodId = cust?.product_id;
-
-    let rules;
-    if (prodId) {
-      rules = await sbGet('followup_rules', `user_id=eq.${currentUser.id}&product_id=eq.${prodId}&aktif=eq.true&order=urutan.asc`);
-    } else {
-      rules = await sbGet('followup_rules', `user_id=eq.${currentUser.id}&aktif=eq.true&order=urutan.asc`);
-    }
-
-    if (!rules.length) return;
-
-    // Delete existing pending schedules for this customer
-    await sbDelete('followup_schedule', `customer_id=eq.${customerId}&status=eq.pending`);
-
-    // Insert new schedules
-    const schedules = rules.map(r => ({
-      user_id: currentUser.id,
-      customer_id: customerId,
-      product_id: prodId || null,
-      rule_id: r.id,
-      rule_nama: r.nama,
-      scheduled_date: addDays(tglDelivered, r.hari_setelah_delivered),
-      status: 'pending'
-    }));
-
-    await sbPost('followup_schedule', schedules, { prefer: 'return=minimal' });
-    await sbPatch('customers', `id=eq.${customerId}`, { status: 'fu_aktif' });
-  } catch(e) { console.error('generateFUSchedule', e); }
+async function autoTrackPending() {
+  // Auto-track max 10 order yang belum pernah di-track (last_tracked_at null)
+  const queue = allOrders
+    .filter(o => o.nomer_resi && o.ekspedisi && !isDone(o.status_resi) && !o.last_tracked_at)
+    .slice(0, 10);
+  if (!queue.length) return;
+  queue.forEach(o => trackingInProgress.add(o.id));
+  renderTable();
+  for (let i = 0; i < queue.length; i += 5) {
+    await Promise.all(queue.slice(i, i+5).map(o => trackOne(o.id).catch(()=>{})));
+  }
 }
 
-// ---- ADD / EDIT MODAL ----
+// ── Detail modal ────────────────────────────────────────────────────
+function openDetail(id) {
+  const o = allOrders.find(x => x.id === id);
+  if (!o) return;
+  currentDetailId = id;
+  document.getElementById('detail-nama').textContent = o.nama_customer || '-';
+  document.getElementById('detail-sub').textContent  = `${o.ekspedisi || '-'} · ${o.nomer_resi || 'Belum ada resi'}`;
+
+  const st   = o.status_resi || 'MENUNGGU_RESI';
+  const step = o.status_resi_step || 1;
+  const steps = [
+    { label:'Order', icon:'📝' },
+    { label:'Dikirim', icon:'📦' },
+    { label:'Kota Tujuan', icon:'🏙️' },
+    { label:'OTW', icon:'🚚' },
+    { label:'Delivered', icon:'✅' },
+  ];
+  let stepperHtml = '';
+  if (st === 'BERMASALAH') {
+    stepperHtml = `<div style="text-align:center;padding:12px 0"><span class="bdg bdg-orange" style="font-size:13px;padding:6px 16px">⚠️ Bermasalah — Cek resi dan hubungi ekspedisi</span></div>`;
+  } else if (st === 'RETUR') {
+    stepperHtml = `<div style="text-align:center;padding:12px 0"><span class="bdg bdg-red" style="font-size:13px;padding:6px 16px">↩️ Retur — Paket dikembalikan ke pengirim</span></div>`;
+  } else {
+    const linesDone = [false, step >= 2, step >= 3, step >= 4, false]; // between steps
+    stepperHtml = `<div class="stepper">${steps.map((s, i) => {
+      const done   = (i+1) < step || (i+1 === 5 && st === 'SAMPAI');
+      const active = (i+1) === step && !done;
+      const cirCls = done ? 'step-done' : active ? 'step-active' : 'step-wait';
+      const lineDone = linesDone[i] || done;
+      return `<div class="step-item">
+        <div class="step-circle ${cirCls}">${done ? '✓' : s.icon}</div>
+        <div class="step-line ${lineDone ? 'step-line-done' : ''}"></div>
+        <div class="step-label">${s.label}</div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  // Financial breakdown
+  const ongkir     = Number(o.ongkir || 0);
+  const potOngkir  = Number(o.potongan_ongkir || 0);
+  const admin      = Number(o.admin || 0);
+  const potAdmin   = Number(o.potongan_admin || 0);
+  const harga      = Number(o.harga_produk || 0);
+  const cod        = Number(o.jumlah_cod || 0);
+
+  document.getElementById('detail-body').innerHTML = `
+    <!-- Stepper -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div class="text-xs text-dim fw-600" style="text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Status Pengiriman</div>
+      ${stepperHtml}
+      ${o.last_tracked_at ? `<div class="text-xs text-dim text-center" style="margin-top:6px">Terakhir dicek: ${new Date(o.last_tracked_at).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>` : ''}
+    </div>
+
+    <!-- Info order -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div><div class="text-xs text-dim">Tanggal</div><div class="fw-600">${fmtDate(o.tanggal)}</div></div>
+      <div><div class="text-xs text-dim">CS</div><div class="fw-600">${escH(o.cs || '-')}</div></div>
+      <div><div class="text-xs text-dim">Nama Customer</div><div class="fw-600">${escH(o.nama_customer || '-')}</div></div>
+      <div><div class="text-xs text-dim">Nomer HP</div><div class="fw-600">${fmtHp(o.nomer_hp)}</div></div>
+      <div><div class="text-xs text-dim">Produk</div><div class="fw-600">${escH(o.produk || '-')} ${o.jumlah_produk > 1 ? `×${o.jumlah_produk}` : ''}</div></div>
+      <div><div class="text-xs text-dim">Payment</div><div class="fw-600">${escH(o.payment || '-')}</div></div>
+      <div><div class="text-xs text-dim">Ekspedisi</div><div class="fw-600">${escH(o.ekspedisi || '-')}</div></div>
+      <div><div class="text-xs text-dim">Nomer Resi</div><div class="fw-600 resi-cell">${escH(o.nomer_resi || '-')}</div></div>
+      ${o.promo ? `<div><div class="text-xs text-dim">Promo</div><div class="fw-600">${escH(o.promo)}</div></div>` : ''}
+      ${o.alamat ? `<div style="grid-column:1/-1"><div class="text-xs text-dim">Alamat</div><div class="text-sm">${escH(o.alamat)}</div></div>` : ''}
+    </div>
+
+    <!-- Financial -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div class="text-xs text-dim fw-600" style="text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rincian Biaya</div>
+      <div class="fin-row"><span class="fin-label">Harga Produk</span><span class="fin-val">${fmtRupiah(harga)}</span></div>
+      <div class="fin-row"><span class="fin-label">Ongkir</span><span class="fin-val">${fmtRupiah(ongkir)}</span></div>
+      ${potOngkir ? `<div class="fin-row"><span class="fin-label">Potongan Ongkir</span><span class="fin-val minus">- ${fmtRupiah(potOngkir)}</span></div>` : ''}
+      <div class="fin-row"><span class="fin-label">Admin</span><span class="fin-val">${fmtRupiah(admin)}</span></div>
+      ${potAdmin ? `<div class="fin-row"><span class="fin-label">Potongan Admin</span><span class="fin-val minus">- ${fmtRupiah(potAdmin)}</span></div>` : ''}
+      <div class="fin-divider"></div>
+      <div class="fin-row"><span class="fin-label fw-600">Jumlah COD</span><span class="fin-val total">${fmtRupiah(cod)}</span></div>
+    </div>
+  `;
+
+  document.getElementById('detail-modal').classList.add('show');
+}
+
+function closeDetailModal() { document.getElementById('detail-modal').classList.remove('show'); }
+
+function editFromDetail() {
+  closeDetailModal();
+  openEditModal(currentDetailId);
+}
+
+async function trackFromDetail() {
+  const btn = document.getElementById('btn-track-detail');
+  btn.disabled = true; btn.textContent = '⏳ Tracking...';
+  await trackOne(currentDetailId).catch(()=>{});
+  btn.disabled = false; btn.textContent = '🔄 Update Tracking';
+  // Re-open detail with fresh data
+  openDetail(currentDetailId);
+}
+
+// ── Add / Edit modal ────────────────────────────────────────────────
+const FIELDS = ['tanggal','cs','nama','hp','produk','jumlah','payment','promo','ekspedisi','resi','ongkir','pot-ongkir','admin','pot-admin','harga','cod','alamat'];
+
 function openAddModal() {
-  document.getElementById('add-modal-title').textContent = 'Tambah Customer';
+  document.getElementById('add-modal-title').textContent = 'Tambah Order';
   document.getElementById('edit-id').value = '';
-  ['nama','wa','produk','qty','resi','eks','alamat','catatan'].forEach(f => {
+  FIELDS.forEach(f => {
     const el = document.getElementById('inp-' + f);
-    if (el) el.value = f === 'qty' ? '1' : '';
+    if (!el) return;
+    if (el.type === 'number') el.value = f === 'jumlah' ? 1 : 0;
+    else if (el.type === 'date') el.value = f === 'tanggal' ? new Date().toISOString().slice(0,10) : '';
+    else el.value = '';
   });
-  document.getElementById('inp-tgl-order').value = '';
-  document.getElementById('inp-tgl-del').value = '';
-  document.getElementById('inp-status').value = 'baru';
   document.getElementById('add-err').style.display = 'none';
   document.getElementById('add-modal').classList.add('show');
 }
 
 function openEditModal(id) {
-  const c = allCustomers.find(x => x.id === id);
-  if (!c) return;
-  document.getElementById('add-modal-title').textContent = 'Edit Customer';
-  document.getElementById('edit-id').value = c.id;
-  document.getElementById('inp-nama').value = c.nama || '';
-  document.getElementById('inp-wa').value = c.wa_number || '';
-  document.getElementById('inp-produk').value = c.produk || '';
-  document.getElementById('inp-qty').value = c.qty || 1;
-  document.getElementById('inp-resi').value = c.no_resi || '';
-  document.getElementById('inp-eks').value = c.ekspedisi || '';
-  document.getElementById('inp-tgl-order').value = c.tgl_order || '';
-  document.getElementById('inp-tgl-del').value = c.tgl_delivered || '';
-  document.getElementById('inp-alamat').value = typeof c.alamat === 'string' ? c.alamat : (c.alamat?.jalan || '');
-  document.getElementById('inp-catatan').value = c.catatan || '';
-  document.getElementById('inp-status').value = c.status || 'baru';
+  const o = allOrders.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('add-modal-title').textContent = 'Edit Order';
+  document.getElementById('edit-id').value      = o.id;
+  document.getElementById('inp-tanggal').value  = o.tanggal || '';
+  document.getElementById('inp-cs').value       = o.cs || '';
+  document.getElementById('inp-nama').value     = o.nama_customer || '';
+  document.getElementById('inp-hp').value       = o.nomer_hp || '';
+  document.getElementById('inp-produk').value   = o.produk || '';
+  document.getElementById('inp-jumlah').value   = o.jumlah_produk || 1;
+  document.getElementById('inp-payment').value  = o.payment || '';
+  document.getElementById('inp-promo').value    = o.promo || '';
+  document.getElementById('inp-ekspedisi').value= o.ekspedisi || '';
+  document.getElementById('inp-resi').value     = o.nomer_resi || '';
+  document.getElementById('inp-ongkir').value   = o.ongkir || 0;
+  document.getElementById('inp-pot-ongkir').value = o.potongan_ongkir || 0;
+  document.getElementById('inp-admin').value    = o.admin || 0;
+  document.getElementById('inp-pot-admin').value= o.potongan_admin || 0;
+  document.getElementById('inp-harga').value    = o.harga_produk || 0;
+  document.getElementById('inp-cod').value      = o.jumlah_cod || 0;
+  document.getElementById('inp-alamat').value   = o.alamat || '';
   document.getElementById('add-err').style.display = 'none';
   document.getElementById('add-modal').classList.add('show');
 }
 
 function closeAddModal() { document.getElementById('add-modal').classList.remove('show'); }
 
-async function saveCustomer() {
+async function saveOrder() {
   const nama = document.getElementById('inp-nama').value.trim();
-  const wa   = document.getElementById('inp-wa').value.trim();
-  if (!nama || !wa) {
-    document.getElementById('add-err').textContent = 'Nama dan No. WA wajib diisi.';
+  const hp   = document.getElementById('inp-hp').value.trim();
+  if (!nama || !hp) {
+    document.getElementById('add-err').textContent = 'Nama customer dan nomer HP wajib diisi.';
     document.getElementById('add-err').style.display = 'block'; return;
   }
-  const btn = document.getElementById('btn-save-cust');
+  const btn = document.getElementById('btn-save-order');
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
+  const resi      = document.getElementById('inp-resi').value.trim();
+  const ekspedisi = document.getElementById('inp-ekspedisi').value.trim();
   const payload = {
-    user_id: currentUser.id,
-    nama, wa_number: normalizePhone(wa),
-    produk: document.getElementById('inp-produk').value.trim(),
-    qty: parseInt(document.getElementById('inp-qty').value) || 1,
-    no_resi: document.getElementById('inp-resi').value.trim(),
-    ekspedisi: document.getElementById('inp-eks').value.trim(),
-    tgl_order: document.getElementById('inp-tgl-order').value || null,
-    tgl_delivered: document.getElementById('inp-tgl-del').value || null,
-    alamat: { jalan: document.getElementById('inp-alamat').value.trim() },
-    catatan: document.getElementById('inp-catatan').value.trim(),
-    status: document.getElementById('inp-status').value,
-    updated_at: new Date().toISOString()
+    user_id:         currentUser.id,
+    tanggal:         document.getElementById('inp-tanggal').value || null,
+    cs:              document.getElementById('inp-cs').value.trim(),
+    nama_customer:   nama,
+    nomer_hp:        normalizePhone(hp),
+    produk:          document.getElementById('inp-produk').value.trim(),
+    jumlah_produk:   parseInt(document.getElementById('inp-jumlah').value) || 1,
+    payment:         document.getElementById('inp-payment').value.trim(),
+    promo:           document.getElementById('inp-promo').value.trim(),
+    ekspedisi,
+    nomer_resi:      resi,
+    ongkir:          parseInt(document.getElementById('inp-ongkir').value) || 0,
+    potongan_ongkir: parseInt(document.getElementById('inp-pot-ongkir').value) || 0,
+    admin:           parseInt(document.getElementById('inp-admin').value) || 0,
+    potongan_admin:  parseInt(document.getElementById('inp-pot-admin').value) || 0,
+    harga_produk:    parseInt(document.getElementById('inp-harga').value) || 0,
+    jumlah_cod:      parseInt(document.getElementById('inp-cod').value) || 0,
+    alamat:          document.getElementById('inp-alamat').value.trim(),
+    status_resi:     resi ? 'DIKIRIM' : 'MENUNGGU_RESI',
+    updated_at:      new Date().toISOString(),
   };
 
   try {
     const editId = document.getElementById('edit-id').value;
     if (editId) {
-      await sbPatch('customers', `id=eq.${editId}`, payload);
+      await sbPatch('orders', `id=eq.${editId}`, payload);
     } else {
-      const created = await sbPost('customers', payload);
-      // Auto-generate FU schedule kalau status sukses
-      if (payload.status === 'sukses' && payload.tgl_delivered) {
-        await generateFUSchedule(created[0].id, payload.tgl_delivered);
-      }
+      await sbPost('orders', payload);
     }
-    toast('Customer disimpan!', 'success');
+    toast('Order disimpan!', 'success');
     closeAddModal();
-    await loadCustomers();
+    await loadOrders();
+    // Auto-track jika ada resi
+    if (resi && ekspedisi) {
+      const newOrder = allOrders.find(o => o.nomer_resi === resi);
+      if (newOrder) setTimeout(() => trackOne(newOrder.id), 500);
+    }
   } catch(e) {
     document.getElementById('add-err').textContent = e.message;
     document.getElementById('add-err').style.display = 'block';
@@ -562,59 +803,20 @@ async function saveCustomer() {
   btn.disabled = false; btn.textContent = 'Simpan';
 }
 
-// ---- DETAIL MODAL ----
-function openDetail(id) {
-  const c = allCustomers.find(x => x.id === id);
-  if (!c) return;
-  currentDetailId = id;
-  document.getElementById('detail-nama').textContent = c.nama || '-';
-  document.getElementById('detail-wa').textContent = c.wa_number || '-';
-  document.getElementById('detail-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div><div class="text-xs text-dim">Produk</div><div class="fw-600">${c.produk || '-'} ${c.qty > 1 ? `×${c.qty}` : ''}</div></div>
-      <div><div class="text-xs text-dim">Status</div>${statusBadge(c.status)}</div>
-      <div><div class="text-xs text-dim">No. Resi</div><div class="fw-600">${c.no_resi || '-'}</div></div>
-      <div><div class="text-xs text-dim">Ekspedisi</div><div>${c.ekspedisi || '-'}</div></div>
-      <div><div class="text-xs text-dim">Tgl Order</div><div>${fmtDate(c.tgl_order)}</div></div>
-      <div><div class="text-xs text-dim">Tgl Delivered</div><div class="${c.tgl_delivered ? 'text-green' : ''}">${fmtDate(c.tgl_delivered)}</div></div>
-      <div><div class="text-xs text-dim">Repeat Order</div><div class="fw-600">${c.total_repeat || 0}x</div></div>
-      <div><div class="text-xs text-dim">Last FU</div><div>${fmtDateTime(c.last_fu_at)}</div></div>
-    </div>
-    <hr class="divider">
-    <div><div class="text-xs text-dim mb-1">Alamat</div><div class="text-sm">${c.alamat?.jalan || JSON.stringify(c.alamat) || '-'}</div></div>
-    ${c.catatan ? `<hr class="divider"><div><div class="text-xs text-dim mb-1">Catatan</div><div class="text-sm">${c.catatan}</div></div>` : ''}
-  `;
-  document.getElementById('detail-modal').classList.add('show');
-}
-
-function closeDetailModal() { document.getElementById('detail-modal').classList.remove('show'); }
-
-function goToChat() {
-  closeDetailModal();
-  window.location.href = `dashboard.html?conv=_cust_${currentDetailId}`;
-}
-
-// ---- IMPORT EXCEL ----
-let importData = [];
-
+// ── Import Excel ─────────────────────────────────────────────────────
 function downloadTemplate() {
-  const headers = ['nama','hp','produk','qty','harga','resi','ekspedisi','tgl_order','tgl_delivered','alamat'];
+  const headers = ['tanggal','ekspedisi','nomer_resi','payment','produk','jumlah_produk','promo','nama_customer','nomer_hp','alamat','cs','ongkir','potongan_ongkir','admin','potongan_admin','harga_produk','jumlah_cod'];
   const contoh = [
-    ['Siti Rahayu','08123456789','Herbanesia Kapsul',1,150000,'JNE12345678','JNE','2024-01-15','2024-01-18','Jl. Merdeka No. 10, Jakarta Selatan'],
-    ['Budi Santoso','08987654321','Herbanesia Kapsul',2,300000,'SIC87654321','Sicepat','2024-01-16','','Jl. Sudirman No. 5 Blok A, Bandung'],
-    ['Dewi Lestari','08111222333','',1,'','','','','',''],
+    ['2024-01-15','JNE','JNE123456789','COD','Herbanesia Kapsul',1,'DISKON10','Siti Rahayu','08123456789','Jl. Merdeka No.10, Jakarta Selatan','CS Rina',25000,0,2000,0,150000,177000],
+    ['2024-01-16','J&T','JT9876543210','COD','Herbanesia Kapsul',2,'','Budi Santoso','08987654321','Jl. Sudirman No.5, Bandung','CS Rina',30000,5000,2000,0,300000,327000],
+    ['2024-01-17','SiCepat','','Transfer','Herbanesia Kapsul',1,'','Dewi Lestari','08111222333','Jl. Pahlawan No.3, Surabaya','CS Budi',0,0,0,0,150000,150000],
   ];
-
-  // Buat CSV
   const rows = [headers, ...contoh];
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const bom = '\uFEFF'; // BOM biar Excel baca UTF-8 dengan benar
-  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'template_import_customer.csv';
-  a.click();
+  const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'template_import_order.csv'; a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -639,18 +841,14 @@ function closeImportModal() {
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById('drop-zone').style.borderColor = 'var(--border)';
-  const file = e.dataTransfer.files[0];
-  if (file) parseExcel(file);
+  if (e.dataTransfer.files[0]) parseExcel(e.dataTransfer.files[0]);
 }
-
-function handleFileSelect(inp) {
-  if (inp.files[0]) parseExcel(inp.files[0]);
-}
+function handleFileSelect(inp) { if (inp.files[0]) parseExcel(inp.files[0]); }
 
 function normalizeHeader(h) {
-  return (h || '').toString().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  return (h||'').toString().toLowerCase().trim()
+    .replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
 }
-
 function findCol(headers, ...candidates) {
   for (const c of candidates) {
     const idx = headers.findIndex(h => h === c || h.includes(c));
@@ -663,117 +861,104 @@ function parseExcel(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      if (rawData.length < 2) throw new Error('File kosong atau hanya header.');
+      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+      if (raw.length < 2) throw new Error('File kosong atau hanya header.');
 
-      const headers = rawData[0].map(normalizeHeader);
-      const rows = rawData.slice(1).filter(r => r.some(c => c !== ''));
+      const headers = raw[0].map(normalizeHeader);
+      const rows    = raw.slice(1).filter(r => r.some(c => c !== ''));
 
-      // Map kolom
-      const colMap = {
-        nama:         findCol(headers, 'nama', 'name'),
-        wa:           findCol(headers, 'hp', 'wa', 'whatsapp', 'telepon', 'no_hp', 'phone', 'no_wa', 'nomor_wa', 'nomor_hp'),
-        produk:       findCol(headers, 'produk', 'product', 'nama_produk'),
-        qty:          findCol(headers, 'qty', 'jumlah', 'quantity'),
-        harga:        findCol(headers, 'harga', 'price', 'total'),
-        resi:         findCol(headers, 'resi', 'no_resi', 'nomor_resi', 'tracking'),
-        ekspedisi:    findCol(headers, 'ekspedisi', 'kurir', 'courier', 'shipping'),
-        tgl_order:    findCol(headers, 'tgl_order', 'tanggal', 'tgl', 'tanggal_order', 'order_date'),
-        tgl_delivered:findCol(headers, 'tgl_delivered', 'delivered', 'tgl_sampai', 'sampai'),
-        alamat:       findCol(headers, 'alamat', 'address', 'alamat_lengkap'),
+      const col = {
+        tanggal:        findCol(headers,'tanggal','tgl','tgl_order','date','tanggal_order'),
+        ekspedisi:      findCol(headers,'ekspedisi','kurir','courier','shipping'),
+        nomer_resi:     findCol(headers,'nomer_resi','resi','no_resi','nomor_resi','tracking'),
+        payment:        findCol(headers,'payment','pembayaran','metode_bayar'),
+        produk:         findCol(headers,'produk','product','nama_produk'),
+        jumlah_produk:  findCol(headers,'jumlah_produk','jumlah','qty','quantity'),
+        promo:          findCol(headers,'promo','diskon','kode_promo'),
+        nama_customer:  findCol(headers,'nama_customer','nama','name','customer'),
+        nomer_hp:       findCol(headers,'nomer_hp','hp','wa','phone','no_hp','telepon','nomor_hp'),
+        alamat:         findCol(headers,'alamat','address','alamat_penerima','alamat_lengkap'),
+        cs:             findCol(headers,'cs','nama_cs','customer_service'),
+        ongkir:         findCol(headers,'ongkir','ongkos_kirim','shipping_cost'),
+        pot_ongkir:     findCol(headers,'potongan_ongkir','pot_ongkir','diskon_ongkir'),
+        admin:          findCol(headers,'admin','biaya_admin','fee_admin'),
+        pot_admin:      findCol(headers,'potongan_admin','pot_admin','diskon_admin'),
+        harga_produk:   findCol(headers,'harga_produk','harga','price'),
+        jumlah_cod:     findCol(headers,'jumlah_cod','cod','total_cod','total'),
       };
 
-      if (colMap.nama < 0 || colMap.wa < 0) throw new Error('Kolom "nama" dan "hp/wa" wajib ada.');
+      if (col.nama_customer < 0 || col.nomer_hp < 0) throw new Error('Kolom "nama_customer" dan "nomer_hp" wajib ada.');
 
-      importData = rows.map(r => ({
-        nama:          r[colMap.nama] || '',
-        wa_number:     normalizePhone(String(r[colMap.wa] || '')),
-        produk:        colMap.produk >= 0 ? String(r[colMap.produk] || '') : '',
-        qty:           colMap.qty >= 0 ? parseInt(r[colMap.qty]) || 1 : 1,
-        harga:         colMap.harga >= 0 ? parseInt(r[colMap.harga]) || 0 : 0,
-        no_resi:       colMap.resi >= 0 ? String(r[colMap.resi] || '') : '',
-        ekspedisi:     colMap.ekspedisi >= 0 ? String(r[colMap.ekspedisi] || '') : '',
-        tgl_order:     colMap.tgl_order >= 0 ? fmtDateForDB(r[colMap.tgl_order]) : null,
-        tgl_delivered: colMap.tgl_delivered >= 0 ? fmtDateForDB(r[colMap.tgl_delivered]) : null,
-        alamat:        { jalan: colMap.alamat >= 0 ? String(r[colMap.alamat] || '') : '' },
-      })).filter(r => r.nama && r.wa_number);
+      const g = (r, k) => col[k] >= 0 ? r[col[k]] : '';
+      const gi = (r, k) => { const v = g(r,k); return parseInt(v)||0; };
 
-      // Preview
-      document.getElementById('preview-count').textContent = `${importData.length} data siap diimport`;
-      const previewCols = ['nama','wa_number','produk','no_resi','tgl_order','tgl_delivered'];
+      importData = rows.map(r => {
+        const resi = String(g(r,'nomer_resi')||'').trim();
+        return {
+          tanggal:         fmtDateForDB(g(r,'tanggal')) || new Date().toISOString().slice(0,10),
+          ekspedisi:       String(g(r,'ekspedisi')||'').trim(),
+          nomer_resi:      resi,
+          payment:         String(g(r,'payment')||'').trim(),
+          produk:          String(g(r,'produk')||'').trim(),
+          jumlah_produk:   gi(r,'jumlah_produk') || 1,
+          promo:           String(g(r,'promo')||'').trim(),
+          nama_customer:   String(g(r,'nama_customer')||'').trim(),
+          nomer_hp:        normalizePhone(String(g(r,'nomer_hp')||'')),
+          alamat:          String(g(r,'alamat')||'').trim(),
+          cs:              String(g(r,'cs')||'').trim(),
+          ongkir:          gi(r,'ongkir'),
+          potongan_ongkir: gi(r,'pot_ongkir'),
+          admin:           gi(r,'admin'),
+          potongan_admin:  gi(r,'pot_admin'),
+          harga_produk:    gi(r,'harga_produk'),
+          jumlah_cod:      gi(r,'jumlah_cod'),
+          status_resi:     resi ? 'DIKIRIM' : 'MENUNGGU_RESI',
+        };
+      }).filter(r => r.nama_customer && r.nomer_hp);
+
+      if (!importData.length) throw new Error('Tidak ada data valid. Cek kolom nama_customer dan nomer_hp.');
+
+      document.getElementById('preview-count').textContent = `${importData.length} order siap diimport`;
+      const previewCols = ['tanggal','nama_customer','nomer_hp','produk','ekspedisi','nomer_resi','jumlah_cod'];
       document.getElementById('preview-head').innerHTML = previewCols.map(c => `<th>${c}</th>`).join('');
-      document.getElementById('preview-body').innerHTML = importData.slice(0, 20).map(r =>
-        `<tr>${previewCols.map(c => `<td>${r[c] || '-'}</td>`).join('')}</tr>`
-      ).join('') + (importData.length > 20 ? `<tr><td colspan="${previewCols.length}" class="text-dim text-center">... dan ${importData.length - 20} data lainnya</td></tr>` : '');
-
+      document.getElementById('preview-body').innerHTML = importData.slice(0,20).map(r =>
+        `<tr>${previewCols.map(c => `<td>${escH(String(r[c]||'-'))}</td>`).join('')}</tr>`
+      ).join('') + (importData.length > 20 ? `<tr><td colspan="${previewCols.length}" class="text-dim text-center">... dan ${importData.length-20} data lainnya</td></tr>` : '');
       document.getElementById('preview-section').style.display = 'block';
-      document.getElementById('btn-do-import').style.display = 'inline-flex';
-      document.getElementById('import-count-btn').textContent = importData.length;
+      document.getElementById('btn-do-import').style.display   = 'inline-flex';
+      document.getElementById('import-count-btn').textContent  = importData.length;
+      document.getElementById('import-err').style.display = 'none';
     } catch(e) {
-      document.getElementById('import-err').textContent = e.message;
+      document.getElementById('import-err').textContent   = e.message;
       document.getElementById('import-err').style.display = 'block';
+      document.getElementById('preview-section').style.display = 'none';
+      document.getElementById('btn-do-import').style.display   = 'none';
     }
   };
   reader.readAsArrayBuffer(file);
 }
 
-function fmtDateForDB(val) {
-  if (!val) return null;
-  if (val instanceof Date) return val.toISOString().slice(0, 10);
-  const s = String(val).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // Try parse DD/MM/YYYY or DD-MM-YYYY
-  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-  if (m) {
-    const y = m[3].length === 2 ? '20' + m[3] : m[3];
-    return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-  }
-  return null;
-}
-
 async function doImport() {
   if (!importData.length) return;
   const btn = document.getElementById('btn-do-import');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Mengimport...';
-  const status = document.getElementById('import-status-sel').value;
-
+  btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px"></span> Mengimport...';
   try {
-    const payload = importData.map(r => ({
-      ...r,
-      user_id: currentUser.id,
-      status,
-      source: 'import',
-    }));
-
-    // Batch insert (max 500 per request)
-    let inserted = 0;
+    const payload = importData.map(r => ({ ...r, user_id: currentUser.id }));
     for (let i = 0; i < payload.length; i += 500) {
-      const batch = payload.slice(i, i + 500);
-      await sbPost('customers', batch, { prefer: 'return=minimal' });
-      inserted += batch.length;
+      await sbPost('orders', payload.slice(i, i+500), { prefer: 'return=minimal' });
     }
-
-    // Auto-generate FU schedule untuk yang status=sukses dengan tgl_delivered
-    if (status === 'sukses') {
-      // Fetch newly created customers
-      const newCusts = await sbGet('customers', `user_id=eq.${currentUser.id}&status=eq.sukses&fu_schedule_gen=is.null&order=created_at.desc&limit=${importData.length}`);
-      for (const c of newCusts) {
-        if (c.tgl_delivered) {
-          await generateFUSchedule(c.id, c.tgl_delivered).catch(()=>{});
-        }
-      }
-    }
-
-    toast(`✅ ${inserted} customer berhasil diimport!`, 'success');
+    toast(`✅ ${payload.length} order berhasil diimport!`, 'success');
     closeImportModal();
-    await loadCustomers();
+    await loadOrders();
+    // Auto-track yang punya resi
+    setTimeout(autoTrackPending, 1000);
   } catch(e) {
-    document.getElementById('import-err').textContent = e.message;
+    document.getElementById('import-err').textContent   = e.message;
     document.getElementById('import-err').style.display = 'block';
   }
-  btn.disabled = false; btn.innerHTML = `✅ Import <span id="import-count-btn">${importData.length}</span> Data`;
+  btn.disabled = false; btn.innerHTML = `✅ Import <span id="import-count-btn">${importData.length}</span> Order`;
 }
 
 init();
