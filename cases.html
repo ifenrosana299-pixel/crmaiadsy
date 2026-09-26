@@ -274,10 +274,12 @@ let allCases = [], custMap = {}, currentTab = 'semua', searchQ = '', page = 1;
 const PER_PAGE = 20;
 
 async function init() {
+  try {
   await initConfig();
   const user = requireAuth();
   if (!user) return;
   uid = user.id;
+  renderSidebar('cases');
 
   document.getElementById('tbody').innerHTML = `<tr><td colspan="5" class="empty-cell"><div class="e-icon">⏳</div><p>Memuat data...</p></td></tr>`;
 
@@ -333,6 +335,10 @@ async function init() {
 
   page = 1;
   renderTable();
+  } catch(e) {
+    console.error('[cases] init error:', e);
+    document.getElementById('tbody').innerHTML = `<tr><td colspan="5" class="empty-cell"><div class="e-icon">⚠️</div><p>Gagal memuat: ${e.message}</p></td></tr>`;
+  }
 }
 
 function setTab(tab, btn) {

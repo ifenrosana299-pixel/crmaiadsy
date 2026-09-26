@@ -189,6 +189,10 @@ async function initConfig() {
 </script>
 <script src="js/app.js"></script>
 <script>
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function addDays(dateStr, n) { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+function fmtDateTime(iso) { if (!iso) return ''; return new Date(iso).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
+
 let currentUser = null;
 let allSchedules = [];
 let allRules = [];

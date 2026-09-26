@@ -267,6 +267,7 @@ async function initConfig() {
   window.__SB_URL = c.supabase_url;
   window.__SB_KEY = c.supabase_anon_key;
 }
+function fmtDateTime(iso) { if (!iso) return '-'; return new Date(iso).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
 </script>
 <script src="js/app.js"></script>
 <script>
