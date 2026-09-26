@@ -1,4 +1,4 @@
-// api/save-settings.js — CRUD settings + AI helpers
+// api/save-settings.js — Settings CRUD + AI helpers for AI CRM Adsy
 import Anthropic from '@anthropic-ai/sdk';
 
 const SB_URL = process.env.SUPABASE_URL;
@@ -29,19 +29,52 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { action } = req.body || req.query || {};
+  const body = req.body || {};
+  const { action } = body || req.query || {};
 
   try {
+
     // ---- SAVE AI KEY ----
     if (action === 'save-ai-key') {
-      const { user_id, anthropic_key } = req.body;
+      const { user_id, anthropic_key } = body;
+      if (!user_id) return res.status(400).json({ error: 'user_id wajib' });
       await sb('users', `id=eq.${user_id}`, { method: 'PATCH', body: { anthropic_key } });
+      return res.json({ ok: true });
+    }
+
+    // ---- SAVE SETTINGS (rekening, group_jid, dll) ----
+    // Supports: rekening, group_jid
+    if (action === 'save-settings') {
+      const { user_id } = body;
+      if (!user_id) return res.status(400).json({ error: 'user_id wajib' });
+      const patch = {};
+      if ('rekening' in body)  patch.rekening  = body.rekening;
+      if ('group_jid' in body) patch.group_jid = body.group_jid;
+      if (!Object.keys(patch).length) return res.status(400).json({ error: 'Tidak ada field yang diupdate' });
+      await sb('users', `id=eq.${user_id}`, { method: 'PATCH', body: patch });
+      return res.json({ ok: true });
+    }
+
+    // ---- SAVE USERS TEMPLATE ----
+    if (action === 'save-template' || (body.table === 'users_template' && body.userId && body.payload)) {
+      const userId = body.user_id || body.userId;
+      if (!userId) return res.status(400).json({ error: 'user_id wajib' });
+      const allowed = [
+        'template_fu_h1', 'template_fu_h3', 'template_fu_h7',
+        'template_repeat_order', 'template_tidak_respon'
+      ];
+      const patch = {};
+      for (const key of allowed) {
+        if (key in body.payload) patch[key] = body.payload[key];
+      }
+      if (!Object.keys(patch).length) return res.status(400).json({ error: 'Tidak ada template yang diupdate' });
+      await sb('users', `id=eq.${userId}`, { method: 'PATCH', body: patch });
       return res.json({ ok: true });
     }
 
     // ---- GENERATE FU TEMPLATES ----
     if (action === 'generate-templates') {
-      const { rule_nama, hari, user_id } = req.body;
+      const { rule_nama, hari, user_id } = body;
       const apiKey = await getAnthropicKey(user_id);
       const client = new Anthropic({ apiKey });
 
@@ -79,7 +112,7 @@ Balas HANYA JSON array: ["pesan1", "pesan2", "pesan3", "pesan4", "pesan5"]`
 
     // ---- GENERATE FU PESAN (per customer) ----
     if (action === 'generate-fu-pesan') {
-      const { customer_id, rule_nama, user_id } = req.body;
+      const { customer_id, rule_nama, user_id } = body;
       const apiKey = await getAnthropicKey(user_id);
 
       const [cust, rules] = await Promise.all([
@@ -91,7 +124,6 @@ Balas HANYA JSON array: ["pesan1", "pesan2", "pesan3", "pesan4", "pesan5"]`
       const r = rules[0] || {};
       const templates = r.templates || [];
 
-      // Pick random template dan fill variabel
       if (templates.length) {
         const tmpl = templates[Math.floor(Math.random() * templates.length)];
         const pesan = tmpl
@@ -123,10 +155,9 @@ Balas HANYA teks pesan WA-nya saja (tidak perlu penjelasan).`
 
     // ---- AI SUGGEST (in-chat) ----
     if (action === 'ai-suggest') {
-      const { conv_id, user_id } = req.body;
+      const { conv_id, user_id } = body;
       const apiKey = await getAnthropicKey(user_id);
 
-      // Ambil history pesan
       const [msgs, convData] = await Promise.all([
         sb('conv_messages', `conversation_id=eq.${conv_id}&order=created_at.desc&limit=10`),
         sb('conversations', `id=eq.${conv_id}&select=*,customers(nama,produk)`)
@@ -141,13 +172,13 @@ Balas HANYA teks pesan WA-nya saja (tidak perlu penjelasan).`
         max_tokens: 256,
         messages: [{
           role: 'user',
-          content: `Kamu adalah CS yang sedang follow-up customer.
+          content: `Kamu adalah CS yang sedang follow-up customer post-purchase.
 Customer: ${customer.nama || 'Kak'}, Produk: ${customer.produk || '-'}
 
 History pesan terakhir:
 ${history}
 
-Buat balasan yang tepat dan natural. Balas HANYA teks pesan saja.`
+Buat balasan yang tepat dan natural untuk mendorong repeat order. Balas HANYA teks pesan saja.`
         }]
       });
 

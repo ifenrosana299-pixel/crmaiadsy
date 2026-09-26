@@ -2,221 +2,681 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pengaturan — AI CRM Adsy</title>
-<link rel="stylesheet" href="css/style.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengaturan · AI CRM Adsy</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;background:#0d1117;color:#e2e8f0;font-size:13px}
+.app-layout{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:220px;min-width:220px;background:#1e293b;height:100vh;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sb-item{display:flex!important;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1!important;text-decoration:none!important;transition:all .12s}
+.sb-item:hover{background:rgba(255,255,255,.05)!important;color:#e2e8f0!important}
+.sb-item.active{background:rgba(59,130,246,.12)!important;color:#93c5fd!important}
+.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-item .si svg{width:16px;height:16px;display:block}
+.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light .sb-brand{border-bottom-color:rgba(0,0,0,.07)}
+body.light .sb-logo{background:linear-gradient(135deg,#1e293b,#334155)}
+body.light .sb-title{color:#0f172a}
+body.light .sb-item{color:#475569!important}
+body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
+body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
+body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .sb-user{border-top-color:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
+.main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.page-header{background:#161b22;border-bottom:1px solid rgba(255,255,255,.06);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.page-header h1{font-size:18px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.page-header p{font-size:12px;color:#64748b;margin-top:2px}
+.settings-layout{display:grid;grid-template-columns:200px 1fr;flex:1;overflow:hidden}
+.settings-nav{background:#161b22;border-right:1px solid rgba(255,255,255,.06);padding:12px 0;overflow-y:auto}
+.settings-nav a{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;color:#64748b;text-decoration:none;transition:all .12s;border-radius:8px;margin:1px 8px}
+.settings-nav a:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
+.settings-nav a.active{background:rgba(59,130,246,.12);color:#93c5fd;font-weight:500}
+.settings-body{overflow-y:auto;padding:28px;background:#0d1117}
+.settings-body::-webkit-scrollbar{width:4px}
+.settings-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:4px}
+.settings-section{display:none}
+.settings-section.active{display:block}
+.section-title{font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:5px}
+.section-desc{font-size:13px;color:#64748b;margin-bottom:24px;line-height:1.6}
+.section-subtitle{font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:12px;margin-top:20px}
+.save-bar{display:flex;justify-content:flex-end;gap:8px;margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)}
+.divider{height:1px;background:rgba(255,255,255,.06);margin:20px 0}
+.hint{font-size:11px;color:#475569;margin-top:4px}
+.hint a{color:#93c5fd;text-decoration:none}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.form-group label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.3px}
+.form-group input,.form-group textarea,.form-group select{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;font-size:13px;color:#e2e8f0;font-family:inherit;outline:none;transition:border-color .15s;resize:vertical;width:100%}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:rgba(59,130,246,.4)}
+.form-group input::placeholder,.form-group textarea::placeholder{color:#374151}
+.form-group input:disabled{color:#475569;cursor:default}
+.account-info{display:flex;align-items:center;gap:16px;padding:18px 20px;background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:12px;margin-bottom:24px}
+.account-avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#94a3b8;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn:hover{background:rgba(255,255,255,.07);color:#e2e8f0}
+.btn-sm{padding:4px 10px!important;font-size:11px!important}
+.btn-primary{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#3b82f6);border:none;color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary:hover{box-shadow:0 4px 12px rgba(59,130,246,.35)}
+.btn-secondary{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#94a3b8;font-size:12px;cursor:pointer;transition:all .15s}
+.btn-secondary:hover{background:rgba(255,255,255,.07);color:#e2e8f0}
+.btn-danger{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5;font-size:12px;cursor:pointer;transition:all .15s}
+.btn-danger:hover{background:rgba(239,68,68,.18)}
+.wa-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+.dot-connected{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+.dot-disconnected,.dot-not_found,.dot-logged_out{background:#475569}
+.dot-qr_ready{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.2);animation:blink 1s infinite}
+.dot-connecting,.dot-reconnecting{background:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#toast.show{opacity:1}
+.icon-btn{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#64748b;transition:all .15s}
+.icon-btn:hover{border-color:#3b82f6;color:#3b82f6}
+body.light{background:#f1f5f9;color:#0f172a}
+body.light .page-header{background:#fff;border-color:#e2e8f0}
+body.light .page-header h1{color:#0f172a}
+body.light .page-header p{color:#64748b}
+body.light .icon-btn{background:#f1f5f9;border-color:#e2e8f0;color:#64748b}
+body.light .settings-nav{background:#fff;border-color:#e2e8f0}
+body.light .settings-nav a{color:#64748b}
+body.light .settings-nav a:hover{background:#f1f5f9;color:#0f172a}
+body.light .settings-nav a.active{background:rgba(59,130,246,.1);color:#2563eb}
+body.light .settings-body{background:#f8fafc}
+body.light .section-title{color:#0f172a}
+body.light .section-desc{color:#64748b}
+body.light .section-subtitle{color:#0f172a}
+body.light .account-info{background:#fff;border-color:#e2e8f0}
+body.light .save-bar{border-color:#e2e8f0}
+body.light .divider{background:#e2e8f0}
+body.light .form-group label{color:#64748b}
+body.light .form-group input,body.light .form-group textarea,body.light .form-group select{background:#f8fafc;border-color:#e2e8f0;color:#0f172a}
+body.light .form-group input::placeholder,body.light .form-group textarea::placeholder{color:#94a3b8}
+body.light .form-group input:disabled{color:#94a3b8}
+body.light .btn{background:#f1f5f9;border-color:#e2e8f0;color:#64748b}
+body.light .btn:hover{background:#e2e8f0;color:#0f172a}
+body.light #wa-qr-area{background:#fff!important;border-color:#e2e8f0!important}
+body.light #grup-search{background:#fff!important;color:#0f172a!important;border-color:#e2e8f0!important}
+body.light #grup-list > div{background:rgba(0,0,0,.02)!important;border-color:#e2e8f0!important;color:#0f172a!important}
+body.light #grup-list > div:hover{background:rgba(59,130,246,.08)!important}
+body.light #group-selected-card{background:rgba(34,197,94,.06)!important;border-color:rgba(34,197,94,.25)!important}
+body.light #group-selected-nama{color:#0f172a!important}
+.grup-item-nama{color:#e2e8f0}
+body.light .grup-item-nama{color:#0f172a}
+</style>
 </head>
 <body>
+<script>if(localStorage.getItem('cs_theme')==='light')document.body.classList.add('light');</script>
+<div id="toast"></div>
 <div class="app-layout">
-  <div id="sidebar"></div>
-  <div class="main-content">
-    <div class="page-header" style="padding-bottom:16px">
-      <div><div class="page-title">Pengaturan</div><div class="page-sub">Konfigurasi akun, WA, dan AI</div></div>
-    </div>
-    <div class="page-body" style="max-width:720px">
 
-      <!-- AKUN -->
-      <div class="card mb-3">
-        <div class="fw-700 mb-3">👤 Akun</div>
-        <div class="form-group">
-          <label class="form-label">Nama Toko / Brand</label>
-          <input type="text" class="form-input" id="inp-nama-toko" placeholder="Nama toko atau brand">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Password Baru (kosongkan jika tidak ingin ganti)</label>
-          <input type="password" class="form-input" id="inp-password" placeholder="Password baru">
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="saveAkun()">Simpan Akun</button>
-      </div>
-
-      <!-- WA CONNECTION -->
-      <div class="card mb-3">
-        <div class="fw-700 mb-3">📱 Koneksi WhatsApp</div>
-        <div class="flex items-center gap-3 mb-3">
-          <div id="wa-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--text3)"></div>
-          <div id="wa-status-text" class="text-sm">Mengecek status...</div>
-          <button class="btn btn-ghost btn-sm" onclick="checkWA()">↻ Cek</button>
-          <button class="btn btn-danger btn-sm" id="btn-logout-wa" onclick="logoutWA()" style="display:none">Logout WA</button>
-        </div>
-        <div id="qr-section" style="display:none">
-          <div class="text-sm text-muted mb-2">Scan QR Code dengan WhatsApp:</div>
-          <div id="qr-container" style="background:#fff;border-radius:10px;padding:16px;display:inline-block">
-            <div class="spinner" style="margin:40px"></div>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:12px">
-          <button class="btn btn-primary btn-sm" onclick="startQR()" id="btn-connect-wa">Hubungkan WA</button>
-        </div>
-      </div>
-
-      <!-- AI KEY -->
-      <div class="card mb-3">
-        <div class="fw-700 mb-3">🤖 Anthropic API Key</div>
-        <div class="text-sm text-muted mb-2">Kunci API untuk AI bot yang membalas customer.</div>
-        <div class="form-group">
-          <input type="password" class="form-input" id="inp-ai-key" placeholder="sk-ant-api...">
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="saveAIKey()">Simpan API Key</button>
-      </div>
-
-      <!-- REKENING -->
-      <div class="card mb-3">
-        <div class="fw-700 mb-3">🏦 Info Rekening / Pembayaran</div>
-        <textarea class="form-textarea" id="inp-rekening" rows="4" placeholder="Contoh:&#10;BCA 1234567890 a.n. Toko Adsy&#10;Mandiri 0987654321 a.n. Toko Adsy"></textarea>
-        <button class="btn btn-primary btn-sm mt-2" onclick="saveRekening()">Simpan</button>
-      </div>
-
-      <!-- CRON INFO -->
-      <div class="card">
-        <div class="fw-700 mb-3">⏰ Cron Job (Auto Follow-up)</div>
-        <div class="text-sm text-muted mb-3">Setup cron job di <strong>cron-job.org</strong> untuk kirim FU otomatis setiap hari:</div>
-        <div style="background:var(--bg3);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;line-height:1.8">
-          <div><span class="text-dim">URL:</span> <span class="text-accent" id="cron-url">https://aicrmadsy.vercel.app/api/followup-sender</span></div>
-          <div><span class="text-dim">Method:</span> POST</div>
-          <div><span class="text-dim">Header:</span> x-cron-secret: <span id="cron-secret" class="text-yellow">adsysukses2026</span></div>
-          <div><span class="text-dim">Schedule:</span> 0 2 * * * (09:00 WIB)</div>
-        </div>
-      </div>
-
+<div id="sidebar">
+  <div class="sb-brand">
+    <img src="img/logo-adsy.png" class="sb-logo" style="background:none;object-fit:contain;">
+    <div><div class="sb-title">AI CRM Adsy</div><div class="sb-subtitle">Follow-up Engine</div></div>
+  </div>
+  <div class="bot-online" id="sb-bot-status"><div class="bot-dot"></div> Bot online</div>
+  <div class="sb-nav">
+    <a class="sb-item" href="analytics.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg></span> Ringkasan</a>
+    <a class="sb-item" href="dashboard.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg></span> Percakapan</a>
+    <a class="sb-item" href="customers.html">👥 Customer</a>
+    <a class="sb-item" href="followup.html">📅 Follow-up</a>
+    <a class="sb-item" href="cases.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='6' height='6' rx='1'/><path d='m3 17 2 2 4-4'/><path d='M13 6h8'/><path d='M13 12h8'/><path d='M13 18h8'/></svg></span> Cases</a>
+    <a class="sb-item" href="contacts.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg></span> Pelanggan</a>
+    <a class="sb-item" href="products.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m7.5 4.27 9 5.15'/><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/></svg></span> Produk</a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Akun</div>
+    <a class="sb-item active" href="settings.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/><circle cx='12' cy='12' r='3'/></svg></span> Pengaturan</a>
+  </div>
+  <div class="sb-user">
+    <div class="sb-avatar" id="sb-av">A</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:500;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="sb-name">Admin</div>
+      <button style="font-size:11px;color:#475569;border:none;background:none;cursor:pointer;padding:0" onclick="logout()">Logout</button>
     </div>
   </div>
 </div>
-<div id="toast"></div>
-<script>
-async function initConfig() {
-  const r = await fetch('/api/config');
-  const c = await r.json();
-  window.__SB_URL = c.supabase_url;
-  window.__SB_KEY = c.supabase_anon_key;
-  window.__BAILEYS_URL = c.baileys_url;
-}
-</script>
+
+<div class="main-content">
+  <div class="page-header">
+    <div>
+      <h1>⚙️ Pengaturan</h1>
+      <p>Kelola akun, koneksi WhatsApp, dan AI Key</p>
+    </div>
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Ganti tema">🌙</button>
+  </div>
+
+  <div class="settings-layout">
+    <div class="settings-nav">
+      <a href="#" class="active" onclick="showSection('account',this)">👤 Akun</a>
+      <a href="#" onclick="showSection('wa',this)">📱 Connect WhatsApp</a>
+      <a href="#" onclick="showSection('rekening',this)">💳 Rekening Transfer</a>
+      <a href="#" onclick="showSection('ai',this)">🤖 AI Key</a>
+      <a href="#" onclick="showSection('group',this)">💬 Grup WA Recap</a>
+    </div>
+
+    <div class="settings-body">
+
+      <!-- ── AKUN ── -->
+      <div class="settings-section active" id="sec-account">
+        <div class="section-title">Informasi Akun</div>
+        <div class="section-desc">Data akun yang digunakan untuk login ke AI CRM Adsy.</div>
+        <div class="account-info" id="account-info"></div>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="acc-username" disabled>
+        </div>
+        <div class="form-group">
+          <label>Nama Toko / Bisnis</label>
+          <input type="text" id="acc-store">
+        </div>
+        <div class="save-bar">
+          <button class="btn-danger" onclick="logout()">🚪 Logout</button>
+          <button class="btn-primary" onclick="saveAccount()">Simpan Perubahan</button>
+        </div>
+      </div>
+
+      <!-- ── CONNECT WA ── -->
+      <div class="settings-section" id="sec-wa">
+        <div class="section-title">Connect WhatsApp</div>
+        <div class="section-desc">Setiap produk bisa punya nomor WhatsApp sendiri. Klik <strong>Hubungkan WA</strong> di tiap produk lalu scan QR dengan HP yang ingin dipakai.</div>
+        <div id="wa-products-list">
+          <div style="text-align:center;padding:24px;color:#64748b">Memuat produk...</div>
+        </div>
+        <div id="wa-qr-area" style="display:none;background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:28px;text-align:center;margin-top:16px">
+          <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px" id="wa-qr-prod-label">—</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:16px">Buka WhatsApp → <strong style="color:#e2e8f0">Perangkat Tertaut</strong> → Tautkan Perangkat → Scan QR</div>
+          <div id="wa-qr-container">
+            <div style="font-size:36px;margin-bottom:8px">⏳</div>
+            <div style="color:#64748b;font-size:13px">Memuat QR code...</div>
+          </div>
+          <button class="btn-secondary" style="margin-top:16px" onclick="cancelQR()">Batal</button>
+        </div>
+      </div>
+
+      <!-- ── REKENING TRANSFER ── -->
+      <div class="settings-section" id="sec-rekening">
+        <div class="section-title">Rekening Transfer</div>
+        <div class="section-desc">Info rekening yang bisa dikirim ke customer saat konfirmasi pembayaran.</div>
+        <div id="rek-card" style="background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:20px;margin-bottom:16px">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:44px;height:44px;background:rgba(59,130,246,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💳</div>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:14px;color:#f1f5f9;margin-bottom:6px" id="rek-card-title">Memuat...</div>
+              <div id="rek-card-lines" style="font-size:13px;color:#94a3b8;line-height:1.8;white-space:pre-wrap"></div>
+            </div>
+            <div id="rek-card-status" style="display:flex;align-items:center;gap:6px;flex-shrink:0"></div>
+          </div>
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="toggleEditRekening()">✏️ Edit Rekening</button>
+            <button class="btn-danger btn-sm" id="rek-hapus-btn" onclick="hapusRekening()" style="display:none">Hapus</button>
+          </div>
+        </div>
+        <div id="rek-form" style="display:none">
+          <div class="form-group">
+            <label>Info Rekening</label>
+            <textarea id="rek-info" rows="5" placeholder="Contoh:&#10;BCA 1234567890 a.n. Budi Santoso&#10;BRI 0987654321 a.n. Budi Santoso"></textarea>
+          </div>
+          <div class="save-bar">
+            <button class="btn" onclick="toggleEditRekening()">Batal</button>
+            <button class="btn-primary" onclick="saveRekening()">Simpan Rekening</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ANTHROPIC API KEY ── -->
+      <div class="settings-section" id="sec-ai">
+        <div class="section-title">🤖 Anthropic API Key</div>
+        <div class="section-desc">API key Anthropic milikmu sendiri. Dipakai untuk semua fitur AI di CRM ini (generate FU, AI suggest, insights).</div>
+        <div style="margin-top:12px">
+          <div class="form-group">
+            <label>API Key</label>
+            <input type="password" id="f-anthropic-key" placeholder="sk-ant-api03-..." autocomplete="off" style="font-family:monospace">
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="saveAnthropicKey()" style="flex:1">Simpan API Key</button>
+            <button class="btn" onclick="document.getElementById('f-anthropic-key').type = document.getElementById('f-anthropic-key').type === 'password' ? 'text' : 'password'" style="padding:8px 14px">👁</button>
+          </div>
+          <div id="anthropic-key-status" style="font-size:12px;color:#64748b;margin-top:8px"></div>
+        </div>
+      </div>
+
+      <!-- ── GRUP WA RECAP ── -->
+      <div class="settings-section" id="sec-group">
+        <div class="section-title">Grup WA Recap Follow-up</div>
+        <div class="section-desc">Setiap ada follow-up dikirim atau repeat order masuk, bot akan kirim rekap ke grup WA ini.</div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;margin-top:16px">
+          <div id="group-selected-card" style="display:none;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px 16px;margin-bottom:16px;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:12px;color:#64748b;margin-bottom:2px">Grup aktif</div>
+              <div id="group-selected-nama" style="font-weight:600;color:#e2e8f0;font-size:14px">—</div>
+            </div>
+            <button onclick="clearGroupJid()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:18px;padding:4px">✕</button>
+          </div>
+          <button class="btn" onclick="loadGrupList()" id="btn-load-grup" style="margin-bottom:12px">🔄 Muat Daftar Grup</button>
+          <div id="grup-search-area" style="display:none">
+            <input type="text" id="grup-search" placeholder="Cari nama grup..."
+              oninput="filterGrup(this.value)"
+              style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px;margin-bottom:10px">
+            <div id="grup-list" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+            <button class="btn-primary" onclick="saveGroupJid()">Simpan</button>
+            <span id="group-jid-status" style="font-size:12px;color:#22c55e;display:none">✓ Tersimpan!</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- settings-body -->
+  </div><!-- settings-layout -->
+</div><!-- main-content -->
+
+</div><!-- app-layout -->
+
 <script src="js/app.js"></script>
+<script src="js/prod-switcher.js"></script>
 <script>
-let currentUser = null;
-let userData = null;
-let qrInterval = null;
-
-async function init() {
+// ── INIT ──────────────────────────────────────────────────
+window.addEventListener('load', async () => {
   await initConfig();
-  currentUser = requireAuth();
-  if (!currentUser) return;
-  renderSidebar('settings');
-  await loadUserData();
-  await checkWA();
+  const user = requireAuth();
+  if (!user) return;
+
+  document.getElementById('sb-av').textContent = initials(user.nama_toko || user.username || '?');
+  document.getElementById('sb-name').textContent = user.nama_toko || user.username || 'Admin';
+
+  document.getElementById('account-info').innerHTML = `
+    <div class="account-avatar">${initials(user.nama_toko || user.username || '?')}</div>
+    <div>
+      <div style="font-weight:600;font-size:15px;color:#f1f5f9">${user.username||'—'}</div>
+      <div style="font-size:13px;color:#93c5fd;margin-top:2px">${user.nama_toko||'—'}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:2px">ID: ${user.id||'—'}</div>
+    </div>`;
+  document.getElementById('acc-username').value = user.username || '';
+  document.getElementById('acc-store').value = user.nama_toko || '';
+
+  // Set theme icon
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+  checkBotStatus();
+});
+
+function toastLocal(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show';
+  setTimeout(() => el.className = '', 3000);
 }
 
-async function loadUserData() {
-  try {
-    const rows = await sbGet('users', `id=eq.${currentUser.id}&select=*`);
-    userData = rows[0];
-    if (!userData) return;
-    document.getElementById('inp-nama-toko').value = userData.nama_toko || '';
-    document.getElementById('inp-ai-key').value = userData.anthropic_key ? '••••••••••••••••' : '';
-    document.getElementById('inp-rekening').value = userData.rekening || '';
-  } catch(e) { toast(e.message, 'error'); }
+function showSection(name, el) {
+  document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.settings-nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  el.classList.add('active');
+  event.preventDefault();
+  if (name === 'wa') loadWAStatus();
+  if (name === 'rekening') loadRekening();
+  if (name === 'ai') loadAnthropicKey();
+  if (name === 'group') loadGroupJid();
 }
 
-async function checkWA() {
+function saveAccount() {
+  const store = document.getElementById('acc-store').value.trim();
+  const user = getUser();
+  if (user) {
+    const updated = { ...user, nama_toko: store };
+    localStorage.setItem('crm_user', JSON.stringify(updated));
+    document.getElementById('sb-name').textContent = store || user.username || 'Admin';
+  }
+  toastLocal('✅ Akun diperbarui');
+}
+
+// ── WA CONNECT ──────────────────────────────────────────
+const BAILEYS_PROXY  = '/api/baileys-proxy';
+const BAILEYS_SECRET = 'adsysukses2026';
+let waUserId = null;
+let waPollInterval = null;
+let activeQRSession = null;
+
+async function baileysFetch(path, opts = {}) {
+  return fetch(`${BAILEYS_PROXY}?path=${encodeURIComponent(path)}`, opts);
+}
+
+async function loadWAStatus() {
+  waUserId = getUser()?.id;
+  const list = document.getElementById('wa-products-list');
+  if (!list) return;
+
+  let prods = [];
   try {
-    const r = await fetch(`/api/baileys-proxy?path=/session/status/${currentUser.id}&session_id=${currentUser.id}`);
-    const d = await r.json();
-    const connected = d?.status === 'connected' || d?.connected === true;
-    document.getElementById('wa-status-dot').style.background = connected ? 'var(--green)' : 'var(--red)';
-    document.getElementById('wa-status-text').textContent = connected
-      ? `✅ Terhubung${d.phone ? ' · ' + d.phone : ''}`
-      : '❌ Tidak terhubung';
-    document.getElementById('btn-logout-wa').style.display = connected ? '' : 'none';
-    document.getElementById('btn-connect-wa').style.display = connected ? 'none' : '';
-  } catch {
-    document.getElementById('wa-status-text').textContent = 'Gagal cek status';
+    const r = await fetch(`${window.__SB_URL}/rest/v1/products?user_id=eq.${waUserId}&aktif=eq.true&order=created_at.asc&select=id,nama,wa_session_id,wa_phone,wa_status`, {
+      headers: { 'Content-Type':'application/json', apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY }
+    });
+    if (r.ok) prods = await r.json();
+  } catch(e) {}
+
+  if (!prods.length) {
+    prods = [{ id: '__legacy__', nama: 'WhatsApp Utama', wa_session_id: waUserId, wa_phone: null, wa_status: null }];
+  }
+
+  const COLORS = ['#3b82f6','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#10b981'];
+  const ini = n => (n||'?').split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+
+  list.innerHTML = await Promise.all(prods.map(async (p, i) => {
+    const sid = p.wa_session_id || (p.id === '__legacy__' ? waUserId : null);
+    let status = { status: 'not_found', waNumber: null };
+    if (sid) {
+      try { const r = await baileysFetch(`/session/status/${sid}`); status = await r.json(); } catch(e) {}
+    }
+    const isConn = status.status === 'connected';
+    const color  = COLORS[i % COLORS.length];
+    const dotCls = `dot-${status.status || 'not_found'}`;
+    const statusLabel = { connected:'✅ Terhubung', connecting:'🔄 Menghubungkan...', qr_ready:'📷 Menunggu scan QR', reconnecting:'🔄 Reconnecting...', logged_out:'❌ Logged out', not_found:'Belum terhubung' }[status.status] || 'Belum terhubung';
+
+    return `<div style="background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:10px;background:${color};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">${ini(p.nama)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;color:#f1f5f9">${p.nama}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+            <span class="wa-dot ${dotCls}"></span>
+            <span style="font-size:12px;color:#94a3b8">${isConn ? '+'+status.waNumber : statusLabel}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          ${isConn
+            ? `<button class="btn btn-sm" onclick="startQR('${sid}','${p.nama}')">🔗 Ganti</button>
+               <button class="btn-danger btn-sm" onclick="disconnectWA('${sid}')">Putus</button>`
+            : `<button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="startQR('${sid || ''}','${p.nama}','${p.id}')">+ Hubungkan WA</button>`
+          }
+        </div>
+      </div>
+    </div>`;
+  })).then(arr => arr.join(''));
+}
+
+async function startQR(sessionId, prodNama, prodId) {
+  if (!sessionId || sessionId === 'null' || sessionId === 'undefined') {
+    if (prodId && window.__SB_URL && window.__SB_KEY) {
+      const newSid = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2);
+      await fetch(`${window.__SB_URL}/rest/v1/products?id=eq.${prodId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type':'application/json', apikey: window.__SB_KEY, Authorization: 'Bearer '+window.__SB_KEY, Prefer:'return=minimal' },
+        body: JSON.stringify({ wa_session_id: newSid }),
+      }).catch(() => {});
+      sessionId = newSid;
+    } else {
+      sessionId = waUserId;
+    }
+  }
+  activeQRSession = sessionId;
+  document.getElementById('wa-qr-prod-label').textContent = prodNama || 'Produk';
+  document.getElementById('wa-qr-area').style.display = 'block';
+  document.getElementById('wa-qr-container').innerHTML = `<div style="font-size:36px;margin-bottom:8px">⏳</div><div style="color:#64748b;font-size:13px">Memulai sesi...</div>`;
+  try {
+    await baileysFetch(`/session/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: BAILEYS_SECRET, session_id: activeQRSession }),
+    });
+  } catch(e) {
+    document.getElementById('wa-qr-container').innerHTML = `<div style="color:#fca5a5;font-size:13px">⚠️ Tidak bisa terhubung ke server</div>`;
+    return;
+  }
+  pollWAQR();
+}
+
+function pollWAQR() {
+  if (waPollInterval) clearInterval(waPollInterval);
+  loadWAQR();
+  waPollInterval = setInterval(async () => {
+    const s = await getWAStatus();
+    if (s?.status === 'connected') {
+      clearInterval(waPollInterval); waPollInterval = null;
+      document.getElementById('wa-qr-container').innerHTML = `
+        <div style="font-size:48px;margin-bottom:8px">✅</div>
+        <div style="font-size:15px;font-weight:600;color:#86efac">+${s.waNumber}</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px">WhatsApp berhasil terhubung!</div>
+        <button class="btn-primary" style="margin-top:16px" onclick="cancelQR()">Selesai</button>`;
+      loadWAStatus();
+    } else { await loadWAQR(); }
+  }, 5000);
+}
+
+async function loadWAQR() {
+  const container = document.getElementById('wa-qr-container');
+  if (!container || !activeQRSession) return;
+  try {
+    const res = await baileysFetch(`/session/status/${activeQRSession}`);
+    const s = await res.json();
+    if (s.status === 'qr_ready') {
+      const qrRes = await baileysFetch(`/qr-data/${activeQRSession}`);
+      const qrData = await qrRes.json();
+      container.innerHTML = qrData.qrDataUrl
+        ? `<img src="${qrData.qrDataUrl}" style="width:240px;border-radius:12px;border:1px solid rgba(255,255,255,.08)">
+           <div style="font-size:12px;color:#64748b;margin-top:10px">QR berlaku ~60 detik · refresh otomatis</div>`
+        : `<div style="font-size:36px;margin-bottom:8px">⏳</div><div style="color:#64748b;font-size:13px">Memuat QR...</div>`;
+    } else if (s.status !== 'connected') {
+      container.innerHTML = `<div style="font-size:36px;margin-bottom:8px">⏳</div><div style="color:#64748b;font-size:13px">${s.status === 'connecting' ? 'Menghubungkan...' : 'Menunggu QR...'}</div>`;
+    }
+  } catch(e) {
+    container.innerHTML = `<div style="color:#fca5a5;font-size:13px">⚠️ ${e.message}</div>`;
   }
 }
 
-async function startQR() {
-  document.getElementById('qr-section').style.display = 'block';
-  document.getElementById('btn-connect-wa').disabled = true;
-  document.getElementById('btn-connect-wa').textContent = 'Menghubungkan...';
-  clearInterval(qrInterval);
-  fetchQR();
-  qrInterval = setInterval(fetchQR, 10000);
+function cancelQR() {
+  if (waPollInterval) { clearInterval(waPollInterval); waPollInterval = null; }
+  document.getElementById('wa-qr-area').style.display = 'none';
+  activeQRSession = null;
+  loadWAStatus();
 }
 
-async function fetchQR() {
+async function disconnectWA(sessionId) {
+  if (!confirm('Disconnect nomor WhatsApp ini?')) return;
   try {
-    const r = await fetch(`/api/baileys-proxy?path=/qr/${currentUser.id}&session_id=${currentUser.id}`);
-    const d = await r.json();
-    if (d.qr) {
-      // Load QR code library
-      if (!window.QRCode) {
-        await loadScript('https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js');
-      }
-      const container = document.getElementById('qr-container');
-      container.innerHTML = '<canvas id="qr-canvas"></canvas>';
-      await QRCode.toCanvas(document.getElementById('qr-canvas'), d.qr, { width: 220 });
-    } else if (d.status === 'connected') {
-      clearInterval(qrInterval);
-      document.getElementById('qr-section').style.display = 'none';
-      document.getElementById('btn-connect-wa').disabled = false;
-      document.getElementById('btn-connect-wa').textContent = 'Hubungkan WA';
-      await checkWA();
-      toast('WhatsApp terhubung!', 'success');
-    }
-  } catch(e) { console.warn('fetchQR', e); }
-}
-
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
-}
-
-async function logoutWA() {
-  if (!confirm('Logout WhatsApp? Kamu perlu scan ulang QR.')) return;
-  try {
-    await fetch(`/api/baileys-proxy?path=/logout/${currentUser.id}&session_id=${currentUser.id}`, { method: 'DELETE' });
-    toast('WA logout berhasil', 'info');
-    await checkWA();
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-async function saveAkun() {
-  const payload = { nama_toko: document.getElementById('inp-nama-toko').value.trim() };
-  const pw = document.getElementById('inp-password').value;
-  if (pw) payload.password = pw;
-  try {
-    await sbPatch('users', `id=eq.${currentUser.id}`, payload);
-    toast('Akun disimpan!', 'success');
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-async function saveAIKey() {
-  const key = document.getElementById('inp-ai-key').value.trim();
-  if (!key || key.startsWith('•')) { toast('Masukkan API key baru', 'info'); return; }
-  try {
-    const r = await fetch('/api/save-settings', {
+    await baileysFetch(`/session/stop`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'save-ai-key', anthropic_key: key, user_id: currentUser.id })
+      body: JSON.stringify({ secret: BAILEYS_SECRET, session_id: sessionId }),
     });
-    const d = await r.json();
-    if (d.ok) { toast('API Key disimpan!', 'success'); document.getElementById('inp-ai-key').value = '••••••••••••••••'; }
-    else throw new Error(d.error);
-  } catch(e) { toast(e.message, 'error'); }
+    toastLocal('✅ WhatsApp berhasil disconnect');
+    loadWAStatus();
+  } catch(e) { toastLocal('❌ Gagal disconnect: ' + e.message); }
+}
+
+async function getWAStatus() {
+  if (!activeQRSession) return null;
+  try { const res = await baileysFetch(`/session/status/${activeQRSession}`); return await res.json(); }
+  catch(e) { return null; }
+}
+
+// ── REKENING ─────────────────────────────────────────────
+function showRekeningCard(rek) {
+  const title = document.getElementById('rek-card-title');
+  const lines = document.getElementById('rek-card-lines');
+  const statusEl = document.getElementById('rek-card-status');
+  const hapusBtn = document.getElementById('rek-hapus-btn');
+  if (rek) {
+    title.textContent = 'Rekening Aktif';
+    lines.textContent = rek;
+    statusEl.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#86efac;display:inline-block"></span>
+      <span style="font-size:12px;color:#86efac;font-weight:600">Aktif</span>`;
+    hapusBtn.style.display = 'inline-flex';
+  } else {
+    title.textContent = 'Belum ada rekening';
+    lines.textContent = 'Klik "Edit Rekening" untuk menambahkan info rekening bank.';
+    statusEl.innerHTML = `<span style="font-size:12px;color:#64748b">Belum diisi</span>`;
+    hapusBtn.style.display = 'none';
+  }
+}
+
+function toggleEditRekening() {
+  const form = document.getElementById('rek-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function hapusRekening() {
+  if (!confirm('Hapus info rekening?')) return;
+  document.getElementById('rek-info').value = '';
+  await saveRekening();
+}
+
+async function loadRekening() {
+  const userId = getUser()?.id;
+  document.getElementById('rek-card-title').textContent = 'Memuat...';
+  try {
+    const data = await sbGet('users', `id=eq.${userId}&select=rekening&limit=1`);
+    const rek = data[0]?.rekening || '';
+    document.getElementById('rek-info').value = rek;
+    showRekeningCard(rek);
+  } catch(e) {
+    document.getElementById('rek-card-title').textContent = '⚠️ Gagal memuat';
+  }
 }
 
 async function saveRekening() {
-  const rekening = document.getElementById('inp-rekening').value.trim();
+  const userId = getUser()?.id;
+  const rekening = document.getElementById('rek-info').value.trim();
   try {
-    await sbPatch('users', `id=eq.${currentUser.id}`, { rekening });
-    toast('Rekening disimpan!', 'success');
-  } catch(e) { toast(e.message, 'error'); }
+    const res = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save-settings', user_id: userId, rekening }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.error || 'Gagal');
+    toastLocal('✅ Rekening berhasil disimpan');
+    showRekeningCard(rekening);
+    document.getElementById('rek-form').style.display = 'none';
+  } catch(e) { toastLocal('❌ Gagal simpan: ' + e.message); }
 }
 
-init();
+// ── AI KEY ───────────────────────────────────────────────
+async function loadAnthropicKey() {
+  const userId = getUser()?.id;
+  try {
+    const data = await sbGet('users', `id=eq.${userId}&select=anthropic_key&limit=1`);
+    const key = data[0]?.anthropic_key || '';
+    const el = document.getElementById('f-anthropic-key');
+    if (el) {
+      el.value = key;
+      document.getElementById('anthropic-key-status').textContent = key ? '✅ API key tersimpan' : 'Belum ada API key — bot pakai key default sistem';
+    }
+  } catch(e) { console.error('loadAnthropicKey:', e.message); }
+}
+
+async function saveAnthropicKey() {
+  const userId = getUser()?.id;
+  const key = document.getElementById('f-anthropic-key').value.trim();
+  const status = document.getElementById('anthropic-key-status');
+  status.textContent = 'Menyimpan...';
+  try {
+    const res = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save-ai-key', user_id: userId, anthropic_key: key }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.error || 'Gagal');
+    status.textContent = key ? '✅ API key berhasil disimpan' : '✅ API key dihapus, pakai key default';
+    toastLocal(key ? '✅ Anthropic API key tersimpan' : '✅ API key dihapus');
+  } catch(e) { status.textContent = '⚠️ Gagal: ' + e.message; }
+}
+
+// ── GRUP WA RECAP ─────────────────────────────────────────
+let _selectedGroupJid = null;
+let _allGroups = [];
+
+async function loadGroupJid() {
+  try {
+    const userId = getUser()?.id;
+    const data = await sbGet('users', `id=eq.${userId}&select=group_jid,group_name&limit=1`);
+    const jid  = data[0]?.group_jid || null;
+    const nama = data[0]?.group_name || jid || null;
+    _selectedGroupJid = jid;
+
+    const card = document.getElementById('group-selected-card');
+    const namaEl = document.getElementById('group-selected-nama');
+    if (jid && nama) {
+      card.style.display = 'flex';
+      namaEl.textContent = nama;
+    } else {
+      card.style.display = 'none';
+    }
+  } catch(e) { console.error('loadGroupJid:', e); }
+}
+
+async function loadGrupList() {
+  const userId = getUser()?.id;
+  const btn = document.getElementById('btn-load-grup');
+  btn.textContent = '⏳ Memuat...';
+  btn.disabled = true;
+  try {
+    const res = await baileysFetch(`/groups/${userId}`);
+    const data = await res.json();
+    _allGroups = Array.isArray(data.groups) ? data.groups : (Array.isArray(data) ? data : []);
+    document.getElementById('grup-search-area').style.display = 'block';
+    renderGrupList(_allGroups);
+    btn.textContent = '🔄 Refresh';
+  } catch(e) {
+    toastLocal('⚠️ Tidak bisa ambil daftar grup: ' + e.message);
+    btn.textContent = '🔄 Muat Daftar Grup';
+  } finally { btn.disabled = false; }
+}
+
+function renderGrupList(groups) {
+  const container = document.getElementById('grup-list');
+  if (!groups.length) {
+    container.innerHTML = '<div style="color:#64748b;font-size:13px;padding:8px 0">Tidak ada grup ditemukan</div>';
+    return;
+  }
+  container.innerHTML = groups.map(g => `
+    <div onclick="selectGrup('${g.id}','${(g.name||g.subject||g.id).replace(/'/g,"\\'")}','${(g.name||g.subject||g.id).replace(/'/g,"\\'")}' )"
+      style="padding:10px 14px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);transition:background .1s"
+      onmouseover="this.style.background='rgba(59,130,246,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
+      <div class="grup-item-nama" style="font-weight:500;font-size:13px">${g.name||g.subject||g.id}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">${g.id}</div>
+    </div>`).join('');
+}
+
+function filterGrup(q) {
+  const filtered = _allGroups.filter(g => (g.name||g.subject||g.id||'').toLowerCase().includes(q.toLowerCase()));
+  renderGrupList(filtered);
+}
+
+function selectGrup(jid, nama) {
+  _selectedGroupJid = jid;
+  document.getElementById('group-selected-card').style.display = 'flex';
+  document.getElementById('group-selected-nama').textContent = nama;
+}
+
+function clearGroupJid() {
+  _selectedGroupJid = null;
+  document.getElementById('group-selected-card').style.display = 'none';
+}
+
+async function saveGroupJid() {
+  const userId = getUser()?.id;
+  const statusEl = document.getElementById('group-jid-status');
+  try {
+    await sbPatch('users', `id=eq.${userId}`, { group_jid: _selectedGroupJid, group_name: document.getElementById('group-selected-nama')?.textContent || null });
+    statusEl.style.display = 'inline';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+    toastLocal('✅ Grup WA tersimpan');
+  } catch(e) { toastLocal('❌ Gagal simpan grup: ' + e.message); }
+}
 </script>
 </body>
 </html>

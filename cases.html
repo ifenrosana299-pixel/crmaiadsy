@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cases · AI CRM Adsy</title>
+<script>if(localStorage.getItem('cs_theme')==='light')document.body.classList.add('light');</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--white:#161b22;--border:rgba(255,255,255,.07);--text:#e2e8f0;--text-2:#94a3b8;--text-3:#64748b}
+body.light{--bg:#f1f5f9;--white:#ffffff;--border:rgba(0,0,0,.07);--text:#0f172a;--text-2:#475569;--text-3:#94a3b8}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;display:flex;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* ── SIDEBAR ── */
+#sidebar{width:220px;min-width:220px;background:#1e293b;height:100vh;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;text-decoration:none;transition:all .12s}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
+.sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
+.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-item .si svg{width:16px;height:16px;display:block}
+.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light .sb-brand{border-bottom-color:rgba(0,0,0,.07)}
+body.light .sb-logo{background:linear-gradient(135deg,#1e293b,#334155)}
+body.light .sb-title{color:#0f172a}
+body.light .sb-item{color:#475569!important}
+body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
+body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
+body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .sb-user{border-top-color:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
+
+/* ── MAIN ── */
+.main-content{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+/* ── PAGE HEADER ── */
+.ph{padding:20px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:var(--white);border-bottom:1px solid var(--border)}
+.ph-inner{padding:0 0 16px}
+.ph-left h1{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.4px}
+.ph-left p{font-size:12px;color:var(--text-2);margin-top:3px}
+.ph-right{display:flex;gap:8px;padding-bottom:16px}
+.icon-btn2{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--white);color:var(--text-2);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+.icon-btn2:hover{border-color:#3b82f6;color:#3b82f6}
+
+/* ── STAT CARDS ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:20px 24px}
+@media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr)}}
+.sc{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:16px;transition:box-shadow .15s}
+.sc:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
+body.light .sc:hover{box-shadow:0 4px 20px rgba(0,0,0,.05)}
+.sc-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sc-icon.blue{background:rgba(59,130,246,.12)}
+.sc-icon.purple{background:rgba(167,139,250,.12)}
+.sc-icon.green{background:rgba(34,197,94,.12)}
+.sc-icon.yellow{background:rgba(245,158,11,.12)}
+.sc-body{flex:1;min-width:0}
+.sc-label{font-size:11px;font-weight:500;color:var(--text-2);margin-bottom:4px}
+.sc-num{font-size:26px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1}
+.sc-sub{font-size:11px;color:var(--text-2);margin-top:4px}
+.sc.blue .sc-num{color:#3b82f6}
+.sc.purple .sc-num{color:#a78bfa}
+.sc.green .sc-num{color:#22c55e}
+.sc.yellow .sc-num{color:#f59e0b}
+
+/* ── TABLE CARD ── */
+.tc{background:var(--white);border:1px solid var(--border);border-radius:16px;margin:0 24px 24px;overflow:hidden}
+.tc-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tc-hdr-left{display:flex;align-items:center;gap:10px}
+.tc-hdr-icon{width:32px;height:32px;border-radius:8px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;font-size:14px}
+.tc-hdr-title{font-size:14px;font-weight:700;color:var(--text)}
+.tc-hdr-sub{font-size:11px;color:var(--text-2);margin-top:1px}
+.btn-console{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;background:#22c55e;color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;text-decoration:none;transition:opacity .15s}
+.btn-console:hover{opacity:.85;color:#fff}
+.tc-toolbar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tabs2{display:flex;gap:6px}
+.tab2{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-2);font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;white-space:nowrap}
+.tab2.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+body.light .tab2.active{background:#0f172a;color:#fff;border-color:#0f172a}
+.tab2 .tc-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:rgba(255,255,255,.15);font-size:10px;font-weight:700;padding:0 4px;margin-left:4px}
+.tab2.active .tc-cnt{background:rgba(255,255,255,.2)}
+body.light .tab2.active .tc-cnt{background:rgba(255,255,255,.3)}
+.tab2:not(.active) .tc-cnt{background:rgba(100,116,139,.15);color:var(--text-2)}
+.search2{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px}
+.search2 input{border:none;background:none;color:var(--text);font-size:12px;outline:none;width:180px}
+.search2 input::placeholder{color:var(--text-2)}
+.tc-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--bg)}
+th{padding:10px 18px;text-align:left;font-size:10px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:14px 18px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:rgba(59,130,246,.03)}
+.cust-cell{display:flex;align-items:center;gap:10px}
+.c-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.c-name{font-size:13px;font-weight:600;color:var(--text)}
+.c-role{font-size:11px;color:var(--text-2);margin-top:1px}
+.phone-txt{font-size:12px;color:var(--text-2);font-family:monospace}
+.bdg{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.bdg-eskal{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.25)}
+.bdg-aktif{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+.bdg-proses{background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.2)}
+.bdg-lain{background:rgba(100,116,139,.08);color:var(--text-2);border:1px solid var(--border)}
+.aksi-cell{display:flex;align-items:center;gap:6px}
+.btn-buka{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:8px;background:#22c55e;color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;text-decoration:none;transition:opacity .15s;white-space:nowrap}
+.btn-buka:hover{opacity:.85;color:#fff}
+.btn-arrow{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;transition:all .15s}
+.btn-arrow:hover{border-color:#3b82f6;color:#3b82f6}
+.empty-cell{text-align:center;padding:56px 20px;color:var(--text-2)}
+.empty-cell .e-icon{font-size:36px;margin-bottom:10px;opacity:.4}
+.empty-cell p{font-size:13px}
+.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--border)}
+.pager-info{font-size:12px;color:var(--text-2)}
+.pager-btns{display:flex;gap:6px}
+.pager-btn{padding:5px 14px;border-radius:7px;border:1px solid var(--border);background:none;color:var(--text-2);font-size:12px;cursor:pointer;transition:all .12s}
+.pager-btn:hover:not(:disabled){border-color:#3b82f6;color:#3b82f6}
+.pager-btn:disabled{opacity:.3;cursor:default}
+.skel{background:linear-gradient(90deg,var(--border) 25%,rgba(255,255,255,.04) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+body.light .skel{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sb-brand">
+    <img src="img/logo-adsy.png" class="sb-logo" style="background:none;object-fit:contain;">
+    <div><div class="sb-title">AI CRM Adsy</div><div class="sb-subtitle">Follow-up Engine</div></div>
+  </div>
+  <div class="bot-online" id="sb-bot-status"><div class="bot-dot"></div> Bot online</div>
+  <div class="sb-nav">
+    <a class="sb-item" href="analytics.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg></span> Ringkasan</a>
+    <a class="sb-item" href="dashboard.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg></span> Percakapan</a>
+    <a class="sb-item" href="customers.html">👥 Customer</a>
+    <a class="sb-item" href="followup.html">📅 Follow-up</a>
+    <a class="sb-item active" href="cases.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='6' height='6' rx='1'/><path d='m3 17 2 2 4-4'/><path d='M13 6h8'/><path d='M13 12h8'/><path d='M13 18h8'/></svg></span> Cases</a>
+    <a class="sb-item" href="contacts.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg></span> Pelanggan</a>
+    <a class="sb-item" href="products.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m7.5 4.27 9 5.15'/><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/></svg></span> Produk</a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Akun</div>
+    <a class="sb-item" href="settings.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/><circle cx='12' cy='12' r='3'/></svg></span> Pengaturan</a>
+  </div>
+  <div class="sb-user">
+    <div class="sb-avatar" id="sb-av">A</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="sb-name">Admin</div>
+      <button style="font-size:11px;color:#475569;border:none;background:none;cursor:pointer;padding:0" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-content">
+
+  <!-- Page Header -->
+  <div class="ph">
+    <div class="ph-inner">
+      <div class="ph-left">
+        <h1>📋 Cases</h1>
+        <p>Percakapan yang butuh perhatian manual terkumpul di sini</p>
+      </div>
+    </div>
+    <div class="ph-right">
+      <button class="icon-btn2" onclick="init()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stat-row" id="stat-row">
+    <div class="sc"><div class="sc-icon blue">📋</div><div class="sc-body"><div class="sc-label">Total Case Aktif</div><div class="sc-num skel" style="height:26px;width:40px;margin:4px 0"></div></div></div>
+    <div class="sc"><div class="sc-icon purple">⬆️</div><div class="sc-body"><div class="sc-label">Eskalasi</div><div class="sc-num skel" style="height:26px;width:40px;margin:4px 0"></div></div></div>
+    <div class="sc"><div class="sc-icon green">👤</div><div class="sc-body"><div class="sc-label">Sedang Ditangani</div><div class="sc-num skel" style="height:26px;width:40px;margin:4px 0"></div></div></div>
+    <div class="sc"><div class="sc-icon yellow">📅</div><div class="sc-body"><div class="sc-label">FU Aktif</div><div class="sc-num skel" style="height:26px;width:40px;margin:4px 0"></div></div></div>
+  </div>
+
+  <!-- Case Table -->
+  <div class="tc">
+    <div class="tc-hdr">
+      <div class="tc-hdr-left">
+        <div class="tc-hdr-icon">📋</div>
+        <div>
+          <div class="tc-hdr-title">Case perlu perhatian</div>
+          <div class="tc-hdr-sub" id="case-sub">Memuat data...</div>
+        </div>
+      </div>
+      <a class="btn-console" href="dashboard.html">Buka Percakapan ↗</a>
+    </div>
+
+    <div class="tc-toolbar">
+      <div class="tabs2" id="tabs">
+        <button class="tab2 active" onclick="setTab('semua',this)">Semua <span class="tc-cnt" id="cnt-semua">0</span></button>
+        <button class="tab2" onclick="setTab('eskalasi',this)">Eskalasi <span class="tc-cnt" id="cnt-eskal">0</span></button>
+        <button class="tab2" onclick="setTab('lainnya',this)">Lainnya <span class="tc-cnt" id="cnt-lain">0</span></button>
+      </div>
+      <div class="search2">
+        <span style="color:var(--text-2);font-size:13px">🔍</span>
+        <input type="text" placeholder="Cari pelanggan atau nomor..." oninput="onSearch(this.value)" />
+      </div>
+    </div>
+
+    <div class="tc-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pelanggan</th>
+            <th>Nomor</th>
+            <th>Aktivitas Terakhir</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="5" class="empty-cell"><div class="e-icon">⏳</div><p>Memuat data...</p></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <span class="pager-info" id="pager-info">—</span>
+      <div class="pager-btns">
+        <button class="pager-btn" id="btn-prev" onclick="prevPage()" disabled>‹ Prev</button>
+        <button class="pager-btn" id="btn-next" onclick="nextPage()" disabled>Next ›</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/prod-switcher.js"></script>
+<script>
+// ── SIDEBAR USER ──
+(function() {
+  const u = getUser();
+  if (u) {
+    document.getElementById('sb-av').textContent = initials(u.nama_toko || u.username || '?');
+    document.getElementById('sb-name').textContent = u.nama_toko || u.username || 'Admin';
+  }
+})();
+
+const AV_COLORS = ['#3b82f6','#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444'];
+function avColor(n) { let h=0; for(const c of(n||'?'))h=(h*31+c.charCodeAt(0))&0xffffffff; return AV_COLORS[Math.abs(h)%AV_COLORS.length]; }
+function avInit(n) { return (n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+
+function cleanPhone(raw) {
+  let n = String(raw||'').split('@')[0].replace(/\D/g,'');
+  if (!n) return '—';
+  if (n.startsWith('0')) n = '62' + n.slice(1);
+  if (!n.startsWith('62')) n = '62' + n;
+  const local = n.slice(2);
+  if (local.length > 12) return '—';
+  if (local.length >= 9) return '+62 ' + local.slice(0,3) + '-' + local.slice(3,7) + '-' + local.slice(7);
+  return '+62 ' + local;
+}
+
+let uid = null;
+let allCases = [], custMap = {}, currentTab = 'semua', searchQ = '', page = 1;
+const PER_PAGE = 20;
+
+async function init() {
+  await initConfig();
+  const user = requireAuth();
+  if (!user) return;
+  uid = user.id;
+
+  document.getElementById('tbody').innerHTML = `<tr><td colspan="5" class="empty-cell"><div class="e-icon">⏳</div><p>Memuat data...</p></td></tr>`;
+
+  const prodFilter = window.__activeProductFilter || null;
+  const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
+  const [convs, custs] = await Promise.all([
+    sbGet('conversations', `user_id=eq.${uid}&status=in.(baru,diproses,eskalasi)${prodQ}&select=id,customer_id,product_id,status,last_msg_at,state,created_at&order=last_msg_at.desc`),
+    sbGet('customers', `user_id=eq.${uid}&select=id,wa_number,nama`)
+  ]);
+
+  custMap = {};
+  custs.forEach(c => { custMap[c.id] = c; });
+  allCases = convs;
+
+  const eskal    = convs.filter(c => c.status === 'eskalasi').length;
+  const proses   = convs.filter(c => c.status === 'diproses').length;
+  const fuAktif  = await sbGet('customers', `user_id=eq.${uid}&status=eq.fu_aktif&select=id`).then(r => r.length).catch(() => 0);
+  const total    = convs.length;
+
+  document.getElementById('stat-row').innerHTML = `
+    <div class="sc blue">
+      <div class="sc-icon blue">📋</div>
+      <div class="sc-body">
+        <div class="sc-label">Total Case Aktif</div>
+        <div class="sc-num">${total}</div>
+        <div class="sc-sub">butuh perhatian admin</div>
+      </div>
+    </div>
+    <div class="sc purple">
+      <div class="sc-icon purple">⬆️</div>
+      <div class="sc-body">
+        <div class="sc-label">Eskalasi</div>
+        <div class="sc-num">${eskal}</div>
+        <div class="sc-sub">customer minta dibantu</div>
+      </div>
+    </div>
+    <div class="sc green">
+      <div class="sc-icon green">👤</div>
+      <div class="sc-body">
+        <div class="sc-label">Sedang Ditangani</div>
+        <div class="sc-num">${proses}</div>
+        <div class="sc-sub">admin sudah ambil alih</div>
+      </div>
+    </div>
+    <div class="sc yellow">
+      <div class="sc-icon yellow">📅</div>
+      <div class="sc-body">
+        <div class="sc-label">FU Aktif</div>
+        <div class="sc-num">${fuAktif}</div>
+        <div class="sc-sub">customer dalam follow-up</div>
+      </div>
+    </div>`;
+
+  page = 1;
+  renderTable();
+}
+
+function setTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab2').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  page = 1; renderTable();
+}
+
+function onSearch(v) { searchQ = v.toLowerCase().trim(); page = 1; renderTable(); }
+
+function getFiltered() {
+  let list = allCases;
+  if (currentTab === 'eskalasi') list = list.filter(c => c.status === 'eskalasi');
+  else if (currentTab === 'lainnya') list = list.filter(c => c.status !== 'eskalasi');
+  if (searchQ) {
+    list = list.filter(c => {
+      const cu = custMap[c.customer_id] || {};
+      return (cu.nama||'').toLowerCase().includes(searchQ) || (cu.wa_number||'').includes(searchQ);
+    });
+  }
+  return list;
+}
+
+function renderTable() {
+  const filtered = getFiltered();
+  const eskalCnt = allCases.filter(c => c.status === 'eskalasi').length;
+  const lainCnt  = allCases.filter(c => c.status !== 'eskalasi').length;
+
+  document.getElementById('cnt-semua').textContent = allCases.length;
+  document.getElementById('cnt-eskal').textContent = eskalCnt;
+  document.getElementById('cnt-lain').textContent  = lainCnt;
+  document.getElementById('case-sub').textContent  = filtered.length + ' case membutuhkan perhatian';
+
+  const total = filtered.length;
+  const start = (page - 1) * PER_PAGE;
+  const items = filtered.slice(start, start + PER_PAGE);
+  const tbody = document.getElementById('tbody');
+
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-cell"><div class="e-icon">📋</div><p>Tidak ada case ditemukan.</p></td></tr>`;
+    document.getElementById('pager-info').textContent = '0 case';
+    document.getElementById('btn-prev').disabled = true;
+    document.getElementById('btn-next').disabled = true;
+    return;
+  }
+
+  tbody.innerHTML = items.map(c => {
+    const cu   = custMap[c.customer_id] || {};
+    const nama = cu.nama || cu.wa_number || 'Pelanggan';
+    const color = avColor(nama);
+    const ini   = avInit(nama);
+    const phone = cleanPhone(cu.wa_number);
+    const chatUrl = `dashboard.html?conv=${c.id}`;
+
+    let badge = '';
+    if (c.status === 'eskalasi')
+      badge = `<span class="bdg bdg-eskal"><span style="font-size:10px">⬆</span> ESKALASI</span>`;
+    else if (c.status === 'diproses')
+      badge = `<span class="bdg bdg-proses">🔵 DIPROSES</span>`;
+    else
+      badge = `<span class="bdg bdg-aktif">🟢 BARU</span>`;
+
+    return `<tr>
+      <td>
+        <div class="cust-cell">
+          <div class="c-av" style="background:${color}">${escH(ini)}</div>
+          <div>
+            <div class="c-name">${escH(nama)}</div>
+            <div class="c-role">Pelanggan</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="phone-txt">${escH(phone)}</span></td>
+      <td style="color:var(--text-2);font-size:12px">
+        <div>${relTimeShort(c.last_msg_at)}</div>
+        <div style="color:var(--text-2);font-size:11px;margin-top:2px">${fmtDate(c.last_msg_at)}</div>
+      </td>
+      <td>${badge}</td>
+      <td>
+        <div class="aksi-cell">
+          <a class="btn-buka" href="${chatUrl}">Buka Chat</a>
+          <a class="btn-arrow" href="${chatUrl}">→</a>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const end = Math.min(start + PER_PAGE, total);
+  document.getElementById('pager-info').textContent = `${start+1}–${end} dari ${total} case`;
+  document.getElementById('btn-prev').disabled = page <= 1;
+  document.getElementById('btn-next').disabled = end >= total;
+}
+
+function prevPage() { if (page > 1) { page--; renderTable(); } }
+function nextPage() { if (page * PER_PAGE < getFiltered().length) { page++; renderTable(); } }
+
+function relTimeShort(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB';
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+}
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+checkBotStatus();
+window.addEventListener('load', init);
+window.addEventListener('productSwitch', () => init());
+</script>
+</body>
+</html>

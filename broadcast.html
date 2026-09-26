@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broadcast · AI CRM Adsy</title>
+<script>if(localStorage.getItem('cs_theme')==='light')document.body.classList.add('light');</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--white:#161b22;--border:rgba(255,255,255,.07);--text:#e2e8f0;--text-2:#94a3b8;--text-3:#64748b;--green:#22c55e;--radius-lg:12px}
+body.light{--bg:#f1f5f9;--white:#ffffff;--border:rgba(0,0,0,.07);--text:#0f172a;--text-2:#475569;--text-3:#94a3b8}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;display:flex;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+#sidebar{width:220px;min-width:220px;background:#1e293b;height:100vh;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;text-decoration:none;transition:all .12s}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
+.sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
+.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-item .si svg{width:16px;height:16px;display:block}
+.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light .sb-brand{border-bottom-color:rgba(0,0,0,.07)}
+body.light .sb-logo{background:linear-gradient(135deg,#1e293b,#334155)}
+body.light .sb-title{color:#0f172a}
+body.light .sb-item{color:#475569!important}
+body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
+body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
+body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .sb-user{border-top-color:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
+.main-content{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.page-header{background:var(--white);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.page-header h1{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.3px}
+.page-header p{font-size:12px;color:var(--text-2);margin-top:2px}
+.bc-layout{display:grid;grid-template-columns:420px 1fr;gap:0;flex:1;overflow:hidden}
+.bc-compose{border-right:1px solid var(--border);background:var(--white);display:flex;flex-direction:column;overflow-y:auto}
+.bc-history{overflow-y:auto;background:var(--bg);padding:20px}
+.compose-header{padding:20px;border-bottom:1px solid var(--border)}
+.compose-header h2{font-size:15px;font-weight:600;color:var(--text)}
+.compose-body{flex:1;padding:20px;display:flex;flex-direction:column;gap:16px}
+.form-group{display:flex;flex-direction:column;gap:6px;margin:0}
+.form-group label{font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group textarea,.form-group select{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;transition:border-color .15s;resize:vertical;width:100%}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:rgba(59,130,246,.4)}
+.form-group input::placeholder,.form-group textarea::placeholder{color:var(--text-3)}
+.char-count{font-size:11px;color:var(--text-2);text-align:right;margin-top:4px}
+.bc-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.bc-card .bc-title{font-weight:600;font-size:13px;margin-bottom:4px;color:var(--text)}
+.bc-card .bc-meta{font-size:11px;color:var(--text-2);display:flex;gap:10px;flex-wrap:wrap}
+.bc-card .bc-msg{font-size:12px;color:var(--text-2);margin-top:8px;padding:10px;background:var(--bg);border-radius:8px;white-space:pre-wrap;max-height:80px;overflow:hidden}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s}
+.send-btn{margin:20px}
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;border-radius:8px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;width:100%}
+.btn-primary:hover{opacity:.9}
+.btn-primary:disabled{opacity:.5;cursor:default}
+body.light .bc-card{background:#fff}
+body.light .bc-msg{background:#f8fafc}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sb-brand">
+    <img src="img/logo-adsy.png" class="sb-logo" style="background:none;object-fit:contain;">
+    <div><div class="sb-title">AI CRM Adsy</div><div class="sb-subtitle">Follow-up Engine</div></div>
+  </div>
+  <div class="bot-online" id="sb-bot-status"><div class="bot-dot"></div> Bot online</div>
+  <div class="sb-nav">
+    <a class="sb-item" href="analytics.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg></span> Ringkasan</a>
+    <a class="sb-item" href="dashboard.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg></span> Percakapan</a>
+    <a class="sb-item" href="customers.html">👥 Customer</a>
+    <a class="sb-item" href="followup.html">📅 Follow-up</a>
+    <a class="sb-item" href="cases.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='6' height='6' rx='1'/><path d='m3 17 2 2 4-4'/><path d='M13 6h8'/><path d='M13 12h8'/><path d='M13 18h8'/></svg></span> Cases</a>
+    <a class="sb-item" href="contacts.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg></span> Pelanggan</a>
+    <a class="sb-item active" href="broadcast.html">📣 Broadcast</a>
+    <a class="sb-item" href="products.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m7.5 4.27 9 5.15'/><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/></svg></span> Produk</a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Akun</div>
+    <a class="sb-item" href="settings.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/><circle cx='12' cy='12' r='3'/></svg></span> Pengaturan</a>
+  </div>
+  <div class="sb-user">
+    <div class="sb-avatar" id="sb-av">A</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="sb-name">Admin</div>
+      <button style="font-size:11px;color:#475569;border:none;background:none;cursor:pointer;padding:0" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="main-content">
+  <div class="page-header">
+    <div>
+      <h1>📣 Broadcast WA</h1>
+      <p>Kirim pesan follow-up ke banyak customer sekaligus</p>
+    </div>
+  </div>
+
+  <div class="bc-layout">
+    <div class="bc-compose">
+      <div class="compose-header">
+        <h2>✍️ Tulis Pesan Broadcast</h2>
+      </div>
+      <div class="compose-body">
+        <div class="form-group">
+          <label>Judul / Label Internal</label>
+          <input type="text" id="bc-title" placeholder="Re-order FU D+7, Promo Flash, dll.">
+        </div>
+        <div class="form-group">
+          <label>Pesan *</label>
+          <textarea id="bc-message" rows="8" placeholder="Halo Kak 👋&#10;&#10;Gimana produknya? Sudah habis belum? 😊..." oninput="countChars()"></textarea>
+          <div class="char-count"><span id="char-count">0</span> karakter</div>
+        </div>
+        <div class="form-group">
+          <label>Target Penerima</label>
+          <select id="bc-target" onchange="updatePreview()">
+            <option value="">Semua Customer</option>
+            <option value="fu_aktif">FU Aktif</option>
+            <option value="repeat_order">Repeat Order</option>
+            <option value="baru">Customer Baru</option>
+          </select>
+          <div style="font-size:12px;color:#22c55e;margin-top:6px;font-weight:500" id="recipient-count">Menghitung penerima...</div>
+        </div>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px 14px;font-size:12px;color:#fbbf24">
+          ⚠️ Broadcast dikirim 1 per 1,5 detik agar tidak diblokir WhatsApp. Pastikan WA bot terhubung.
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="btn-primary" id="send-btn" onclick="sendBroadcast()">
+          📣 Kirim Broadcast
+        </button>
+        <div id="send-progress" style="display:none;margin-top:12px;">
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:6px;" id="progress-label">Mengirim...</div>
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bc-history">
+      <div style="font-size:13px;font-weight:600;margin-bottom:16px;color:var(--text-2);">📂 Riwayat Broadcast</div>
+      <div id="bc-history-list">
+        <div style="text-align:center;padding:40px;color:var(--text-2);">
+          <div style="font-size:32px;margin-bottom:8px;">📣</div>
+          <div>Belum ada riwayat broadcast</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/prod-switcher.js"></script>
+<script>
+let userId = null;
+let allCustomers = [];
+let isSending = false;
+
+(function() {
+  const u = getUser();
+  if (u) {
+    document.getElementById('sb-av').textContent = initials(u.nama_toko || u.username || '?');
+    document.getElementById('sb-name').textContent = u.nama_toko || u.username || 'Admin';
+  }
+})();
+
+async function init() {
+  await initConfig();
+  const user = requireAuth();
+  if (!user) return;
+  userId = user.id;
+  allCustomers = await sbGet('customers', `user_id=eq.${userId}&select=id,nama,wa_number,status`);
+  updatePreview();
+  await loadHistory();
+}
+
+function getTargetCustomers() {
+  const status = document.getElementById('bc-target').value;
+  if (!status) return allCustomers;
+  return allCustomers.filter(c => c.status === status);
+}
+
+function updatePreview() {
+  const targets = getTargetCustomers();
+  const est = Math.ceil(targets.length * 1.5);
+  document.getElementById('recipient-count').textContent =
+    `${targets.length} customer akan menerima pesan ini (estimasi ~${est} detik)`;
+}
+
+function countChars() {
+  document.getElementById('char-count').textContent = document.getElementById('bc-message').value.length;
+}
+
+async function sendBroadcast() {
+  if (isSending) return;
+  const title   = document.getElementById('bc-title').value.trim() || 'Broadcast';
+  const message = document.getElementById('bc-message').value.trim();
+  const targetStatus = document.getElementById('bc-target').value;
+  if (!message) return toast('Pesan tidak boleh kosong', 'error');
+
+  const targets = getTargetCustomers();
+  if (!targets.length) return toast('Tidak ada customer di target ini', 'error');
+  if (!confirm(`Kirim broadcast ke ${targets.length} customer?`)) return;
+
+  isSending = true;
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = 'Mengirim...';
+  document.getElementById('send-progress').style.display = 'block';
+
+  let sent = 0;
+  for (const c of targets) {
+    document.getElementById('progress-label').textContent = `Mengirim ke ${c.nama||c.wa_number}... (${sent+1}/${targets.length})`;
+    document.getElementById('progress-fill').style.width = ((sent/targets.length)*100) + '%';
+    try {
+      const waNum = String(c.wa_number||'').split('@')[0].replace(/\D/g,'');
+      if (waNum) {
+        await fetch('/api/baileys-proxy?path=' + encodeURIComponent('/send'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: waNum + '@s.whatsapp.net', text: message }),
+        });
+      }
+      sent++;
+    } catch {}
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  try {
+    await sbPost('broadcast_history', {
+      user_id: userId, title, message,
+      target_filter: targetStatus || 'semua',
+      total_target: targets.length,
+      sent_count: sent, status: 'done',
+    });
+  } catch {}
+
+  document.getElementById('progress-fill').style.width = '100%';
+  document.getElementById('progress-label').textContent = `Selesai! Terkirim ke ${sent} dari ${targets.length} customer`;
+  toast(`Broadcast selesai — ${sent}/${targets.length} terkirim`, 'ok');
+
+  isSending = false;
+  btn.disabled = false; btn.textContent = '📣 Kirim Broadcast';
+  setTimeout(() => { document.getElementById('send-progress').style.display='none'; }, 5000);
+  await loadHistory();
+}
+
+async function loadHistory() {
+  try {
+    const list = await sbGet('broadcast_history', `user_id=eq.${userId}&order=created_at.desc&limit=20`);
+    const container = document.getElementById('bc-history-list');
+    if (!list || !list.length) {
+      container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-2);"><div style="font-size:32px;margin-bottom:8px">📣</div><div>Belum ada riwayat broadcast</div></div>`;
+      return;
+    }
+    container.innerHTML = list.map(b => {
+      const date = new Date(b.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      const rate = b.total_target > 0 ? Math.round((b.sent_count/b.total_target)*100) : 0;
+      return `<div class="bc-card">
+        <div class="bc-title">${b.title||'Broadcast'}</div>
+        <div class="bc-meta">
+          <span>📅 ${date}</span>
+          <span>👥 ${b.sent_count}/${b.total_target} terkirim (${rate}%)</span>
+          <span>🏷 ${b.target_filter||'semua'}</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${rate}%"></div></div>
+        <div class="bc-msg">${(b.message||'').replace(/</g,'&lt;')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.error('loadHistory:', e); }
+}
+
+checkBotStatus();
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

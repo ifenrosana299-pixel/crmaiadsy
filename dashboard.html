@@ -2,528 +2,1422 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard — AI CRM Adsy</title>
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI CRM Adsy — Percakapan</title>
 <link rel="stylesheet" href="css/style.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+/* ── THEME VARIABLES ── */
+:root {
+  --bg:        #0d1117;
+  --bg2:       #161b22;
+  --bg3:       #1e293b;
+  --border:    rgba(255,255,255,.06);
+  --border2:   rgba(255,255,255,.04);
+  --text:      #e2e8f0;
+  --text2:     #94a3b8;
+  --text3:     #64748b;
+  --text4:     #475569;
+  --text5:     #374151;
+  --bubble-in: #1e293b;
+  --bubble-border: rgba(255,255,255,.06);
+  --input-bg:  #0d1117;
+  --card-bg:   #0d1117;
+  --search-bg: #0d1117;
+  --conv-hover: rgba(255,255,255,.03);
+  --conv-active: rgba(59,130,246,.08);
+  --sb-text:   #64748b;
+  --sb-hover:  rgba(255,255,255,.05);
+  --no-chat-color: #374151;
+}
+body.light {
+  --bg:        #f1f5f9;
+  --bg2:       #ffffff;
+  --bg3:       #f8fafc;
+  --border:    rgba(0,0,0,.07);
+  --border2:   rgba(0,0,0,.04);
+  --text:      #0f172a;
+  --text2:     #475569;
+  --text3:     #64748b;
+  --text4:     #94a3b8;
+  --text5:     #cbd5e1;
+  --bubble-in: #ffffff;
+  --bubble-border: #e2e8f0;
+  --input-bg:  #f8fafc;
+  --card-bg:   #ffffff;
+  --search-bg: #f1f5f9;
+  --conv-hover: #f8fafc;
+  --conv-active: #eff6ff;
+  --sb-text:   #94a3b8;
+  --sb-hover:  rgba(255,255,255,.06);
+  --no-chat-color: #94a3b8;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;overflow:hidden;display:flex;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
+
+/* ══ LIGHT THEME OVERRIDES ══ */
+body.light #main{background:#f1f5f9}
+body.light #top-header{background:#fff;border-bottom-color:#e2e8f0}
+body.light .th-left h1{color:#0f172a}
+body.light .th-left p{color:#94a3b8}
+body.light .th-search{background:#f1f5f9;border-color:#e2e8f0}
+body.light .th-search input{color:#0f172a}
+body.light .th-notif{background:#f1f5f9;border-color:#e2e8f0;color:#64748b}
+body.light #stats-row{background:#fff;border-bottom-color:#e2e8f0}
+body.light #inbox{background:#fff;min-width:280px}
+body.light #case-board{background:#fff;min-width:300px}
+body.light .stat-card{background:#fff;border-color:#e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+body.light .stat-num{color:#0f172a}
+body.light .stat-label{color:#475569;font-weight:600}
+body.light .stat-sub.muted{color:#64748b}
+body.light .stat-sub.danger{color:#dc2626}
+body.light .stat-sub.ok{color:#16a34a}
+body.light .stat-icon.blue{background:rgba(59,130,246,.12);color:#2563eb}
+body.light .stat-icon.red{background:rgba(239,68,68,.12);color:#dc2626}
+body.light .stat-icon.purple{background:rgba(139,92,246,.12);color:#7c3aed}
+body.light .stat-icon.green{background:rgba(34,197,94,.12);color:#16a34a}
+body.light .stat-icon.amber{background:rgba(245,158,11,.12);color:#d97706}
+body.light .ai-engine-card{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.05));border-color:rgba(99,102,241,.25)}
+body.light .ai-engine-title{color:#4f46e5}
+body.light .ai-engine-sub{color:#6366f1}
+body.light .ai-mini-name{color:#1e293b}
+body.light .ai-chip.intent{background:rgba(220,38,38,.08);color:#b91c1c}
+body.light .ai-chip.sentiment{background:rgba(22,163,74,.08);color:#15803d}
+body.light .ai-chip.prob{background:rgba(217,119,6,.08);color:#b45309}
+body.light #filter-bar{background:#fff;border-bottom-color:#e2e8f0}
+body.light .ftab{border-color:#e2e8f0;color:#64748b}
+body.light .ftab.active{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+body.light .ftab.eskalasi.active{background:#fee2e2;color:#b91c1c;border-color:#fecaca}
+body.light .filter-sort{background:#f8fafc;border-color:#e2e8f0;color:#64748b}
+body.light #inbox{background:#fff;border-right-color:#e2e8f0}
+body.light .inbox-title{color:#64748b}
+body.light .inbox-filter-btn{background:#f1f5f9;border-color:#e2e8f0;color:#64748b}
+body.light .conv-item{border-bottom-color:#f1f5f9}
+body.light .conv-item:hover{background:#f8fafc}
+body.light .conv-item.active{background:#eff6ff;border-left-color:#3b82f6}
+body.light .conv-name{color:#0f172a}
+body.light .conv-preview{color:#94a3b8}
+body.light .conv-time{color:#94a3b8}
+body.light #chat-panel{background:#f8fafc}
+body.light #chat-header{background:#fff;border-bottom-color:#e2e8f0}
+body.light .ch-name{color:#0f172a}
+body.light .act-btn{background:#f8fafc;border-color:#e2e8f0;color:#64748b}
+body.light .act-btn:hover{background:#eff6ff;border-color:#bfdbfe;color:#2563eb}
+body.light #messages-area{background:#f8fafc}
+body.light .from-customer .bubble{background:#fff;border-color:#e2e8f0;color:#0f172a}
+body.light .day-divider{color:#94a3b8}
+body.light .day-divider::before{background:#e2e8f0}
+body.light .day-divider::after{background:#e2e8f0}
+body.light .no-chat{color:#94a3b8}
+body.light #ai-suggest-box{background:#fff;border-top-color:rgba(99,102,241,.15)}
+body.light .ai-suggest-text{background:#f8fafc;border-color:rgba(99,102,241,.15);color:#0f172a}
+body.light #input-box{background:#fff;border-top-color:#e2e8f0}
+body.light .tool-pill{border-color:#e2e8f0;color:#64748b}
+body.light .tool-pill:hover{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+body.light .tool-pill.on{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+body.light .tool-pill.suggest-btn{background:rgba(99,102,241,.06);color:#6366f1;border-color:rgba(99,102,241,.15)}
+body.light #msg-input{background:#f8fafc;border-color:#e2e8f0;color:#0f172a}
+body.light #msg-input:focus{border-color:#3b82f6;background:#fff}
+body.light #case-board{background:#fff;border-left-color:#e2e8f0}
+body.light .cb-header{border-bottom-color:#e2e8f0;color:#64748b}
+body.light .cb-section{border-bottom-color:#f1f5f9}
+body.light .cb-card{background:#f8fafc;border-color:#e2e8f0}
+body.light .cb-card-body{color:#0f172a}
+body.light .cb-card-sub{color:#64748b}
+body.light .sla-section{border-bottom-color:#f1f5f9}
+body.light .sla-status.ok{color:#16a34a}
+body.light .sla-bar{background:#e2e8f0}
+body.light .sla-time{color:#64748b}
+body.light .cm-card{background:#f8fafc;border-color:#e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+body.light .cm-row{border-bottom-color:#f1f5f9}
+body.light .cm-label{color:#94a3b8}
+body.light .cm-value{color:#0f172a}
+body.light .cm-manage-btn{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.25);color:#6366f1}
+body.light .cm-empty{color:#94a3b8}
+body.light .msg-meta{color:#94a3b8}
+body.light .bot-label{color:#6366f1}
+body.light .empty-inbox{color:#94a3b8}
+
+/* ── SIDEBAR ── */
+#sidebar{width:220px;background:#1e293b;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;flex-shrink:0;height:100vh;position:relative!important;left:auto!important;top:auto!important;z-index:auto!important}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0}
+.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;cursor:pointer;text-decoration:none;transition:all .12s;position:relative}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0;text-decoration:none}
+.sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light .sb-brand{border-bottom-color:rgba(0,0,0,.07)}
+body.light .sb-logo{background:linear-gradient(135deg,#1e293b,#334155)}
+body.light .sb-title{color:#0f172a}
+body.light .sb-subtitle{color:#64748b}
+body.light .sb-section{color:#94a3b8}
+body.light .sb-item{color:#475569!important}
+body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
+body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
+body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .sb-user{border-top-color:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
+.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.sb-item .si svg{width:16px;height:16px;display:block}
+.sb-item .sbadge{margin-left:auto;min-width:18px;height:18px;background:#ef4444;border-radius:9px;font-size:9px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── MAIN ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ── TOP HEADER ── */
+#top-header{background:#161b22;border-bottom:1px solid rgba(255,255,255,.06);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.th-left h1{font-size:18px;font-weight:700;color:#f1f5f9;letter-spacing:-.4px}
+.th-left p{font-size:11px;color:#475569;margin-top:1px}
+.th-right{display:flex;align-items:center;gap:10px}
+.th-search{display:flex;align-items:center;gap:8px;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 12px;width:220px;transition:border-color .15s}
+.th-search:focus-within{border-color:#3b82f6}
+.th-search input{background:none;border:none;font-size:12px;color:#e2e8f0;flex:1;outline:none}
+.th-search input::placeholder{color:#475569}
+.th-notif{width:34px;height:34px;border-radius:8px;background:#0d1117;border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:15px;color:#64748b;transition:all .15s}
+.th-notif:hover{border-color:#3b82f6;color:#3b82f6}
+
+/* ── STATS ROW ── */
+#stats-row{background:#161b22;border-bottom:1px solid rgba(255,255,255,.06);padding:0 20px;height:72px;display:flex;gap:6px;flex-shrink:0;overflow-x:auto;overflow-y:hidden;align-items:center}
+#stats-row::-webkit-scrollbar{height:3px}
+#stats-row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+.stat-card{flex:1;min-width:110px;height:62px;background:#0d1117;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:0 10px;display:flex;align-items:center;gap:10px;transition:border-color .15s;cursor:default}
+.stat-card:hover{border-color:rgba(59,130,246,.3)}
+.stat-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.stat-icon.blue{background:rgba(59,130,246,.13);color:#3b82f6}
+.stat-icon.red{background:rgba(239,68,68,.13);color:#ef4444}
+.stat-icon.purple{background:rgba(139,92,246,.13);color:#8b5cf6}
+.stat-icon.green{background:rgba(34,197,94,.13);color:#22c55e}
+.stat-icon.amber{background:rgba(245,158,11,.13);color:#f59e0b}
+.stat-text{display:flex;flex-direction:column;gap:0;min-width:0}
+.stat-label{font-size:10px;color:#64748b;line-height:1.2}
+.stat-num{font-size:20px;font-weight:700;color:#f1f5f9;line-height:1.1}
+.stat-sub{font-size:9.5px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-sub.danger{color:#f87171}
+.stat-sub.ok{color:#4ade80}
+.stat-sub.muted{color:#475569}
+
+/* AI Engine Card */
+.ai-engine-card{width:210px;height:62px;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:6px 9px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.ai-engine-header{display:flex;align-items:center;justify-content:space-between}
+.ai-engine-title{font-size:9px;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:4px}
+.ai-engine-sub{font-size:8.5px;color:#6366f1;margin-top:0px}
+.ai-sparkline{flex-shrink:0;opacity:.7}
+.ai-mini-user{display:flex;align-items:center;gap:6px}
+.ai-mini-av{width:22px;height:22px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.ai-mini-info{flex:1;min-width:0}
+.ai-mini-name{font-size:11px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-chips{display:flex;gap:3px;flex-wrap:nowrap;overflow:hidden}
+.ai-chip{font-size:9px;padding:1px 5px;border-radius:10px;font-weight:500;white-space:nowrap}
+.ai-chip.intent{background:rgba(239,68,68,.12);color:#fca5a5}
+.ai-chip.sentiment{background:rgba(34,197,94,.12);color:#86efac}
+.ai-chip.prob{background:rgba(245,158,11,.12);color:#fcd34d}
+
+/* ── FILTER BAR ── */
+#filter-bar{background:#161b22;border-bottom:1px solid rgba(255,255,255,.06);padding:10px 20px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ftab{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid rgba(255,255,255,.08);background:none;color:#64748b;cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:5px}
+.ftab:hover{border-color:#3b82f6;color:#93c5fd}
+.ftab.active{background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+.ftab .fn{min-width:16px;height:16px;border-radius:8px;background:rgba(255,255,255,.08);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;padding:0 4px}
+.ftab.active .fn{background:rgba(59,130,246,.3);color:#93c5fd}
+.ftab.eskalasi.active{background:rgba(239,68,68,.1);color:#fca5a5;border-color:rgba(239,68,68,.3)}
+.ftab.eskalasi.active .fn{background:rgba(239,68,68,.25)}
+.filter-sort{margin-left:auto;font-size:12px;color:#64748b;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 10px;cursor:pointer;color:#94a3b8}
+
+/* ── CONTENT AREA ── */
+#content-area{flex:1;display:flex;overflow:hidden;min-width:0}
+
+/* ── INBOX LIST ── */
+#inbox{width:280px;min-width:280px;background:#161b22;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;flex-shrink:0}
+.inbox-header{padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between}
+.inbox-title{font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
+.inbox-count{min-width:18px;height:18px;background:#3b82f6;border-radius:9px;font-size:10px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.inbox-filter-btn{width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748b;font-size:13px}
+#conv-list{flex:1;overflow-y:auto}
+#conv-list::-webkit-scrollbar{width:3px}
+#conv-list::-webkit-scrollbar-track{background:transparent}
+#conv-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+.conv-item{display:flex;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .1s;align-items:flex-start;position:relative}
+.conv-item:hover{background:rgba(255,255,255,.03)}
+.conv-item.active{background:rgba(59,130,246,.08);border-left:2px solid #3b82f6}
+.conv-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+.conv-info{flex:1;min-width:0}
+.conv-name-row{display:flex;justify-content:space-between;align-items:center}
+.conv-name{font-weight:600;font-size:13px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+.conv-time{font-size:10px;color:#475569;flex-shrink:0}
+.conv-preview{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.conv-tags{display:flex;align-items:center;gap:4px;margin-top:4px}
+.ctag{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:500}
+.ctag.wa{background:rgba(34,197,94,.1);color:#86efac}
+.ctag.live{background:rgba(34,197,94,.1);color:#86efac}
+.ctag.eskalasi{background:rgba(239,68,68,.1);color:#fca5a5}
+.ctag.ai{background:rgba(99,102,241,.1);color:#a5b4fc}
+.ctag.new-msg{background:rgba(245,158,11,.15);color:#fbbf24;font-weight:700}
+.conv-unread{width:8px;height:8px;background:#3b82f6;border-radius:50%;position:absolute;right:12px;top:50%;transform:translateY(-50%)}
+.empty-inbox{text-align:center;padding:40px 16px;color:#475569}
+
+/* ── CHAT PANEL ── */
+#chat-panel{flex:1;display:flex;flex-direction:column;min-width:0;background:#0d1117}
+#chat-header{background:#161b22;border-bottom:1px solid rgba(255,255,255,.06);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.ch-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.ch-name{font-weight:700;font-size:14px;color:#f1f5f9}
+.ch-sub{font-size:11px;color:#475569;display:flex;align-items:center;gap:5px;margin-top:1px}
+.ch-live{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+.ch-acts{display:flex;gap:6px;margin-left:auto}
+.act-btn{width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:#64748b;transition:all .12s}
+.act-btn:hover{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:#93c5fd}
+.ch-status-badge{font-size:10px;padding:3px 10px;border-radius:12px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid}
+.ch-status-badge.eskalasi{background:rgba(239,68,68,.1);color:#fca5a5;border-color:rgba(239,68,68,.2)}
+.ch-status-badge.selesai{background:rgba(34,197,94,.1);color:#86efac;border-color:rgba(34,197,94,.2)}
+.ch-status-badge.live{background:rgba(34,197,94,.1);color:#86efac;border-color:rgba(34,197,94,.2)}
+
+#messages-area{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
+#messages-area::-webkit-scrollbar{width:4px}
+#messages-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:4px}
+.day-divider{text-align:center;font-size:10px;color:#374151;display:flex;align-items:center;gap:8px;margin:4px 0}
+.day-divider::before,.day-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.05)}
+.msg-row{display:flex;gap:8px;align-items:flex-end}
+.msg-row.from-customer{justify-content:flex-start}
+.msg-row.from-bot,.msg-row.from-agent{justify-content:flex-end}
+.msg-av-s{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;flex-shrink:0;font-weight:700}
+.msg-wrap{max-width:65%;min-width:0}
+.bubble{padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.6;word-break:break-word;overflow-wrap:anywhere}
+.from-customer .bubble{background:#1e293b;border:1px solid rgba(255,255,255,.06);border-bottom-left-radius:4px;color:#e2e8f0}
+.from-bot .bubble,.from-agent .bubble{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(59,130,246,.25)}
+.msg-meta{font-size:10px;color:#374151;margin-top:3px}
+.from-bot .msg-meta,.from-agent .msg-meta{text-align:right;color:#475569;display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.bot-label{font-size:10px;color:#6366f1;font-weight:600;margin-bottom:2px;text-align:right;display:flex;align-items:center;gap:4px;justify-content:flex-end}
+.msg-actions{display:none;gap:3px}
+.msg-row:hover .msg-actions{display:flex}
+.msg-act-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:.7;transition:opacity .15s}
+.msg-act-btn:hover{opacity:1;background:rgba(255,255,255,.08)}
+.no-chat{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#374151}
+.no-chat-icon{font-size:48px;opacity:.3}
+
+/* AI SUGGESTED REPLY */
+#ai-suggest-box{background:#161b22;border-top:1px solid rgba(99,102,241,.2);padding:10px 16px;flex-shrink:0;display:none}
+.ai-suggest-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ai-suggest-title{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#a5b4fc}
+.ai-confidence{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.1);color:#86efac;font-weight:600}
+.ai-suggest-text{font-size:12px;color:#e2e8f0;background:#0d1117;border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:10px 12px;line-height:1.6;margin-bottom:8px;max-height:80px;overflow-y:auto}
+.ai-suggest-actions{display:flex;gap:6px}
+.ai-use-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+.ai-use-btn:hover{background:rgba(99,102,241,.25)}
+.ai-copy-btn{width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748b;font-size:13px;transition:all .15s}
+.ai-copy-btn:hover{color:#a5b4fc;border-color:rgba(99,102,241,.3)}
+.ai-loading{display:flex;align-items:center;gap:6px;font-size:12px;color:#6366f1;padding:8px 0}
+
+/* INPUT BOX */
+#input-box{background:#161b22;border-top:1px solid rgba(255,255,255,.06);padding:10px 14px;flex-shrink:0}
+.input-tools{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+.tool-pill{padding:4px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:none;font-size:11px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:500;transition:all .12s}
+.tool-pill:hover,.tool-pill.on{background:rgba(59,130,246,.08);color:#93c5fd;border-color:rgba(59,130,246,.2)}
+.tool-pill.suggest-btn{background:rgba(99,102,241,.08);color:#a5b4fc;border-color:rgba(99,102,241,.2)}
+.tool-pill.suggest-btn:hover{background:rgba(99,102,241,.15)}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+#msg-input{flex:1;resize:none;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:9px 14px;font-size:13px;font-family:inherit;line-height:1.5;background:#0d1117;color:#e2e8f0;min-height:40px;max-height:100px;transition:border-color .15s;outline:none}
+#msg-input:focus{border-color:rgba(59,130,246,.4);box-shadow:0 0 0 3px rgba(59,130,246,.06)}
+#msg-input::placeholder{color:#374151}
+#send-btn{width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;box-shadow:0 2px 8px rgba(59,130,246,.3)}
+#send-btn:hover{transform:scale(1.05);box-shadow:0 4px 12px rgba(59,130,246,.4)}
+#send-btn:disabled{background:#1e293b;cursor:not-allowed;box-shadow:none;transform:none}
+
+/* ── CASE BOARD ── */
+#case-board{width:300px;min-width:300px;background:#161b22;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#case-board::-webkit-scrollbar{width:3px}
+#case-board::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06)}
+.cb-header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0}
+.cb-section{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
+.cb-title{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+
+/* FU Schedule */
+.fu-item{display:flex;align-items:center;gap:10px;background:#0d1117;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:9px 10px;margin-bottom:6px}
+.fu-item:last-child{margin-bottom:0}
+.fu-icon{font-size:16px;flex-shrink:0;width:26px;text-align:center}
+.fu-info{flex:1;min-width:0}
+.fu-label{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.fu-value{font-size:12px;font-weight:600;color:#e2e8f0}
+.fu-sub{font-size:11px;color:#64748b;margin-top:2px}
+.fu-badge{flex-shrink:0;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.fu-badge.pending{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.2)}
+.fu-badge.done{background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.2)}
+.fu-badge.today{background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
+body.light .fu-item{background:#f8fafc;border-color:#e2e8f0}
+body.light .fu-value{color:#0f172a}
+body.light .fu-sub{color:#94a3b8}
+
+/* SLA */
+.sla-section{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
+.sla-status{font-size:14px;font-weight:700;margin-bottom:4px}
+.sla-status.ok{color:#22c55e}
+.sla-status.warn{color:#f59e0b}
+.sla-status.danger{color:#ef4444}
+.sla-bar{height:4px;background:rgba(255,255,255,.06);border-radius:2px;margin:6px 0}
+.sla-fill{height:100%;border-radius:2px;background:#22c55e;transition:width .5s}
+.sla-fill.warn{background:#f59e0b}
+.sla-fill.danger{background:#ef4444}
+.sla-time{font-size:11px;color:#64748b}
+
+/* Customer Memory */
+.cm-section{padding:12px 14px}
+.cm-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cm-manage-btn{font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.35);color:#a5b4fc;cursor:pointer;transition:all .15s}
+.cm-manage-btn:hover{background:rgba(99,102,241,.3);color:#c7d2fe}
+.cm-card{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.cm-empty{padding:24px;font-size:12px;color:#374151;text-align:center}
+.cm-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05)}
+.cm-row:last-child{border-bottom:none}
+.cm-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0;opacity:.75}
+.cmlabel{font-size:12px;color:#475569;flex:1}
+.cm-value{font-size:12px;color:#cbd5e1;font-weight:500;text-align:right;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-status-live{color:#22c55e!important;font-weight:700}
+.cm-status-eskalasi{color:#f59e0b!important;font-weight:700}
+.cm-status-selesai{color:#475569!important;font-weight:600}
+
+/* Repeat Order Modal */
+.cm-label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:5px}
+.cm-input{width:100%;padding:9px 10px;background:var(--bg,#0d1117);border:1px solid var(--border,rgba(255,255,255,.1));border-radius:8px;color:var(--text,#e2e8f0);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.cm-input:focus{border-color:rgba(59,130,246,.4)}
+.cm-input::placeholder{color:#475569}
+body.light .cm-label{color:#64748b}
+body.light .cm-input{background:#f8fafc;border-color:#e2e8f0;color:#0f172a}
+body.light .cm-input::placeholder{color:#94a3b8}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#toast.show{opacity:1}
+
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.typing-dots{display:flex;gap:4px;align-items:center;padding:4px 0}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.6);animation:bounce 1s infinite}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+</style>
 </head>
 <body>
-<div class="app-layout">
-  <div id="sidebar"></div>
-
-  <div class="main-content">
-    <div class="page-header" style="padding-bottom:16px">
-      <div>
-        <div class="page-title">Dashboard</div>
-        <div class="page-sub" id="greeting">Selamat datang!</div>
-      </div>
-      <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
-        <div id="today-badge" class="badge badge-blue" style="font-size:12px"></div>
-        <button class="btn btn-primary btn-sm" onclick="window.location.href='customers.html'">+ Tambah Customer</button>
-      </div>
-    </div>
-
-    <div class="page-body">
-
-      <!-- STATS -->
-      <div class="stats-row" id="stats-row">
-        <div class="stat-card"><div class="stat-label">FU Hari Ini</div><div class="stat-val" id="st-fu-today">-</div><div class="stat-sub">Harus dihubungi</div></div>
-        <div class="stat-card"><div class="stat-label">Total Customer</div><div class="stat-val" id="st-total">-</div><div class="stat-sub">Semua status</div></div>
-        <div class="stat-card"><div class="stat-label">Data Sukses</div><div class="stat-val" id="st-sukses">-</div><div class="stat-sub">Sudah delivered</div></div>
-        <div class="stat-card"><div class="stat-label">FU Aktif</div><div class="stat-val" id="st-fu-aktif">-</div><div class="stat-sub">Sedang difollow-up</div></div>
-        <div class="stat-card"><div class="stat-label">Repeat Order</div><div class="stat-val" id="st-repeat">-</div><div class="stat-sub">Customer loyal</div></div>
-      </div>
-
-      <!-- TWO COLUMN LAYOUT -->
-      <div style="display:grid;grid-template-columns:1fr 360px;gap:20px">
-
-        <!-- LEFT: FU HARI INI -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <div class="fw-700" style="font-size:15px">📅 Follow-up Hari Ini</div>
-            <a href="followup.html" class="text-accent text-sm">Lihat semua →</a>
-          </div>
-          <div id="fu-today-list">
-            <div class="empty-state">
-              <div class="spinner" style="margin:0 auto 12px"></div>
-              <div>Memuat jadwal...</div>
-            </div>
-          </div>
-
-          <!-- INBOX CHAT -->
-          <div style="margin-top:28px">
-            <div class="flex items-center justify-between mb-3" id="inbox">
-              <div class="fw-700" style="font-size:15px">💬 Inbox Chat</div>
-              <div id="inbox-unread-badge"></div>
-            </div>
-            <!-- Chat Layout -->
-            <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;height:520px;display:grid;grid-template-columns:280px 1fr">
-              <!-- Chat List -->
-              <div style="border-right:1px solid var(--border);overflow-y:auto;background:var(--bg2)" id="inbox-list">
-                <div class="empty-state" style="padding:30px 16px;font-size:12px">Memuat...</div>
-              </div>
-              <!-- Chat Main -->
-              <div id="chat-main" style="display:flex;flex-direction:column;background:var(--bg)">
-                <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">
-                  Pilih percakapan
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT: SIDEBAR INFO -->
-        <div style="display:flex;flex-direction:column;gap:16px">
-
-          <!-- FU SUMMARY PIE -->
-          <div class="card">
-            <div class="fw-700 mb-3">Pipeline Customer</div>
-            <div id="pipeline-breakdown" style="display:flex;flex-direction:column;gap:8px">
-              <div class="text-dim text-sm">Memuat...</div>
-            </div>
-          </div>
-
-          <!-- UPCOMING FU -->
-          <div class="card">
-            <div class="fw-700 mb-3">📆 FU Besok <span class="text-dim text-sm fw-600" id="tomorrow-count">(0)</span></div>
-            <div id="fu-tomorrow-list" style="display:flex;flex-direction:column;gap:8px">
-              <div class="text-dim text-sm">Memuat...</div>
-            </div>
-          </div>
-
-          <!-- RECENT CUSTOMERS -->
-          <div class="card">
-            <div class="fw-700 mb-3">🆕 Customer Baru</div>
-            <div id="recent-customers" style="display:flex;flex-direction:column;gap:8px">
-              <div class="text-dim text-sm">Memuat...</div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- CHAT MODAL (full conversation) -->
-<div class="modal-overlay" id="chat-modal">
-  <div class="modal modal-lg" style="max-width:640px;height:80vh;display:flex;flex-direction:column">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title" id="chat-modal-name">-</div>
-        <div class="text-sm text-muted" id="chat-modal-sub">-</div>
-      </div>
-      <button class="modal-close" onclick="closeChatModal()">✕</button>
-    </div>
-    <div id="chat-modal-messages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px">
-    </div>
-    <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end">
-      <textarea id="chat-modal-input" class="chat-textarea" placeholder="Ketik pesan..." rows="2" onkeydown="chatInputKeydown(event)"></textarea>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <button class="btn btn-ghost btn-sm" title="AI Suggest" onclick="aiSuggest()" id="btn-ai-suggest">🤖</button>
-        <button class="btn btn-primary btn-sm" onclick="sendChatMessage()">Kirim</button>
-      </div>
-    </div>
-    <div id="chat-modal-err" style="padding:8px 16px;color:var(--red);font-size:12px;display:none"></div>
-  </div>
-</div>
-
 <div id="toast"></div>
 
-<script>
-async function initConfig() {
-  const r = await fetch('/api/config');
-  const c = await r.json();
-  window.__SB_URL = c.supabase_url;
-  window.__SB_KEY = c.supabase_anon_key;
-  window.__BAILEYS_URL = c.baileys_url;
-}
-</script>
-<script src="js/app.js"></script>
-<script>
-let currentUser = null;
-let conversations = [];
-let activeChatConvId = null;
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">CRM</div>
+    <div>
+      <div class="sb-title">AI CRM Adsy</div>
+      <div class="sb-subtitle">Follow-up Engine</div>
+    </div>
+  </div>
+  <div class="bot-online" id="sb-bot-status">
+    <div class="bot-dot"></div> Bot online
+  </div>
+  <div class="sb-nav">
+    <a class="sb-item" href="analytics.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg></span> Ringkasan</a>
+    <div class="sb-item active" onclick="location.href='dashboard.html'">
+      <span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg></span> Percakapan
+      <span class="sbadge" id="unread-badge" style="display:none">0</span>
+    </div>
+    <a class="sb-item" href="customers.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg></span> Customer</a>
+    <a class="sb-item" href="followup.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'/><path d='M10.3 21a1.94 1.94 0 0 0 3.4 0'/></svg></span> Follow-up</a>
+    <a class="sb-item" href="cases.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='6' height='6' rx='1'/><path d='m3 17 2 2 4-4'/><path d='M13 6h8'/><path d='M13 12h8'/><path d='M13 18h8'/></svg></span> Cases</a>
+    <a class="sb-item" href="contacts.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg></span> Kontak</a>
+    <a class="sb-item" href="aiinsights.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z'/></svg></span> AI Insights</a>
+    <a class="sb-item" href="broadcast.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M22 8.01c0-4.42-4.48-8-10-8S2 3.59 2 8.01c0 2.83 1.84 5.31 4.62 6.76L6 18l3.58-2.46C10.34 15.8 11.16 16 12 16c5.52 0 10-3.58 10-7.99Z'/></svg></span> Broadcast</a>
+    <a class="sb-item" href="products.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m7.5 4.27 9 5.15'/><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/></svg></span> Katalog & SOP</a>
+    <div class="sb-divider"></div>
+    <div class="sb-section">Akun</div>
+    <a class="sb-item" href="settings.html"><span class="si"><svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/><circle cx='12' cy='12' r='3'/></svg></span> Pengaturan</a>
+  </div>
+  <div class="sb-user">
+    <div class="sb-avatar" id="sb-av">A</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="sb-name">Admin</div>
+      <button style="font-size:11px;color:#475569;border:none;background:none;cursor:pointer;padding:0" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</div>
 
-// ---- INIT ----
-async function init() {
-  await initConfig();
-  currentUser = requireAuth();
-  if (!currentUser) return;
+<!-- MAIN -->
+<div id="main">
 
-  renderSidebar('dashboard');
-
-  const now = new Date();
-  document.getElementById('greeting').textContent =
-    `${now.getHours() < 12 ? 'Selamat pagi' : now.getHours() < 17 ? 'Selamat siang' : 'Selamat malam'}, ${currentUser.username}!`;
-  document.getElementById('today-badge').textContent = fmtDate(new Date().toISOString());
-
-  await Promise.all([loadStats(), loadFUToday(), loadFUTomorrow(), loadPipeline(), loadRecentCustomers(), loadInbox()]);
-}
-
-// ---- STATS ----
-async function loadStats() {
-  try {
-    const custs = await sbGet('customers', `user_id=eq.${currentUser.id}&select=status`);
-    const total   = custs.length;
-    const sukses  = custs.filter(c => c.status === 'sukses').length;
-    const fuAktif = custs.filter(c => c.status === 'fu_aktif').length;
-    const repeat  = custs.filter(c => c.status === 'repeat').length;
-
-    const today = todayStr();
-    const fuToday = await sbGet('followup_schedule', `user_id=eq.${currentUser.id}&scheduled_date=eq.${today}&status=eq.pending&select=id`);
-
-    document.getElementById('st-fu-today').textContent = fuToday.length;
-    document.getElementById('st-total').textContent = total;
-    document.getElementById('st-sukses').textContent = sukses;
-    document.getElementById('st-fu-aktif').textContent = fuAktif;
-    document.getElementById('st-repeat').textContent = repeat;
-  } catch(e) { console.error(e); }
-}
-
-// ---- FU TODAY ----
-async function loadFUToday() {
-  const el = document.getElementById('fu-today-list');
-  try {
-    const today = todayStr();
-    const rows = await sbGet('followup_schedule',
-      `user_id=eq.${currentUser.id}&scheduled_date=eq.${today}&status=eq.pending&select=*,customers(nama,wa_number,produk)&order=id.asc`);
-
-    if (!rows.length) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">Tidak ada FU hari ini</div><div class="empty-sub">Semua sudah beres!</div></div>`;
-      return;
-    }
-
-    el.innerHTML = rows.map(r => `
-      <div class="fu-card" id="fucard-${r.id}">
-        <div style="font-size:28px">📞</div>
-        <div class="fu-card-info">
-          <div class="fu-card-name">${r.customers?.nama || '-'}</div>
-          <div class="fu-card-sub">${r.customers?.wa_number || '-'} · ${r.customers?.produk || '-'}</div>
-          <div class="fu-card-rule">${r.rule_nama || 'Follow-up'}</div>
-        </div>
-        <div class="fu-card-actions">
-          <button class="btn btn-primary btn-sm" onclick="openFUChat('${r.id}','${r.customer_id}','${r.customers?.nama}','${r.customers?.wa_number}','${r.rule_nama}')">
-            💬 Chat
-          </button>
-          <button class="btn btn-ghost btn-sm" onclick="skipFU('${r.id}')">Skip</button>
-        </div>
+  <!-- TOP HEADER -->
+  <div id="top-header">
+    <div class="th-left">
+      <h1>Percakapan</h1>
+      <p id="th-datetime">—</p>
+    </div>
+    <div class="th-right">
+      <div class="th-search">
+        <span style="color:#374151;font-size:13px">🔍</span>
+        <input placeholder="Cari pelanggan atau nomor..." oninput="filterConvs(this.value)" />
       </div>
-    `).join('');
-  } catch(e) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-sub text-red">${e.message}</div></div>`;
-  }
-}
+      <div class="th-notif" id="theme-btn" onclick="toggleTheme()" title="Ganti tema" style="font-size:14px">🌙</div>
+      <div class="th-notif" title="Bantuan">❓</div>
+    </div>
+  </div>
 
-// ---- FU TOMORROW ----
-async function loadFUTomorrow() {
-  const el = document.getElementById('fu-tomorrow-list');
-  try {
-    const tomorrow = addDays(todayStr(), 1);
-    const rows = await sbGet('followup_schedule',
-      `user_id=eq.${currentUser.id}&scheduled_date=eq.${tomorrow}&status=eq.pending&select=*,customers(nama,produk)&order=id.asc&limit=5`);
-    document.getElementById('tomorrow-count').textContent = `(${rows.length})`;
-    if (!rows.length) { el.innerHTML = '<div class="text-dim text-sm">Tidak ada jadwal besok</div>'; return; }
-    el.innerHTML = rows.map(r => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div style="font-size:18px">🕐</div>
-        <div style="flex:1">
-          <div class="fw-600 text-sm">${r.customers?.nama || '-'}</div>
-          <div class="text-xs text-muted">${r.rule_nama || '-'} · ${r.customers?.produk || '-'}</div>
-        </div>
+  <!-- STATS ROW -->
+  <div id="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon blue">💬</div>
+      <div class="stat-text">
+        <div class="stat-label">Open Tickets</div>
+        <div class="stat-num" id="st-open">0</div>
+        <div class="stat-sub muted" id="st-open-sub">percakapan aktif</div>
       </div>
-    `).join('');
-  } catch(e) { el.innerHTML = `<div class="text-dim text-sm">${e.message}</div>`; }
-}
-
-// ---- PIPELINE BREAKDOWN ----
-async function loadPipeline() {
-  const el = document.getElementById('pipeline-breakdown');
-  try {
-    const custs = await sbGet('customers', `user_id=eq.${currentUser.id}&select=status`);
-    const total = custs.length || 1;
-    const groups = {};
-    custs.forEach(c => { groups[c.status] = (groups[c.status] || 0) + 1; });
-
-    const order = ['baru','sukses','fu_aktif','repeat','dormant','selesai'];
-    const colors = { baru:'var(--text3)', sukses:'var(--green)', fu_aktif:'var(--yellow)', repeat:'var(--accent)', dormant:'var(--red)', selesai:'var(--purple)' };
-
-    el.innerHTML = order.map(s => {
-      const n = groups[s] || 0;
-      const pct = Math.round(n / total * 100);
-      return `
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">⚠️</div>
+      <div class="stat-text">
+        <div class="stat-label">Eskalasi</div>
+        <div class="stat-num" id="st-eskalasi">0</div>
+        <div class="stat-sub danger" id="st-esc-sub">perlu penanganan</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">🤖</div>
+      <div class="stat-text">
+        <div class="stat-label">AI Response</div>
+        <div class="stat-num" id="st-ai">0</div>
+        <div class="stat-sub ok" id="st-ai-sub">balasan AI hari ini</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber">📅</div>
+      <div class="stat-text">
+        <div class="stat-label">FU Hari Ini</div>
+        <div class="stat-num" id="st-aktif">0</div>
+        <div class="stat-sub muted" id="st-aktif-sub">jadwal follow-up</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">🔄</div>
+      <div class="stat-text">
+        <div class="stat-label">Repeat Order</div>
+        <div class="stat-num" id="st-unik">0</div>
+        <div class="stat-sub ok" id="st-unik-sub">customer repeat</div>
+      </div>
+    </div>
+    <div class="ai-engine-card">
+      <div class="ai-engine-header">
         <div>
-          <div class="flex items-center justify-between text-sm mb-1">
-            <span>${STATUS_LABELS[s] || s}</span>
-            <span class="fw-600">${n} <span class="text-dim">(${pct}%)</span></span>
-          </div>
-          <div style="background:var(--bg3);border-radius:99px;height:6px">
-            <div style="background:${colors[s]};width:${pct}%;height:100%;border-radius:99px;transition:width .3s"></div>
-          </div>
-        </div>`;
-    }).join('');
-  } catch(e) { el.innerHTML = `<div class="text-dim text-sm">${e.message}</div>`; }
-}
-
-// ---- RECENT CUSTOMERS ----
-async function loadRecentCustomers() {
-  const el = document.getElementById('recent-customers');
-  try {
-    const rows = await sbGet('customers',
-      `user_id=eq.${currentUser.id}&order=created_at.desc&limit=5&select=nama,produk,status,created_at`);
-    if (!rows.length) { el.innerHTML = '<div class="text-dim text-sm">Belum ada customer</div>'; return; }
-    el.innerHTML = rows.map(r => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div class="sb-avatar" style="width:28px;height:28px;font-size:11px">${(r.nama||'?')[0].toUpperCase()}</div>
-        <div style="flex:1">
-          <div class="fw-600 text-sm">${r.nama || '-'}</div>
-          <div class="text-xs text-muted">${r.produk || '-'}</div>
+          <div class="ai-engine-title">✨ AI Follow-up Engine</div>
+          <div class="ai-engine-sub">Inteligensi Post-Purchase</div>
         </div>
-        ${statusBadge(r.status)}
+        <svg width="48" height="20" viewBox="0 0 48 20" fill="none" style="opacity:.7">
+          <polyline points="0,18 8,14 16,16 24,8 32,10 40,4 48,6" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="0,18 8,14 16,16 24,8 32,10 40,4 48,6 48,20 0,20" fill="rgba(99,102,241,.12)"/>
+        </svg>
       </div>
-    `).join('');
-  } catch(e) { el.innerHTML = `<div class="text-dim text-sm">${e.message}</div>`; }
-}
-
-// ---- INBOX ----
-async function loadInbox() {
-  const el = document.getElementById('inbox-list');
-  try {
-    const convs = await sbGet('conversations',
-      `user_id=eq.${currentUser.id}&status=neq.selesai&order=updated_at.desc&limit=30&select=*,customers(nama,wa_number,produk)`);
-    conversations = convs;
-
-    if (!convs.length) {
-      el.innerHTML = '<div style="padding:30px 16px;text-align:center;color:var(--text3);font-size:12px">Belum ada chat</div>';
-      return;
-    }
-
-    el.innerHTML = convs.map(c => `
-      <div class="chat-item ${activeChatConvId === c.id ? 'active' : ''}" onclick="openChat('${c.id}')">
-        <div class="chat-item-name">${c.customers?.nama || '-'}</div>
-        <div class="chat-item-preview">${c.customers?.produk || ''}</div>
-        <div class="chat-item-time">${fmtDateTime(c.updated_at)}</div>
+      <div class="ai-mini-user" id="ai-engine-contact">
+        <div class="ai-mini-av" id="ae-av">?</div>
+        <div class="ai-mini-info">
+          <div class="ai-mini-name" id="ae-name">Pilih percakapan</div>
+        </div>
       </div>
-    `).join('');
-
-    // Kalau ada hash #inbox + conv param
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('conv')) openChat(urlParams.get('conv'));
-  } catch(e) {
-    el.innerHTML = `<div style="padding:16px;color:var(--red);font-size:12px">${e.message}</div>`;
-  }
-}
-
-// ---- OPEN CHAT ----
-async function openChat(convId) {
-  activeChatConvId = convId;
-  const conv = conversations.find(c => c.id === convId);
-  const main = document.getElementById('chat-main');
-
-  if (!conv) return;
-  const nama = conv.customers?.nama || '-';
-  const wa   = conv.customers?.wa_number || '-';
-
-  main.innerHTML = `
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px">
-      <div class="sb-avatar" style="width:34px;height:34px">${nama[0].toUpperCase()}</div>
-      <div>
-        <div class="fw-600 text-sm">${nama}</div>
-        <div class="text-xs text-muted">${wa}</div>
+      <div class="ai-chips" id="ae-chips">
+        <span class="ai-chip intent">—</span>
+        <span class="ai-chip sentiment">—</span>
+        <span class="ai-chip prob">—</span>
       </div>
-      <button class="btn btn-ghost btn-xs" style="margin-left:auto" onclick="openFullChat('${convId}','${nama}','${wa}')">Buka ↗</button>
     </div>
-    <div id="inline-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px">
-      <div class="text-dim text-sm" style="text-align:center">Memuat...</div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div id="filter-bar">
+    <button class="ftab active" onclick="setTab('all',this)" id="ftab-all">Semua <span class="fn" id="fn-all">0</span></button>
+    <button class="ftab eskalasi" onclick="setTab('eskalasi',this)">Eskalasi <span class="fn" id="fn-esc">0</span></button>
+    <button class="ftab" onclick="setTab('live',this)">Live <span class="fn" id="fn-live">0</span></button>
+    <button class="ftab" onclick="setTab('selesai',this)">Selesai <span class="fn" id="fn-selesai">0</span></button>
+    <select class="filter-sort" onchange="setSortOrder(this.value)">
+      <option value="desc">Terbaru</option>
+      <option value="asc">Terlama</option>
+    </select>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div id="content-area">
+
+    <!-- INBOX -->
+    <div id="inbox">
+      <div class="inbox-header">
+        <div class="inbox-title">INBOX <span class="inbox-count" id="inbox-count">0</span></div>
+        <div class="inbox-filter-btn">≡</div>
+      </div>
+      <div id="conv-list"><div class="empty-inbox">📭<br><br>Belum ada percakapan</div></div>
     </div>
-    <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px">
-      <textarea id="inline-input" class="chat-textarea" style="min-height:38px" placeholder="Ketik pesan..." rows="1" onkeydown="inlineKeydown(event,'${convId}')"></textarea>
-      <button class="btn btn-primary btn-sm" onclick="sendInline('${convId}')">→</button>
-    </div>`;
 
-  await loadMessages(convId, 'inline-msgs');
+    <!-- CHAT PANEL -->
+    <div id="chat-panel">
+      <div id="chat-header">
+        <div class="ch-av" id="ch-av" style="background:#374151">?</div>
+        <div style="flex:1">
+          <div class="ch-name" id="ch-name">Pilih percakapan</div>
+          <div class="ch-sub" id="ch-sub"><span>—</span></div>
+        </div>
+        <div id="ch-status-area"></div>
+        <div class="ch-acts">
+          <button class="act-btn" title="Ambil alih dari AI" onclick="manualEscalate()" id="btn-ambil">🙋</button>
+          <button class="act-btn" title="Catat Repeat Order" onclick="openRepeatOrder()">🔄</button>
+          <button class="act-btn" title="Tandai selesai" onclick="markSelesai()" id="btn-selesai">✅</button>
+          <button class="act-btn" title="Hapus chat" onclick="clearChat()">🗑</button>
+        </div>
+      </div>
+      <div id="messages-area">
+        <div class="no-chat">
+          <div class="no-chat-icon">💬</div>
+          <div style="font-size:14px;font-weight:500;color:#374151">Pilih percakapan</div>
+          <div style="font-size:12px;color:#374151;margin-top:4px">atau tunggu balasan customer</div>
+        </div>
+      </div>
+      <div id="ai-suggest-box">
+        <div class="ai-suggest-header">
+          <div class="ai-suggest-title">✨ AI Suggested Reply <span class="ai-confidence" id="ai-conf">—</span></div>
+          <div style="font-size:11px;color:#475569;cursor:pointer" onclick="closeAISuggest()">✕</div>
+        </div>
+        <div class="ai-suggest-text" id="ai-suggest-text">—</div>
+        <div class="ai-suggest-actions">
+          <button class="ai-use-btn" onclick="useAISuggest()">📨 Kirim Balasan</button>
+          <button class="ai-copy-btn" onclick="copyAISuggest()" title="Salin">📋</button>
+        </div>
+      </div>
+      <div id="input-box">
+        <div class="input-tools">
+          <button class="tool-pill on" id="ai-pill" onclick="toggleAI()">🤖 AI: <span id="ai-lbl">ON</span></button>
+          <button class="tool-pill on" id="wa-pill" onclick="toggleWA()">📱 Kirim WA: <span id="wa-lbl">ON</span></button>
+          <button class="tool-pill suggest-btn" onclick="getAISuggest()">✨ Saran AI</button>
+          <a href="settings.html" class="tool-pill" style="margin-left:auto">⚙️ Pengaturan</a>
+        </div>
+        <div class="input-row">
+          <textarea id="msg-input" placeholder="Ketik pesan..." rows="1"
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <button id="send-btn" onclick="sendMsg()">&#10148;</button>
+        </div>
+      </div>
+    </div>
 
-  // Re-render list to show active
-  document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll(`.chat-item`).forEach(el => {
-    if (el.onclick?.toString().includes(convId)) el.classList.add('active');
+    <!-- CASE BOARD -->
+    <div id="case-board">
+      <div class="cb-header">📋 Info Customer</div>
+
+      <!-- FU Schedule -->
+      <div class="cb-section" id="fu-schedule-section">
+        <div class="cb-title">📅 Jadwal Follow-up</div>
+        <div id="fu-schedule-list"><div style="font-size:12px;color:#475569;text-align:center;padding:12px 0">Pilih percakapan</div></div>
+      </div>
+
+      <!-- SLA -->
+      <div class="sla-section">
+        <div class="cb-title">⏱ SLA Countdown</div>
+        <div class="sla-status ok" id="sla-status">Aman</div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#475569;margin-top:3px">
+          <span>Batas SLA: 24 Jam</span>
+        </div>
+        <div class="sla-bar"><div class="sla-fill" id="sla-fill" style="width:90%"></div></div>
+        <div class="sla-time" id="sla-time">Pilih percakapan</div>
+      </div>
+
+      <!-- Customer Memory -->
+      <div class="cm-section">
+        <div class="cm-header">
+          <div class="cb-title" style="margin-bottom:0">👤 Customer Memory</div>
+          <button class="cm-manage-btn" onclick="window.location.href='customers.html'">Manage</button>
+        </div>
+        <div class="cm-card">
+          <div class="cm-empty" id="cm-empty">Pilih percakapan</div>
+          <div id="cm-rows" style="display:none">
+            <div class="cm-row">
+              <span class="cm-icon">🪪</span>
+              <span class="cmlabel">Nama</span>
+              <span class="cm-value" id="cm-nama">—</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-icon">📞</span>
+              <span class="cmlabel">Phone</span>
+              <span class="cm-value" id="cm-phone">—</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-icon">📦</span>
+              <span class="cmlabel">Produk</span>
+              <span class="cm-value" id="cm-produk">—</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-icon">🚚</span>
+              <span class="cmlabel">Delivered</span>
+              <span class="cm-value" id="cm-delivered">—</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-icon">📅</span>
+              <span class="cmlabel">First chat</span>
+              <span class="cm-value" id="cm-first">—</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-icon">🕐</span>
+              <span class="cmlabel">Last active</span>
+              <span class="cm-value" id="cm-last">—</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-icon">💬</span>
+              <span class="cmlabel">Total msg</span>
+              <span class="cm-value" id="cm-total">—</span>
+            </div>
+            <div class="cm-row">
+              <span class="cm-icon">🚩</span>
+              <span class="cmlabel">Status</span>
+              <span class="cm-value" id="cm-status">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /case-board -->
+
+  </div><!-- /content-area -->
+</div><!-- /main -->
+
+<script src="js/app.js"></script>
+<script src="js/prod-switcher.js"></script>
+<script>
+// Apply saved theme immediately
+(function() {
+  if (localStorage.getItem('cs_theme') === 'light') document.body.classList.add('light');
+})();
+
+const PROXY = '/api/baileys-proxy';
+
+let activeConvId = null, activeCustomer = null, activeConv = null, activeSessionId = null;
+let tabFilter = 'all', searchFilter = '', sortOrder = 'desc';
+let lastMsgCount = 0, allConvs = [];
+let aiSuggestText = '';
+let slaInterval = null;
+let custMapCache = {};
+
+/* ── SUPABASE HELPERS (use window.__SB_URL at call time) ── */
+async function _sbGet(t, q='') {
+  const r = await fetch(`${window.__SB_URL}/rest/v1/${t}${q}`, {
+    headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
+  });
+  if (!r.ok) { console.error('sbGet', t, await r.text()); return []; }
+  return r.json();
+}
+async function _sbPost(t, b) {
+  const r = await fetch(`${window.__SB_URL}/rest/v1/${t}`, {
+    method:'POST',
+    headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' },
+    body: JSON.stringify(b)
+  });
+  return r.json();
+}
+async function _sbPatch(t, q, b) {
+  const r = await fetch(`${window.__SB_URL}/rest/v1/${t}${q}`, {
+    method:'PATCH',
+    headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' },
+    body: JSON.stringify(b)
+  });
+  return r.json();
+}
+async function _sbDelete(t, q) {
+  await fetch(`${window.__SB_URL}/rest/v1/${t}${q}`, {
+    method:'DELETE',
+    headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
   });
 }
 
-async function loadMessages(convId, containerId) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
+/* ── UTILS ── */
+function showToast(m, dur=2500) {
+  const el = document.getElementById('toast'); el.textContent = m; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+// ── Init UI ─────────────────────────────────────────────
+const user = getUser();
+if (!user) { window.location.href = 'login.html'; }
+
+document.getElementById('sb-av').textContent   = initials(user?.username || '?');
+document.getElementById('sb-name').textContent = user?.username || 'Admin';
+
+updateDatetime();
+setInterval(updateDatetime, 60000);
+
+// Restore theme button icon
+(function() {
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+})();
+
+/* ── LOAD STATS ── */
+async function loadStats() {
+  const userId = getUser()?.id;
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}`);
+
+  const prodFilter = window.__activeProductFilter;
+  if (prodFilter) convs = convs.filter(c => c.product_id === prodFilter);
+
+  const open    = convs.filter(c => c.status !== 'selesai').length;
+  const esc     = convs.filter(c => c.status === 'eskalasi').length;
+  const selesai = convs.filter(c => c.status === 'selesai').length;
+
+  // FU Hari Ini
+  const today = new Date().toISOString().slice(0,10);
+  let fuToday = 0;
   try {
-    const msgs = await sbGet('conv_messages',
-      `conversation_id=eq.${convId}&order=created_at.asc&limit=50`);
-    if (!msgs.length) { el.innerHTML = '<div class="text-dim text-sm" style="text-align:center">Belum ada pesan</div>'; return; }
-    el.innerHTML = msgs.map(m => {
-      const isOut = m.role !== 'customer';
-      return `
-        <div class="msg ${isOut ? 'msg-out' : 'msg-in'} ${m.role === 'ai' ? 'ai' : ''}">
-          <div class="msg-bubble">${(m.isi || '').replace(/\n/g, '<br>')}</div>
-          <div class="msg-time">${fmtDateTime(m.created_at)} ${m.role === 'ai' ? '· AI' : ''}</div>
-        </div>`;
-    }).join('');
-    el.scrollTop = el.scrollHeight;
-  } catch(e) { el.innerHTML = `<div class="text-dim text-sm text-red">${e.message}</div>`; }
+    const fuList = await _sbGet('followup_schedule', `?user_id=eq.${userId}&tanggal_kirim=eq.${today}&status=eq.pending`);
+    fuToday = fuList.length || 0;
+  } catch(e) {}
+
+  // AI messages hari ini
+  const convIds = convs.map(c => c.id).join(',');
+  let aiMsgs = [];
+  if (convIds) {
+    aiMsgs = await _sbGet('conv_messages', `?conversation_id=in.(${convIds})&role=eq.ai`).catch(()=>[]);
+  }
+
+  document.getElementById('st-open').textContent     = open;
+  document.getElementById('st-eskalasi').textContent = esc;
+  document.getElementById('st-ai').textContent       = aiMsgs.length || 0;
+  document.getElementById('st-aktif').textContent    = fuToday;
+  document.getElementById('st-unik').textContent     = selesai;
+  document.getElementById('st-open-sub').textContent = open + ' percakapan aktif';
+  document.getElementById('st-esc-sub').textContent  = esc > 0 ? esc + ' perlu penanganan' : 'aman terkendali';
+  document.getElementById('st-esc-sub').className    = 'stat-sub ' + (esc > 0 ? 'danger' : 'ok');
+  document.getElementById('st-ai-sub').textContent   = (aiMsgs.length || 0) + ' balasan AI hari ini';
+  document.getElementById('st-aktif-sub').textContent = fuToday + ' jadwal follow-up';
+  document.getElementById('st-unik-sub').textContent  = selesai + ' percakapan selesai';
+
+  document.getElementById('fn-all').textContent     = convs.length;
+  document.getElementById('fn-esc').textContent     = esc;
+  document.getElementById('fn-live').textContent    = convs.filter(c=>c.status==='baru'||c.status==='diproses').length;
+  document.getElementById('fn-selesai').textContent = selesai;
+  document.getElementById('inbox-count').textContent = convs.length;
+
+  const badge = document.getElementById('unread-badge');
+  const unread = convs.filter(c=>c.status==='baru').length;
+  badge.textContent = unread;
+  badge.style.display = unread ? '' : 'none';
 }
 
-function inlineKeydown(e, convId) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendInline(convId); }
+/* ── RENDER INBOX ── */
+window.addEventListener('productSwitch', () => {
+  renderInbox();
+  loadStats().catch(()=>{});
+});
+
+async function renderInbox() {
+  const userId = getUser()?.id;
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=last_msg_at.${sortOrder}.nullslast`);
+  allConvs = convs;
+
+  const _prodFilter = window.__activeProductFilter;
+  if (_prodFilter) convs = convs.filter(c => c.product_id === _prodFilter);
+
+  if (tabFilter === 'eskalasi') convs = convs.filter(c => c.status === 'eskalasi');
+  else if (tabFilter === 'live') convs = convs.filter(c => c.status === 'baru' || c.status === 'diproses');
+  else if (tabFilter === 'selesai') {
+    convs = convs.filter(c => c.status === 'selesai');
+    convs.sort((a,b) => {
+      const an = a.state?.has_new_message ? 1 : 0;
+      const bn = b.state?.has_new_message ? 1 : 0;
+      return bn - an;
+    });
+  }
+
+  if (searchFilter) {
+    convs = convs.filter(c => {
+      const cust = custMapCache[c.customer_id];
+      return !cust || cust.nama?.toLowerCase().includes(searchFilter) || cust.wa_number?.includes(searchFilter);
+    });
+  }
+
+  const el = document.getElementById('conv-list');
+  if (!convs.length) {
+    el.innerHTML = `<div class="empty-inbox">📭<br><br>Belum ada percakapan</div>`;
+    return;
+  }
+
+  const custIds = [...new Set(convs.map(c=>c.customer_id).filter(Boolean))];
+  if (custIds.length) {
+    const custs = await _sbGet('customers', `?id=in.(${custIds.join(',')})`);
+    custs.forEach(c => custMapCache[c.id] = c);
+  }
+
+  const lastMsgs = await Promise.all(convs.map(c =>
+    _sbGet('conv_messages', `?conversation_id=eq.${c.id}&order=created_at.desc&limit=1`)
+  ));
+
+  el.innerHTML = convs.map((conv, i) => {
+    const cust    = custMapCache[conv.customer_id] || {};
+    const nama    = cust.nama || cust.wa_number || 'Unknown';
+    const last    = lastMsgs[i]?.[0];
+    const preview = last?.isi?.slice(0,55) || 'Belum ada pesan';
+    const color   = avatarColor(nama);
+    const isEsc   = conv.status === 'eskalasi';
+    const isLive  = conv.status === 'baru' || conv.status === 'diproses';
+    const isDone  = conv.status === 'selesai';
+    const isNew   = isDone && conv.state?.has_new_message;
+    const tags    = `<span class="ctag wa">WA</span>${isLive?'<span class="ctag live">Live</span>':''}${isEsc?'<span class="ctag eskalasi">Eskalasi</span>':''}${isDone&&!isNew?'<span class="ctag ai">Selesai</span>':''}${isNew?'<span class="ctag new-msg">Balas Baru</span>':''}`;
+    const unreadDot = (conv.status === 'baru' || isNew) ? '<div class="conv-unread"></div>' : '';
+    return `<div class="conv-item${activeConvId===conv.id?' active':''}" onclick="selectConv('${conv.id}')">
+      <div class="conv-av" style="background:${color}">${initials(nama)}</div>
+      <div class="conv-info">
+        <div class="conv-name-row">
+          <div class="conv-name">${esc(nama)}</div>
+          <div class="conv-time">${last ? timeStr(last.created_at) : ''}</div>
+        </div>
+        <div class="conv-preview">${esc(preview)}</div>
+        <div class="conv-tags">${tags}</div>
+      </div>
+      ${unreadDot}
+    </div>`;
+  }).join('');
 }
 
-async function sendInline(convId) {
-  const inp = document.getElementById('inline-input');
-  const isi = inp.value.trim();
-  if (!isi) return;
-  inp.value = '';
-  try {
-    await sbPost('conv_messages', { conversation_id: convId, isi, role: 'cs' });
-    await sbPatch('conversations', `id=eq.${convId}`, { updated_at: new Date().toISOString() });
-    await loadMessages(convId, 'inline-msgs');
-    // Kirim via Baileys jika ada WA
-    const conv = conversations.find(c => c.id === convId);
-    if (conv?.customers?.wa_number) {
-      await sendWA(conv.customers.wa_number, isi, currentUser.id);
-    }
-  } catch(e) { toast(e.message, 'error'); }
+function setTab(tab, btn) {
+  tabFilter = tab;
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderInbox();
+}
+function setSortOrder(val) { sortOrder = val; renderInbox(); }
+function filterConvs(val) { searchFilter = val.toLowerCase(); renderInbox(); }
+
+/* ── SELECT CONVERSATION ── */
+async function selectConv(id) {
+  activeConvId = id;
+  sessionStorage.setItem('cs_active_conv', id);
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.conv-item').forEach(el => {
+    if (el.getAttribute('onclick')?.includes(id)) el.classList.add('active');
+  });
+  await renderChat();
+  await updateCaseBoard();
+  updateSLA();
 }
 
-// ---- OPEN FU CHAT ----
-async function openFUChat(fuId, customerId, nama, waNum, ruleName) {
-  // Cari atau buat conversation
-  let convId;
-  try {
-    let convs = await sbGet('conversations', `user_id=eq.${currentUser.id}&customer_id=eq.${customerId}&status=neq.selesai&limit=1`);
-    if (convs.length) {
-      convId = convs[0].id;
-    } else {
-      // Buat conv baru
-      const cust = await sbGet('customers', `id=eq.${customerId}&select=product_id`);
-      const newConv = await sbPost('conversations', {
-        user_id: currentUser.id,
-        customer_id: customerId,
-        product_id: cust[0]?.product_id || null,
-        status: 'aktif',
-        sumber: 'fu',
-        state: {}
-      });
-      convId = newConv[0].id;
-      // Generate pesan FU dengan AI
-      await generateAndSendFU(fuId, customerId, convId, ruleName, waNum);
-    }
+/* ── RENDER CHAT ── */
+async function renderChat() {
+  const userId = getUser()?.id;
+  const area = document.getElementById('messages-area');
+  if (!activeConvId) return;
+  lastMsgTimestamp = null;
 
-    // Open chat modal
-    openFullChat(convId, nama, waNum);
+  const convs = await _sbGet('conversations', `?id=eq.${activeConvId}&limit=1`);
+  activeConv  = convs[0]; if (!activeConv) return;
+  const custs = activeConv.customer_id ? await _sbGet('customers', `?id=eq.${activeConv.customer_id}&limit=1`) : [];
+  activeCustomer = custs[0] || null;
 
-    // Update followup_schedule jadi sent
-    await sbPatch('followup_schedule', `id=eq.${fuId}`, { status: 'sent', sent_at: new Date().toISOString() });
-    document.getElementById(`fucard-${fuId}`)?.remove();
-    loadStats();
-  } catch(e) { toast(e.message, 'error'); }
-}
+  if (activeConv.product_id) {
+    const prods = await _sbGet('products', `?id=eq.${activeConv.product_id}&select=wa_session_id&limit=1`).catch(()=>[]);
+    activeSessionId = prods[0]?.wa_session_id || userId;
+  } else {
+    activeSessionId = userId;
+  }
 
-async function generateAndSendFU(fuId, customerId, convId, ruleName, waNum) {
-  try {
-    // Ambil rule templates
-    const rules = await sbGet('followup_rules', `nama=eq.${encodeURIComponent(ruleName)}&user_id=eq.${currentUser.id}&select=templates`);
-    const templates = rules[0]?.templates || [];
-    let pesan = '';
+  const nama  = activeCustomer?.nama || activeCustomer?.wa_number || 'Customer';
+  const color = avatarColor(nama);
+  document.getElementById('ch-av').textContent      = initials(nama);
+  document.getElementById('ch-av').style.background = color;
+  document.getElementById('ch-name').textContent    = nama;
+  document.getElementById('ch-sub').innerHTML       = `<span class="ch-live"></span> WhatsApp &middot; ${formatPhone(activeCustomer?.wa_number)}`;
 
-    if (templates.length) {
-      // Random pilih template
-      pesan = templates[Math.floor(Math.random() * templates.length)];
-    }
+  const statusArea = document.getElementById('ch-status-area');
+  if (activeConv.status === 'eskalasi') {
+    statusArea.innerHTML = `<div class="ch-status-badge eskalasi" onclick="resumeAI()">⚠️ Eskalasi <span style="font-size:10px;opacity:.7;margin-left:4px">Klik aktifkan AI</span></div>`;
+  } else if (activeConv.status === 'selesai') {
+    statusArea.innerHTML = `<div class="ch-status-badge selesai">✅ Selesai</div>`;
+  } else {
+    statusArea.innerHTML = `<div class="ch-status-badge live">● Live</div>`;
+  }
 
-    if (!pesan) return; // Kalau tidak ada template, tidak kirim otomatis
+  document.getElementById('ae-av').textContent       = initials(nama);
+  document.getElementById('ae-av').style.background  = color;
+  document.getElementById('ae-name').textContent     = nama;
 
-    // Simpan ke conv_messages
-    await sbPost('conv_messages', { conversation_id: convId, isi: pesan, role: 'ai' });
-    // Update fu schedule dengan pesan terkirim
-    await sbPatch('followup_schedule', `id=eq.${fuId}`, { pesan_terkirim: pesan });
-    // Kirim WA
-    if (waNum) await sendWA(waNum, pesan, currentUser.id);
-  } catch(e) { console.error('generateAndSendFU', e); }
-}
+  const msgs = await _sbGet('conv_messages',
+    `?conversation_id=eq.${activeConvId}&order=created_at.asc&limit=200&select=id,role,isi,wamid,created_at`);
+  lastMsgCount = msgs.length;
+  lastMsgTimestamp = msgs.length ? msgs[msgs.length - 1].created_at : null;
 
-async function skipFU(fuId) {
-  if (!confirm('Skip FU ini?')) return;
-  try {
-    await sbPatch('followup_schedule', `id=eq.${fuId}`, { status: 'skipped' });
-    document.getElementById(`fucard-${fuId}`)?.remove();
-    toast('FU di-skip', 'info');
-    loadStats();
-  } catch(e) { toast(e.message, 'error'); }
-}
+  area.innerHTML = '<div class="day-divider">Hari ini</div>';
+  msgs.forEach(m => {
+    if (m.role === 'system') appendSystemNote(m.isi, m.created_at);
+    else appendBubble(m.role === 'customer' ? 'customer' : 'bot', m.isi, false, m.created_at, m.role, m.id, m.wamid);
+  });
+  area.scrollTop = area.scrollHeight;
 
-// ---- FULL CHAT MODAL ----
-let fullChatConvId = null;
+  // Customer Memory card
+  const cmEmpty = document.getElementById('cm-empty');
+  const cmRows  = document.getElementById('cm-rows');
+  if (activeCustomer) {
+    document.getElementById('cm-nama').textContent     = esc(activeCustomer.nama || '—');
+    document.getElementById('cm-phone').textContent    = formatPhone(activeCustomer.wa_number);
+    document.getElementById('cm-produk').textContent   = esc(activeCustomer.produk || '—');
 
-function openFullChat(convId, nama, wa) {
-  fullChatConvId = convId;
-  document.getElementById('chat-modal-name').textContent = nama || '-';
-  document.getElementById('chat-modal-sub').textContent = wa || '-';
-  document.getElementById('chat-modal').classList.add('show');
-  loadMessages(convId, 'chat-modal-messages');
-}
+    const fmt = (d, short=false) => {
+      if (!d) return '—';
+      const opt = short
+        ? {day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Jakarta'}
+        : {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'};
+      return new Date(d).toLocaleDateString('id-ID', opt);
+    };
+    document.getElementById('cm-delivered').textContent = fmt(activeCustomer.tgl_delivered, true);
+    document.getElementById('cm-first').textContent     = fmt(activeCustomer.created_at, true);
 
-function closeChatModal() {
-  document.getElementById('chat-modal').classList.remove('show');
-  fullChatConvId = null;
-}
+    const lastTs = lastMsgTimestamp || activeConv.updated_at;
+    document.getElementById('cm-last').textContent  = fmt(lastTs);
+    document.getElementById('cm-total').textContent = msgs.length;
 
-function chatInputKeydown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
-}
+    const st = activeConv.status;
+    const stEl = document.getElementById('cm-status');
+    if (st === 'eskalasi') { stEl.textContent = 'Eskalasi'; stEl.className = 'cm-value cm-status-eskalasi'; }
+    else if (st === 'selesai') { stEl.textContent = 'Selesai'; stEl.className = 'cm-value cm-status-selesai'; }
+    else { stEl.textContent = 'Live'; stEl.className = 'cm-value cm-status-live'; }
 
-async function sendChatMessage() {
-  const inp = document.getElementById('chat-modal-input');
-  const isi = inp.value.trim();
-  if (!isi || !fullChatConvId) return;
-  inp.value = '';
-  try {
-    await sbPost('conv_messages', { conversation_id: fullChatConvId, isi, role: 'cs' });
-    await sbPatch('conversations', `id=eq.${fullChatConvId}`, { updated_at: new Date().toISOString() });
-    await loadMessages(fullChatConvId, 'chat-modal-messages');
-    const conv = conversations.find(c => c.id === fullChatConvId);
-    if (conv?.customers?.wa_number) {
-      await sendWA(conv.customers.wa_number, isi, currentUser.id);
-    }
-  } catch(e) {
-    document.getElementById('chat-modal-err').textContent = e.message;
-    document.getElementById('chat-modal-err').style.display = 'block';
+    cmEmpty.style.display = 'none';
+    cmRows.style.display  = 'block';
+  } else {
+    cmEmpty.style.display = 'block';
+    cmRows.style.display  = 'none';
   }
 }
 
-async function aiSuggest() {
-  if (!fullChatConvId) return;
-  const btn = document.getElementById('btn-ai-suggest');
-  btn.disabled = true; btn.textContent = '...';
+function appendSystemNote(text, ts=null) {
+  const area = document.getElementById('messages-area');
+  area.querySelector('.no-chat')?.remove();
+  const t = ts ? new Date(ts).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}) : '';
+  const div = document.createElement('div');
+  div.style.cssText = 'text-align:center;margin:8px 0';
+  div.innerHTML = `<span style="display:inline-block;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#f59e0b;font-size:11px;padding:4px 12px;border-radius:20px">${(text||'').replace(/</g,'&lt;')}</span>${t ? `<div style="font-size:10px;color:#475569;margin-top:2px">${t}</div>` : ''}`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function appendBubble(type, text, scroll=true, ts=null, role=null, msgId=null, wamid=null) {
+  const area = document.getElementById('messages-area');
+  area.querySelector('.no-chat')?.remove();
+  const div  = document.createElement('div');
+  div.className = `msg-row from-${type}`;
+  const safe = (text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  const t    = ts ? new Date(ts).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}) : '';
+  const nama = document.getElementById('ch-name').textContent;
+  const label = role === 'cs' ? '👤 CS' : '🤖 AI Agent';
+  if (type === 'customer') {
+    div.innerHTML = `<div class="msg-av-s" style="background:${avatarColor(nama)}">${initials(nama)}</div>
+      <div class="msg-wrap"><div class="bubble">${safe}</div><div class="msg-meta">${t}</div></div>`;
+  } else {
+    const canAct = wamid ? `
+      <div class="msg-actions">
+        <button class="msg-act-btn" title="Edit pesan" onclick="editWAMsg('${msgId}','${wamid}',this)">✏️</button>
+        <button class="msg-act-btn" title="Hapus pesan" onclick="deleteWAMsg('${msgId}','${wamid}',this)">🗑️</button>
+      </div>` : '';
+    div.innerHTML = `<div class="msg-wrap">
+      <div class="bot-label">${label}</div>
+      <div class="bubble" data-msg-id="${msgId||''}">${safe}</div>
+      <div class="msg-meta">${t}${canAct}</div>
+    </div>`;
+  }
+  area.appendChild(div);
+  if (scroll) area.scrollTop = area.scrollHeight;
+  return div;
+}
+
+async function deleteWAMsg(msgId, wamid, btn) {
+  if (!confirm('Hapus pesan ini untuk semua orang?')) return;
+  btn.disabled = true; btn.textContent = '⏳';
   try {
-    const r = await fetch('/api/save-settings', {
+    const waNum = activeCustomer?.reply_jid || activeCustomer?.wa_number;
+    const r = await fetch('/api/baileys-proxy?path=/delete-msg', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'ai-suggest', conv_id: fullChatConvId, user_id: currentUser.id })
+      body: JSON.stringify({ session_id: activeSessionId, wa_number: waNum, wamid }),
     });
     const d = await r.json();
-    if (d.pesan) document.getElementById('chat-modal-input').value = d.pesan;
-  } catch(e) { toast(e.message, 'error'); }
-  btn.disabled = false; btn.textContent = '🤖';
+    if (d.ok) {
+      await fetch(`${window.__SB_URL}/rest/v1/conv_messages?id=eq.${msgId}`, {
+        method: 'DELETE',
+        headers: { apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY },
+      });
+      btn.closest('.msg-row')?.remove();
+    } else {
+      alert('Gagal hapus: ' + (d.error || 'unknown'));
+      btn.disabled = false; btn.textContent = '🗑️';
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.textContent = '🗑️';
+  }
 }
 
-// ---- SEND WA via Baileys ----
-async function sendWA(to, text, userId) {
+async function editWAMsg(msgId, wamid, btn) {
+  const bubble = btn.closest('.msg-wrap')?.querySelector('.bubble');
+  const currentText = (bubble?.innerText || '').trim();
+  const newText = prompt('Edit pesan:', currentText);
+  if (!newText || newText === currentText) return;
+  btn.disabled = true; btn.textContent = '⏳';
   try {
-    await fetch('/api/baileys-proxy', {
+    const waNum = activeCustomer?.reply_jid || activeCustomer?.wa_number;
+    const r = await fetch('/api/baileys-proxy?path=/edit-msg', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: '/send', session_id: userId, to: to + '@s.whatsapp.net', text })
+      body: JSON.stringify({ session_id: activeSessionId, wa_number: waNum, wamid, new_text: newText }),
     });
-  } catch(e) { console.warn('sendWA failed', e.message); }
+    const d = await r.json();
+    if (d.ok) {
+      await fetch(`${window.__SB_URL}/rest/v1/conv_messages?id=eq.${msgId}`, {
+        method: 'PATCH',
+        headers: { apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isi: newText }),
+      });
+      if (bubble) bubble.innerHTML = newText.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+      btn.disabled = false; btn.textContent = '✏️';
+    } else {
+      alert('Gagal edit: ' + (d.error || 'unknown'));
+      btn.disabled = false; btn.textContent = '✏️';
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.textContent = '✏️';
+  }
 }
 
-init();
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} }
+
+/* ── SEND MESSAGE ── */
+let _sending = false;
+async function sendMsg() {
+  const userId = getUser()?.id;
+  if (!activeConvId || !activeCustomer) return;
+  if (_sending) return;
+  _sending = true;
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text) { _sending = false; return; }
+  input.value = ''; autoResize(input);
+  document.getElementById('ai-suggest-box').style.display = 'none';
+
+  try {
+    const saved = await _sbPost('conv_messages', { conversation_id: activeConvId, role: 'cs', isi: text });
+    const sentAt = saved?.[0]?.created_at || new Date().toISOString();
+    if (sentAt > (lastMsgTimestamp || '')) lastMsgTimestamp = sentAt;
+    appendBubble('bot', text, true, sentAt, 'cs');
+    await fetch(`${PROXY}?path=${encodeURIComponent('/send')}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: userId, wa_number: activeCustomer.reply_jid || activeCustomer.wa_number, message: text, is_outbound: true }),
+    });
+  } catch(e) { showToast('Gagal kirim pesan: '+e.message); }
+  finally { _sending = false; }
+}
+
+/* ── AI SUGGESTED REPLY ── */
+async function getAISuggest() {
+  const userId = getUser()?.id;
+  if (!activeConvId) return showToast('Pilih percakapan dulu');
+  const box = document.getElementById('ai-suggest-box');
+  const txt = document.getElementById('ai-suggest-text');
+  box.style.display = 'block';
+  txt.innerHTML = '<div class="ai-loading"><div class="typing-dots"><span></span><span></span><span></span></div> AI sedang menyusun saran...</div>';
+  document.getElementById('ai-conf').textContent = '—';
+
+  try {
+    const res = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'ai-suggest', conv_id: activeConvId, user_id: userId }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    aiSuggestText = data.pesan || '';
+    txt.textContent = aiSuggestText;
+    document.getElementById('ai-conf').textContent = 'Claude Haiku';
+  } catch(e) {
+    txt.textContent = 'Gagal generate saran: '+e.message;
+  }
+}
+
+function useAISuggest() {
+  if (!aiSuggestText) return;
+  document.getElementById('msg-input').value = aiSuggestText;
+  autoResize(document.getElementById('msg-input'));
+  document.getElementById('ai-suggest-box').style.display = 'none';
+  sendMsg();
+}
+function copyAISuggest() {
+  navigator.clipboard.writeText(aiSuggestText).then(()=>showToast('Disalin!'));
+}
+function closeAISuggest() {
+  document.getElementById('ai-suggest-box').style.display = 'none';
+}
+
+/* ── UPDATE CASE BOARD (CRM: FU schedule + customer purchase info) ── */
+async function updateCaseBoard() {
+  const userId = getUser()?.id;
+  if (!activeConvId || !activeConv) return;
+
+  document.getElementById('ae-chips').innerHTML = `
+    <span class="ai-chip intent">Status: ${activeConv.status === 'eskalasi' ? 'Eskalasi' : activeConv.status === 'selesai' ? 'Selesai' : 'Aktif'}</span>
+    <span class="ai-chip sentiment">${activeCustomer?.produk ? esc(activeCustomer.produk.slice(0,12)) : 'Customer'}</span>
+    <span class="ai-chip prob">AI: Aktif</span>`;
+
+  // Load FU schedule for this customer
+  const fuList = document.getElementById('fu-schedule-list');
+  if (activeCustomer?.id) {
+    try {
+      const fuData = await _sbGet('followup_schedule',
+        `?customer_id=eq.${activeCustomer.id}&order=tanggal_kirim.asc&limit=10`);
+      if (fuData.length === 0) {
+        fuList.innerHTML = '<div style="font-size:12px;color:#475569;text-align:center;padding:12px 0">Belum ada jadwal FU</div>';
+      } else {
+        const today = new Date().toISOString().slice(0,10);
+        fuList.innerHTML = fuData.map(f => {
+          const isToday = f.tanggal_kirim === today;
+          const isSent  = f.status === 'sent' || f.status === 'terkirim';
+          const badgeCls = isSent ? 'done' : isToday ? 'today' : 'pending';
+          const badgeTxt = isSent ? '✓ Terkirim' : isToday ? '🔔 Hari Ini' : 'Terjadwal';
+          const tgl = f.tanggal_kirim ? new Date(f.tanggal_kirim).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '—';
+          return `<div class="fu-item">
+            <div class="fu-icon">${isSent ? '✅' : isToday ? '🔔' : '📅'}</div>
+            <div class="fu-info">
+              <div class="fu-label">${esc(f.rule_nama || 'Follow-up')}</div>
+              <div class="fu-value">${tgl}</div>
+              <div class="fu-sub">${f.pesan ? esc(f.pesan.slice(0,40))+'...' : 'Template otomatis'}</div>
+            </div>
+            <div class="fu-badge ${badgeCls}">${badgeTxt}</div>
+          </div>`;
+        }).join('');
+      }
+    } catch(e) {
+      fuList.innerHTML = '<div style="font-size:12px;color:#475569;text-align:center;padding:12px 0">Gagal memuat jadwal</div>';
+    }
+  } else {
+    fuList.innerHTML = '<div style="font-size:12px;color:#475569;text-align:center;padding:12px 0">Data customer tidak tersedia</div>';
+  }
+}
+
+/* ── SLA COUNTDOWN ── */
+function updateSLA() {
+  if (slaInterval) clearInterval(slaInterval);
+  if (!activeConv) return;
+
+  function tick() {
+    const created = new Date(activeConv.created_at || Date.now());
+    const slaMs   = 24 * 3600 * 1000;
+    const elapsed = Date.now() - created.getTime();
+    const remain  = Math.max(0, slaMs - elapsed);
+    const pct     = Math.max(0, Math.min(100, (remain / slaMs) * 100));
+    const h = Math.floor(remain / 3600000);
+    const m = Math.floor((remain % 3600000) / 60000);
+
+    const statusEl = document.getElementById('sla-status');
+    const fillEl   = document.getElementById('sla-fill');
+    const timeEl   = document.getElementById('sla-time');
+
+    if (pct > 50)       { statusEl.textContent = 'Aman';     statusEl.className = 'sla-status ok';     fillEl.className = 'sla-fill'; }
+    else if (pct > 20)  { statusEl.textContent = 'Perhatian'; statusEl.className = 'sla-status warn';  fillEl.className = 'sla-fill warn'; }
+    else                { statusEl.textContent = 'Kritis!';   statusEl.className = 'sla-status danger'; fillEl.className = 'sla-fill danger'; }
+
+    fillEl.style.width = pct + '%';
+    timeEl.textContent = remain > 0 ? `${h} Jam ${m} Menit tersisa` : 'SLA terlampaui!';
+  }
+  tick();
+  slaInterval = setInterval(tick, 30000);
+}
+
+/* ── MARK SELESAI ── */
+async function markSelesai() {
+  if (!activeConvId) return;
+  await _sbPatch('conversations', `?id=eq.${activeConvId}`, { status: 'selesai' });
+  showToast('Percakapan ditandai selesai');
+  activeConv.status = 'selesai';
+  await renderChat();
+  await renderInbox();
+}
+
+/* ── MANUAL ESCALATE ── */
+async function manualEscalate() {
+  if (!activeConvId) return;
+  if (activeConv?.status === 'eskalasi') { showToast('Sudah dalam mode eskalasi'); return; }
+  await _sbPatch('conversations', `?id=eq.${activeConvId}`, { status: 'eskalasi', prioritas: 'high' });
+  showToast('✋ AI dimatikan — kamu yang balas sekarang');
+  activeConv.status = 'eskalasi';
+  await renderChat();
+  await renderInbox();
+}
+
+/* ── RESUME AI ── */
+async function resumeAI() {
+  if (!activeConvId) return;
+  if (!confirm('Aktifkan kembali AI untuk percakapan ini?')) return;
+  await _sbPatch('conversations', `?id=eq.${activeConvId}`, { status: 'diproses' });
+  showToast('AI diaktifkan kembali');
+  activeConv.status = 'diproses';
+  await renderChat();
+  await renderInbox();
+}
+
+/* ── CLEAR CHAT ── */
+async function clearChat() {
+  if (!activeConvId || !confirm('Hapus riwayat chat ini?')) return;
+  await _sbDelete('conv_messages', `?conversation_id=eq.${activeConvId}`);
+  await renderChat();
+  showToast('Chat dihapus');
+}
+
+/* ── WA STATUS ── */
+async function checkWA() {
+  const userId = getUser()?.id;
+  const sbBot = document.getElementById('sb-bot-status');
+  try {
+    let sessionId = userId;
+    const prodFilter = window.__activeProductFilter;
+    if (prodFilter) {
+      const prods = await _sbGet('products', `?id=eq.${prodFilter}&select=wa_session_id&limit=1`).catch(()=>[]);
+      sessionId = prods[0]?.wa_session_id || userId;
+    } else {
+      const prods = await _sbGet('products', `?user_id=eq.${userId}&aktif=eq.true&select=wa_session_id&order=created_at.asc&limit=1`).catch(()=>[]);
+      sessionId = prods[0]?.wa_session_id || userId;
+    }
+    const res    = await fetch(`${PROXY}?path=${encodeURIComponent('/session/status/'+sessionId)}`);
+    const status = await res.json();
+    if (status.status === 'connected') {
+      sbBot.innerHTML   = '<div class="bot-dot"></div> Bot online';
+      sbBot.style.color = '#22c55e';
+    } else {
+      sbBot.innerHTML   = '⚠️ Bot offline';
+      sbBot.style.color = '#f59e0b';
+    }
+  } catch(e) {
+    sbBot.innerHTML   = '⚠️ Bot offline';
+    sbBot.style.color = '#f59e0b';
+  }
+}
+
+/* ── TOGGLE BUTTONS ── */
+function toggleAI()  { showToast('AI dikelola otomatis via webhook'); }
+function toggleWA()  { showToast('WA dikelola otomatis via Baileys'); }
+
+/* ── POLLING ── */
+let lastMsgTimestamp = null;
+
+async function poll() {
+  if (activeConvId) {
+    try {
+      const query = lastMsgTimestamp
+        ? `?conversation_id=eq.${activeConvId}&created_at=gt.${encodeURIComponent(lastMsgTimestamp)}&order=created_at.asc`
+        : `?conversation_id=eq.${activeConvId}&order=created_at.asc&limit=100`;
+
+      const msgs = await _sbGet('conv_messages', query);
+
+      if (lastMsgTimestamp) {
+        msgs.forEach(m => {
+          if (m.role === 'system') appendSystemNote(m.isi, m.created_at);
+          else appendBubble(m.role === 'customer' ? 'customer' : 'bot', m.isi, true, m.created_at, m.role);
+          lastMsgTimestamp = m.created_at;
+          lastMsgCount++;
+        });
+      } else {
+        if (msgs.length) lastMsgTimestamp = msgs[msgs.length - 1].created_at;
+        lastMsgCount = msgs.length;
+      }
+    } catch(e) { console.error('poll error:', e.message); }
+  }
+  await renderInbox().catch(()=>{});
+  await loadStats().catch(()=>{});
+}
+
+/* ── REPEAT ORDER MODAL ── */
+function openRepeatOrder() {
+  if (!activeConvId || !activeCustomer) return;
+  document.getElementById('ro-nama').value    = activeCustomer.nama || '';
+  document.getElementById('ro-produk').value  = activeCustomer.produk || '';
+  document.getElementById('ro-catatan').value = '';
+  document.getElementById('ro-err').textContent = '';
+  document.getElementById('ro-overlay').style.display = 'flex';
+}
+function closeRepeatOrder() {
+  document.getElementById('ro-overlay').style.display = 'none';
+}
+async function submitRepeatOrder() {
+  const userId = getUser()?.id;
+  const catatan = document.getElementById('ro-catatan').value.trim();
+  const errEl   = document.getElementById('ro-err');
+  const btn     = document.getElementById('ro-btn-submit');
+  btn.disabled  = true; btn.textContent = 'Menyimpan...';
+  errEl.textContent = '';
+  try {
+    // Tandai conversation sebagai selesai + catat repeat order di state
+    const newState = { ...activeConv?.state, repeat_order: true, repeat_catatan: catatan, repeat_at: new Date().toISOString() };
+    await _sbPatch('conversations', `?id=eq.${activeConvId}`, { status: 'selesai', state: newState });
+    showToast('✅ Repeat order dicatat');
+    closeRepeatOrder();
+    activeConv.status = 'selesai';
+    await renderChat();
+    await renderInbox();
+    await loadStats();
+  } catch(e) {
+    errEl.textContent = 'Gagal: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan';
+  }
+}
+
+/* ── INIT ── */
+window.addEventListener('load', async () => {
+  await initConfig(); // WAJIB PERTAMA
+
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+
+  await renderInbox();
+  await loadStats();
+  checkWA();
+
+  const urlConv  = new URLSearchParams(window.location.search).get('conv');
+  const savedConv = urlConv || sessionStorage.getItem('cs_active_conv');
+  if (savedConv) {
+    activeConvId = savedConv;
+    await renderChat();
+    await updateCaseBoard();
+    updateSLA();
+  }
+
+  setInterval(poll, 5000);
+});
 </script>
+
+<!-- Modal Repeat Order -->
+<div id="ro-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#1e293b;border-radius:14px;width:400px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden;border:1px solid rgba(255,255,255,.08)">
+    <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.07)">
+      <div style="font-size:15px;font-weight:700;color:#f1f5f9">🔄 Catat Repeat Order</div>
+      <button onclick="closeRepeatOrder()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto">
+      <div>
+        <label class="cm-label">Customer</label>
+        <input type="text" id="ro-nama" class="cm-input" readonly>
+      </div>
+      <div>
+        <label class="cm-label">Produk</label>
+        <input type="text" id="ro-produk" class="cm-input" placeholder="Nama produk yang di-repeat">
+      </div>
+      <div>
+        <label class="cm-label">Catatan (opsional)</label>
+        <textarea id="ro-catatan" rows="3" class="cm-input" style="resize:vertical" placeholder="Catatan tambahan..."></textarea>
+      </div>
+      <div style="color:#ef4444;font-size:12px" id="ro-err"></div>
+    </div>
+    <div style="padding:14px 20px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid rgba(255,255,255,.07)">
+      <button onclick="closeRepeatOrder()" style="padding:8px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#94a3b8;font-size:13px;cursor:pointer">Batal</button>
+      <button id="ro-btn-submit" onclick="submitRepeatOrder()" style="padding:8px 18px;background:linear-gradient(135deg,#2563eb,#3b82f6);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer">Simpan</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
