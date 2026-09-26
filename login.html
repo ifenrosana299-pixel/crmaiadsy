@@ -6,12 +6,101 @@
 <title>Login — AI CRM Adsy</title>
 <link rel="stylesheet" href="css/style.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* alias variabel lama → baru */
+:root {
+  --bg2: #161b22;
+  --bg3: #0d1117;
+  --text2: #64748b;
+  --text3: #475569;
+}
+body.light {
+  --bg2: #ffffff;
+  --bg3: #f1f5f9;
+  --text2: #475569;
+  --text3: #94a3b8;
+}
+
+body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+
+.login-wrap {
+  width:100%; max-width:420px;
+}
+
+.login-card {
+  background:#161b22;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  padding:32px 28px;
+  box-shadow:0 24px 64px rgba(0,0,0,.4);
+}
+body.light .login-card {
+  background:#fff;
+  border-color:rgba(0,0,0,.07);
+  box-shadow:0 8px 32px rgba(0,0,0,.1);
+}
+
+.login-logo {
+  display:flex; flex-direction:column; align-items:center;
+  margin-bottom:28px; text-align:center;
+}
+.login-logo-icon {
+  width:52px; height:52px;
+  background:linear-gradient(135deg,#3b82f6,#6366f1);
+  border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; margin-bottom:12px;
+}
+.login-title {
+  font-size:20px; font-weight:800; color:#f1f5f9; letter-spacing:-.4px;
+}
+body.light .login-title { color:#0f172a; }
+.login-sub {
+  font-size:12px; color:#64748b; margin-top:3px;
+}
+
+.login-err {
+  background:rgba(239,68,68,.1);
+  border:1px solid rgba(239,68,68,.2);
+  border-radius:8px;
+  padding:10px 14px;
+  color:#fca5a5;
+  font-size:13px;
+  margin-bottom:16px;
+  display:none;
+}
+
+/* form-input & form-label sudah di style.css */
+.form-input {
+  width:100%; padding:9px 12px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;
+  font-size:13px;
+  background:#0d1117;
+  color:#e2e8f0;
+  outline:none;
+  transition:border-color .15s;
+}
+.form-input:focus { border-color:rgba(59,130,246,.5); box-shadow:0 0 0 3px rgba(59,130,246,.08); }
+.form-input::placeholder { color:#374151; }
+body.light .form-input { background:#f8fafc; border-color:rgba(0,0,0,.1); color:#0f172a; }
+body.light .form-input::placeholder { color:#94a3b8; }
+.form-label {
+  font-size:11px; font-weight:600; color:#64748b;
+  text-transform:uppercase; letter-spacing:.4px;
+  display:block; margin-bottom:6px;
+}
+body.light .form-label { color:#475569; }
+.form-group { margin-bottom:16px; }
+</style>
 </head>
 <body>
 <div class="login-wrap">
   <div class="login-card">
     <div class="login-logo">
-      <div class="login-logo-icon">🤖</div>
+      <div class="login-logo-icon">
+        <img src="img/logo-adsy.png" style="width:32px;height:32px;object-fit:cover;border-radius:6px" onerror="this.parentElement.textContent='CRM'">
+      </div>
       <div class="login-title">AI CRM Adsy</div>
       <div class="login-sub">Follow-up Engine</div>
     </div>
