@@ -189,14 +189,17 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
       <button class="modal-close" onclick="closeImportModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="card" style="background:var(--bg3);margin-bottom:16px">
-        <div class="fw-600 mb-2">Format Kolom Excel yang Didukung:</div>
-        <div class="text-sm text-muted" style="line-height:1.8">
-          <code>nama</code> · <code>hp / wa / telepon</code> · <code>produk</code> · <code>qty</code> ·
-          <code>harga</code> · <code>resi / no_resi</code> · <code>ekspedisi / kurir</code> ·
-          <code>tgl_order / tanggal</code> · <code>tgl_delivered / delivered</code> · <code>alamat</code>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="fw-600">Format Kolom yang Didukung:</div>
+          <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()" style="gap:5px">⬇️ Download Template</button>
         </div>
-        <div class="text-xs text-dim mt-2">Header bisa huruf besar/kecil, spasi akan diabaikan. Minimal kolom: <strong>nama</strong> dan <strong>hp</strong>.</div>
+        <div class="text-sm text-muted" style="line-height:1.8">
+          <code>nama</code> · <code>hp</code> · <code>produk</code> · <code>qty</code> ·
+          <code>harga</code> · <code>resi</code> · <code>ekspedisi</code> ·
+          <code>tgl_order</code> · <code>tgl_delivered</code> · <code>alamat</code>
+        </div>
+        <div class="text-xs text-dim mt-2">Minimal wajib: <strong>nama</strong> dan <strong>hp</strong>. Format tanggal: YYYY-MM-DD atau DD/MM/YYYY.</div>
       </div>
 
       <div id="drop-zone" style="border:2px dashed var(--border);border-radius:10px;padding:40px;text-align:center;cursor:pointer;transition:border-color .15s"
@@ -593,6 +596,27 @@ function goToChat() {
 
 // ---- IMPORT EXCEL ----
 let importData = [];
+
+function downloadTemplate() {
+  const headers = ['nama','hp','produk','qty','harga','resi','ekspedisi','tgl_order','tgl_delivered','alamat'];
+  const contoh = [
+    ['Siti Rahayu','08123456789','Herbanesia Kapsul',1,150000,'JNE12345678','JNE','2024-01-15','2024-01-18','Jl. Merdeka No. 10, Jakarta Selatan'],
+    ['Budi Santoso','08987654321','Herbanesia Kapsul',2,300000,'SIC87654321','Sicepat','2024-01-16','','Jl. Sudirman No. 5 Blok A, Bandung'],
+    ['Dewi Lestari','08111222333','',1,'','','','','',''],
+  ];
+
+  // Buat CSV
+  const rows = [headers, ...contoh];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const bom = '\uFEFF'; // BOM biar Excel baca UTF-8 dengan benar
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'template_import_customer.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function openImportModal() {
   if (typeof XLSX === 'undefined') {
