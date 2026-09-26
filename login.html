@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Login — AI CRM Adsy</title>
+<script>if(localStorage.getItem('cs_theme')==='light')document.body.classList.add('light');</script>
 <link rel="stylesheet" href="css/style.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -22,6 +23,19 @@ body.light {
 }
 
 body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+
+.theme-toggle {
+  position:fixed; top:16px; right:16px;
+  width:36px; height:36px; border-radius:50%;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.05);
+  color:#94a3b8; font-size:16px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .15s; z-index:10;
+}
+.theme-toggle:hover { background:rgba(255,255,255,.1); color:#e2e8f0; }
+body.light .theme-toggle { border-color:rgba(0,0,0,.1); background:rgba(0,0,0,.04); color:#475569; }
+body.light .theme-toggle:hover { background:rgba(0,0,0,.08); color:#0f172a; }
 
 .login-wrap {
   width:100%; max-width:420px;
@@ -95,6 +109,7 @@ body.light .form-label { color:#475569; }
 </style>
 </head>
 <body>
+<button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Ganti tema">🌙</button>
 <div class="login-wrap">
   <div class="login-card">
     <div class="login-logo">
@@ -165,6 +180,18 @@ body.light .form-label { color:#475569; }
 </div>
 
 <script>
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('cs_theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
+}
+
+// Set icon sesuai tema saat ini
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+});
+
 async function initConfig() {
   try {
     const r = await fetch('/api/config');
