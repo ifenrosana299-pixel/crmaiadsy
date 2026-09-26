@@ -131,8 +131,6 @@ tbody tr:hover{background:rgba(139,92,246,.02)}
 <script src="js/theme.js"></script>
 <script>
 if (!getUser()) { window.location.href = 'login.html'; }
-renderSidebar('aiinsights');
-checkBotStatus();
 
 function sbFetch(table, query) {
   return fetch(`${window.__SB_URL}/rest/v1/${table}${query}`, {
@@ -170,6 +168,9 @@ function cleanPhone(raw) {
 const uid = getUser()?.id;
 
 async function init() {
+  await initConfig();
+  renderSidebar('aiinsights');
+  checkBotStatus();
   const prodFilter = window.__activeProductFilter || null;
   const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
   const [convs, custs] = await Promise.all([
@@ -223,7 +224,7 @@ async function init() {
   }).join('');
 }
 
-initConfig().then(() => init());
+init();
 window.addEventListener('productSwitch', () => init());
 </script>
 </body>
