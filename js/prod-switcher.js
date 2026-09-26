@@ -205,7 +205,7 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
 
   // ── Load produk dari Supabase ─────────────────────────────
   async function loadProds() {
-    const userId = (typeof Auth !== 'undefined' ? Auth : window.Auth)?.getUser?.()?.id;
+    const userId = (typeof getUser === 'function' ? getUser() : (typeof Auth !== 'undefined' ? Auth : window.Auth)?.getUser?.())?.id;
     if (!userId) { console.log('[ProdSW] no userId'); return; }
     try {
       let r = await fetch(
