@@ -6,6 +6,34 @@
 <title>Customer — AI CRM Adsy</title>
 <link rel="stylesheet" href="css/style.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+#sidebar{width:220px;min-width:220px;background:#1e293b;height:100vh;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;text-decoration:none;transition:all .12s}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
+.sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
+.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-item .si svg{width:16px;height:16px;display:block}
+.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light .sb-title{color:#0f172a}
+body.light .sb-item{color:#475569!important}
+body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
+body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
+body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
+</style>
 </head>
 <body>
 <div class="app-layout">

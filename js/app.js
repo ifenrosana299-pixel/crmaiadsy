@@ -184,3 +184,71 @@ const Auth = {
   logout: logout,
   isLoggedIn: () => !!getUser(),
 };
+
+/* ── renderSidebar: inject sidebar HTML ke #sidebar ── */
+function renderSidebar(activePage) {
+  const SVG = {
+    analytics:  `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg>`,
+    dashboard:  `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg>`,
+    customers:  `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>`,
+    followup:   `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'/><path d='M10.3 21a1.94 1.94 0 0 0 3.4 0'/></svg>`,
+    cases:      `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='6' height='6' rx='1'/><path d='m3 17 2 2 4-4'/><path d='M13 6h8'/><path d='M13 12h8'/><path d='M13 18h8'/></svg>`,
+    contacts:   `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>`,
+    aiinsights: `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z'/></svg>`,
+    broadcast:  `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M22 8.01c0-4.42-4.48-8-10-8S2 3.59 2 8.01c0 2.83 1.84 5.31 4.62 6.76L6 18l3.58-2.46C10.34 15.8 11.16 16 12 16c5.52 0 10-3.58 10-7.99Z'/></svg>`,
+    products:   `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m7.5 4.27 9 5.15'/><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/></svg>`,
+    settings:   `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/><circle cx='12' cy='12' r='3'/></svg>`,
+  };
+  const nav = [
+    ['analytics',  'analytics.html',  'Ringkasan'],
+    ['dashboard',  'dashboard.html',  'Percakapan'],
+    ['customers',  'customers.html',  'Customer'],
+    ['followup',   'followup.html',   'Follow-up'],
+    ['cases',      'cases.html',      'Cases'],
+    ['contacts',   'contacts.html',   'Kontak'],
+    ['aiinsights', 'aiinsights.html', 'AI Insights'],
+    ['broadcast',  'broadcast.html',  'Broadcast'],
+    ['products',   'products.html',   'Katalog & SOP'],
+  ];
+
+  const user = getUser();
+  const nama = user?.nama_toko || user?.username || 'User';
+  const inisial = nama.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  const navHtml = nav.map(([key, href, label]) => {
+    const active = key === activePage ? ' active' : '';
+    return `<a class="sb-item${active}" href="${href}"><span class="si">${SVG[key]}</span> ${label}</a>`;
+  }).join('\n    ');
+
+  const html = `
+<div class="sb-brand">
+  <div class="sb-logo">CRM</div>
+  <div>
+    <div class="sb-title">AI CRM Adsy</div>
+    <div class="sb-subtitle">Follow-up Engine</div>
+  </div>
+</div>
+<div class="bot-online" id="sb-bot-status"><div class="bot-dot"></div> Bot online</div>
+<div class="sb-nav">
+    ${navHtml}
+    <div class="sb-divider"></div>
+    <div class="sb-section">Akun</div>
+    <a class="sb-item${'settings' === activePage ? ' active' : ''}" href="settings.html"><span class="si">${SVG.settings}</span> Pengaturan</a>
+</div>
+<div class="sb-user">
+  <div class="sb-avatar" id="sb-av">${inisial}</div>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="sb-name">${nama}</div>
+    <button style="font-size:11px;color:#475569;border:none;background:none;cursor:pointer;padding:0" onclick="logout()">Logout</button>
+  </div>
+</div>`;
+
+  // Inject ke #sidebar (atau return HTML kalau tidak ada element)
+  const el = document.getElementById('sidebar') || document.getElementById('sidebar-container');
+  if (el) {
+    el.innerHTML = html;
+    // Load prod-switcher setelah sidebar ter-render
+    if (typeof window.__loadProdSwitcher === 'function') window.__loadProdSwitcher();
+  }
+  return html;
+}
