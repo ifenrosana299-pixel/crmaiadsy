@@ -223,7 +223,8 @@ function renderSidebar(activePage) {
 
   const html = `
 <div class="sb-brand">
-  <div class="sb-logo">CRM</div>
+  <img src="img/logo-adsy.png" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+  <div class="sb-logo" style="display:none">CRM</div>
   <div>
     <div class="sb-title">AI CRM Adsy</div>
     <div class="sb-subtitle">Follow-up Engine</div>
