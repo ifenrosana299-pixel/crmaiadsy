@@ -3,7 +3,7 @@
 // Called right after body tag so class is set before first paint
 
 (function () {
-  if (localStorage.getItem('cs_theme') === 'light') {
+  if (localStorage.getItem('cs_theme') !== 'dark') {
     document.body.classList.add('light');
   }
   document.addEventListener('DOMContentLoaded', function () {
