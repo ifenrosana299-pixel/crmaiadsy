@@ -268,6 +268,21 @@ async function initConfig() {
   window.__SB_KEY = c.supabase_anon_key;
 }
 function fmtDateTime(iso) { if (!iso) return '-'; return new Date(iso).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
+function fmtDate(iso) { if (!iso) return '-'; return new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function addDays(dateStr, n) { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+function normalizePhone(p) { if (!p) return ''; p = String(p).replace(/\D/g,''); if (p.startsWith('0')) p = '62' + p.slice(1); if (!p.startsWith('62')) p = '62' + p; return p; }
+function statusBadge(s) {
+  const map = {
+    baru:     ['badge-blue',  'Baru'],
+    sukses:   ['badge-green', '✅ Sukses'],
+    fu_aktif: ['badge-amber', '📅 FU Aktif'],
+    repeat:   ['badge-blue',  '🔁 Repeat'],
+    dormant:  ['badge-gray',  '💤 Dormant'],
+  };
+  const [cls, label] = map[s] || ['badge-gray', s || '-'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
 </script>
 <script src="js/app.js"></script>
 <script>
