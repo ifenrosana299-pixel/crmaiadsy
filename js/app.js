@@ -7,7 +7,8 @@ async function initConfig() {
     const r = await fetch('/api/config');
     const d = await r.json();
     window.__SB_URL = d.url || d.supabase_url || '';
-    window.__SB_KEY = d.key || d.anon_key || '';
+    window.__SB_KEY = d.key || d.anon_key || d.supabase_anon_key || '';
+    window.__BAILEYS_URL = d.baileys_url || '';
   } catch(e) {
     console.error('[initConfig] gagal fetch /api/config:', e);
   }
