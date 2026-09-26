@@ -289,7 +289,7 @@ async function init() {
 }
 
 async function loadCustomers() {
-  showLoading('table-wrap', 'Memuat customer...');
+  document.getElementById('table-wrap').innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat customer...</div>';
   try {
     const rows = await sbGet('customers',
       `user_id=eq.${currentUser.id}&order=created_at.desc&select=*`);
