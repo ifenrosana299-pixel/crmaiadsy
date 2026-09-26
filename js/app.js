@@ -203,7 +203,7 @@ function renderSidebar(activePage) {
   const nav = [
     ['analytics',  'analytics.html',  'Ringkasan'],
     ['dashboard',  'dashboard.html',  'Percakapan'],
-    ['customers',  'customers.html',  'Customer'],
+    ['customers',  'customers.html',  'Data Order'],
     ['followup',   'followup.html',   'Follow-up'],
     ['cases',      'cases.html',      'Cases'],
     ['contacts',   'contacts.html',   'Kontak'],
