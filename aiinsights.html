@@ -175,7 +175,7 @@ async function init() {
   const prodFilter = window.__activeProductFilter || null;
   const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
   const [convs, custs] = await Promise.all([
-    sbFetch('conversations', `?user_id=eq.${uid}&status=eq.eskalasi${prodQ}&select=id,customer_id,status,last_msg_at&order=last_msg_at.desc`),
+    sbFetch('conversations', `?user_id=eq.${uid}&status=eq.eskalasi${prodQ}&select=id,customer_id,status,updated_at&order=updated_at.desc`),
     sbFetch('customers', `?user_id=eq.${uid}&select=id,wa_number,nama`)
   ]);
 
@@ -211,8 +211,8 @@ async function init() {
         </div>
       </td>
       <td style="color:var(--text-2)">
-        <div>${relTime(c.last_msg_at)}</div>
-        <div style="font-size:11px;margin-top:2px">${fmtDateTime(c.last_msg_at)}</div>
+        <div>${relTime(c.updated_at)}</div>
+        <div style="font-size:11px;margin-top:2px">${fmtDateTime(c.updated_at)}</div>
       </td>
       <td><span class="bdg bdg-eskal">⬆ Eskalasi</span></td>
       <td>

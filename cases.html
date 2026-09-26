@@ -287,7 +287,7 @@ async function init() {
   const prodFilter = window.__activeProductFilter || null;
   const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
   const [convs, custs] = await Promise.all([
-    sbGet('conversations', `user_id=eq.${uid}&status=in.(baru,diproses,eskalasi)${prodQ}&select=id,customer_id,product_id,status,last_msg_at,state,created_at&order=last_msg_at.desc`),
+    sbGet('conversations', `user_id=eq.${uid}&status=in.(baru,diproses,eskalasi)${prodQ}&select=id,customer_id,product_id,status,updated_at,state,created_at&order=updated_at.desc`),
     sbGet('customers', `user_id=eq.${uid}&select=id,wa_number,nama`)
   ]);
 
@@ -415,8 +415,8 @@ function renderTable() {
       </td>
       <td><span class="phone-txt">${escH(phone)}</span></td>
       <td style="color:var(--text-2);font-size:12px">
-        <div>${relTimeShort(c.last_msg_at)}</div>
-        <div style="color:var(--text-2);font-size:11px;margin-top:2px">${fmtDate(c.last_msg_at)}</div>
+        <div>${relTimeShort(c.updated_at)}</div>
+        <div style="color:var(--text-2);font-size:11px;margin-top:2px">${fmtDate(c.updated_at)}</div>
       </td>
       <td>${badge}</td>
       <td>
