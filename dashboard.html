@@ -686,7 +686,7 @@ body.light .cm-input::placeholder{color:#94a3b8}
 <script>
 // Apply saved theme immediately
 (function() {
-  if (localStorage.getItem('cs_theme') === 'light') document.body.classList.add('light');
+  if (localStorage.getItem('cs_theme') !== 'dark') document.body.classList.add('light');
 })();
 
 const PROXY = '/api/baileys-proxy';

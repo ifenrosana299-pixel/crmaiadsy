@@ -282,7 +282,7 @@ const sparkCharts = {};
     document.getElementById('sb-av').textContent = initials(u.nama_toko || u.username || '?');
     document.getElementById('sb-name').textContent = u.nama_toko || u.username || 'Admin';
   }
-  if (localStorage.getItem('cs_theme') === 'light') document.body.classList.add('light');
+  if (localStorage.getItem('cs_theme') !== 'dark') document.body.classList.add('light');
   const btn = document.getElementById('theme-btn');
   if (btn) btn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
 })();
