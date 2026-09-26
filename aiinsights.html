@@ -10,8 +10,7 @@
 <style>
 body.light{--bg:#f1f5f9;--white:#ffffff;--border:rgba(0,0,0,.07);--text:#0f172a;--text-2:#475569;--text-3:#94a3b8}
 .main-content{background:var(--bg);min-height:100vh;padding:0}
-#sidebar-container{width:220px;min-width:220px;background:#1e293b;height:100vh;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07)}
-#sidebar-container .sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+/* sidebar pakai #sidebar dari style.css (position:fixed) */
 .sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
 .sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
 .sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
@@ -29,7 +28,7 @@ body.light{--bg:#f1f5f9;--white:#ffffff;--border:rgba(0,0,0,.07);--text:#0f172a;
 .sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
 .sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
 .sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
-body.light #sidebar-container{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
 body.light .sb-title{color:#0f172a}
 body.light .sb-item{color:#475569!important}
 body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
@@ -109,7 +108,7 @@ tbody tr:hover{background:rgba(139,92,246,.02)}
 </head>
 <body>
 <div class="app-layout">
-  <div id="sidebar-container"></div>
+  <div id="sidebar"></div>
   <div class="main-content">
 
     <!-- Hero Card -->
@@ -195,7 +194,6 @@ tbody tr:hover{background:rgba(139,92,246,.02)}
   </div>
 </div>
 
-<script src="js/config.js"></script>
 <script src="js/app.js"></script>
 <script src="js/prod-switcher.js"></script>
 <script src="js/theme.js"></script>
