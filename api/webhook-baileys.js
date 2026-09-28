@@ -1419,6 +1419,31 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     // ── State conversation ────────────────────────────────────
     const convState = conversation.state || {};
 
+    // ── Guard: CRM hanya balas kalau customer sudah punya order ──
+    // Kalau belum ada order, skip (biarkan BotWA yang handle sebagai CS pre-purchase)
+    const normalizedForGuard = normalizeWA(wa_number);
+    let hasOrder = false;
+    try {
+      const guardRows = await sbGet('orders',
+        `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(normalizedForGuard)}&limit=1`
+      ).catch(() => []);
+      if (!guardRows.length) {
+        // Fallback cek dengan format 08xx
+        const altHp = normalizedForGuard.startsWith('62') ? '0' + normalizedForGuard.slice(2) : normalizedForGuard;
+        const guardAlt = await sbGet('orders',
+          `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(altHp)}&limit=1`
+        ).catch(() => []);
+        hasOrder = guardAlt.length > 0;
+      } else {
+        hasOrder = true;
+      }
+    } catch(e) {}
+
+    if (!hasOrder) {
+      console.log(`[CRM] No order found for ${wa_number} — skip (biarkan BotWA handle)`);
+      return res.status(200).json({ ok: true, skipped: 'no_order_crm' });
+    }
+
     // ── Fetch order terakhir customer (untuk inject ke system prompt) ──
     let latestOrder = null;
     try {
