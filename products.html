@@ -368,6 +368,14 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
           </div>
         </div>
 
+        <!-- Filter by Produk -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.3px">Produk:</span>
+          <select id="sop-prod-filter" onchange="onSOPProdFilter()" style="background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:5px 10px;font-size:12px;color:#e2e8f0;outline:none;cursor:pointer">
+            <option value="">Semua Produk</option>
+          </select>
+        </div>
+
         <div class="filter-tabs" id="sop-filter-tabs">
           <button class="s-tab active" onclick="setSOPFilter('semua',this)">Semua</button>
           <button class="s-tab" onclick="setSOPFilter('h1',this)">H+1</button>
@@ -516,6 +524,12 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
     </div>
     <div class="modal-body">
       <div class="form-group">
+        <label>Produk <small style="color:#64748b;font-weight:400;text-transform:none">(kosongkan = berlaku untuk semua produk)</small></label>
+        <select id="sop-f-product">
+          <option value="">— Semua Produk —</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Judul SOP *</label>
         <input type="text" id="sop-f-title" placeholder="contoh: Follow up order belum tiba H+3">
       </div>
@@ -570,6 +584,7 @@ let tagsData = { keluhan: [], diagnosa: [] };
 
 let allSOPs = [];
 let sopFilter = 'semua';
+let sopProdFilter = '';
 let sopEditId = null;
 
 /* ── Init ── */
@@ -683,6 +698,22 @@ function resetFUConfig() {
 async function loadProducts() {
   allProducts = await sbGet('products', `user_id=eq.${currentUserId}&order=created_at.desc&select=*`);
   renderGrid();
+  populateProdDropdowns();
+}
+
+function populateProdDropdowns() {
+  const opts = `<option value="">— Semua Produk —</option>` +
+    allProducts.map(p => `<option value="${p.id}">${esc(p.nama)}</option>`).join('');
+  // Dropdown di modal SOP
+  const modalSel = document.getElementById('sop-f-product');
+  if (modalSel) modalSel.innerHTML = opts;
+  // Dropdown filter SOP
+  const filterSel = document.getElementById('sop-prod-filter');
+  if (filterSel) {
+    filterSel.innerHTML = `<option value="">Semua Produk</option>` +
+      allProducts.map(p => `<option value="${p.id}">${esc(p.nama)}</option>`).join('');
+    filterSel.value = sopProdFilter;
+  }
 }
 
 function setFilter(f, btn) {
@@ -1034,8 +1065,17 @@ function setSOPFilter(f, btn) {
   renderSOPs();
 }
 
+function onSOPProdFilter() {
+  sopProdFilter = document.getElementById('sop-prod-filter').value;
+  renderSOPs();
+}
+
 function renderSOPs() {
   let data = allSOPs;
+  // Filter by produk: tampilkan SOP produk tsb + SOP semua produk (product_id null)
+  if (sopProdFilter) {
+    data = data.filter(s => !s.product_id || s.product_id === sopProdFilter);
+  }
   if (sopFilter !== 'semua') data = data.filter(s => s.category === sopFilter);
 
   const list = document.getElementById('sop-list');
@@ -1056,6 +1096,7 @@ function renderSOPs() {
         <div class="sop-title-row">
           <span class="sop-title">${esc(s.title)}</span>
           <span class="sop-cat cat-${cat}">${SOP_CAT_LABEL[cat] || cat}</span>
+          ${s.product_id ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,.1);color:#93c5fd;font-weight:600">${esc(allProducts.find(p=>p.id===s.product_id)?.nama || 'Produk')}</span>` : `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(100,116,139,.1);color:#64748b;font-weight:600">Semua Produk</span>`}
         </div>
         <div class="sop-content">${esc(s.content)}</div>
         ${s.image_url ? `<div style="margin-top:8px"><img src="${s.image_url}" style="height:64px;border-radius:7px;border:1px solid rgba(255,255,255,.08);object-fit:cover;cursor:pointer" onclick="window.open('${s.image_url}','_blank')" title="Lihat foto"></div>` : ''}
@@ -1120,6 +1161,7 @@ function openSOPModal(id) {
   sopEditId = id || null;
   document.getElementById('sop-modal-title').textContent = id ? 'Edit SOP' : 'Tambah SOP';
   if (!id) {
+    document.getElementById('sop-f-product').value = sopProdFilter || '';
     document.getElementById('sop-f-title').value = '';
     document.getElementById('sop-f-cat').value = 'h1';
     document.getElementById('sop-f-content').value = '';
@@ -1133,6 +1175,7 @@ function editSOP(id) {
   if (!s) return;
   sopEditId = id;
   document.getElementById('sop-modal-title').textContent = 'Edit SOP';
+  document.getElementById('sop-f-product').value = s.product_id || '';
   document.getElementById('sop-f-title').value   = s.title    || '';
   document.getElementById('sop-f-cat').value     = s.category || 'umum';
   document.getElementById('sop-f-content').value = s.content  || '';
@@ -1158,11 +1201,12 @@ async function saveSOP() {
   if (!title || !content) { toast('Judul dan isi SOP wajib diisi', 'error'); return; }
 
   const payload = {
-    user_id:   currentUserId,
+    user_id:    currentUserId,
     title,
     content,
-    category:  document.getElementById('sop-f-cat').value,
-    image_url: document.getElementById('sop-f-img-url').value || null,
+    category:   document.getElementById('sop-f-cat').value,
+    image_url:  document.getElementById('sop-f-img-url').value || null,
+    product_id: document.getElementById('sop-f-product').value || null,
   };
 
   try {
