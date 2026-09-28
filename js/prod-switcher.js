@@ -207,6 +207,15 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
   async function loadProds() {
     const userId = (typeof getUser === 'function' ? getUser() : (typeof Auth !== 'undefined' ? Auth : window.Auth)?.getUser?.())?.id;
     if (!userId) { console.log('[ProdSW] no userId'); return; }
+
+    // Tunggu initConfig selesai (max 4 detik)
+    let waited = 0;
+    while (!window.__SB_URL && waited < 4000) {
+      await new Promise(r => setTimeout(r, 100));
+      waited += 100;
+    }
+    if (!window.__SB_URL) { console.log('[ProdSW] __SB_URL not ready'); return; }
+
     try {
       let r = await fetch(
         `${window.__SB_URL}/rest/v1/products?user_id=eq.${userId}&aktif=eq.true&order=created_at.asc&select=id,nama,wa_status,wa_session_id`,
