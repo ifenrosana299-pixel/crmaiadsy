@@ -445,11 +445,21 @@ async function deleteSelected() {
   if (!confirm(`Hapus ${n} order yang dipilih? Tindakan ini tidak bisa dibatalkan.`)) return;
   try {
     const ids = [...selectedIds];
-    // Hapus batch per 50 (Supabase URL limit)
+    // Kumpulkan nomor HP dari order yang dihapus
+    const phones = [...new Set(ids.map(id => {
+      const o = allOrders.find(x => x.id === id);
+      return o?.nomer_hp;
+    }).filter(Boolean))];
+
+    // Hapus orders batch per 50
     for (let i = 0; i < ids.length; i += 50) {
       const batch = ids.slice(i, i + 50);
       await sbDelete('orders', `id=in.(${batch.join(',')})&user_id=eq.${currentUser.id}`);
     }
+
+    // Hapus customers yang tidak punya order lagi (source=import, no conversation)
+    await cleanOrphanCustomers(phones);
+
     toast(`✅ ${n} order berhasil dihapus`, 'success');
     selectedIds.clear();
     updateBulkBar();
@@ -466,6 +476,10 @@ async function deleteAll() {
   if (konfirmasi !== 'HAPUS SEMUA') { toast('Dibatalkan', 'info'); return; }
   try {
     await sbDelete('orders', `user_id=eq.${currentUser.id}`);
+    // Hapus semua customers import yang tidak punya percakapan
+    await sbDelete('customers',
+      `user_id=eq.${currentUser.id}&source=eq.import`
+    ).catch(() => {});
     toast(`✅ Semua ${total} order berhasil dihapus`, 'success');
     selectedIds.clear();
     updateBulkBar();
@@ -1084,6 +1098,20 @@ async function doImport() {
     document.getElementById('import-err').style.display = 'block';
   }
   btn.disabled = false; btn.innerHTML = `✅ Import <span id="import-count-btn">${importData.length}</span> Order`;
+}
+
+async function cleanOrphanCustomers(phones) {
+  if (!phones?.length) return;
+  try {
+    for (const phone of phones) {
+      // Cek apakah masih ada order lain dengan nomor ini
+      const remaining = await sbGet('orders', `nomer_hp=eq.${encodeURIComponent(phone)}&user_id=eq.${currentUser.id}&limit=1&select=id`);
+      if (remaining.length) continue; // masih punya order, skip
+
+      // Hapus customer dengan nomor ini yang source-nya import
+      await sbDelete('customers', `wa_number=eq.${encodeURIComponent(phone)}&user_id=eq.${currentUser.id}&source=eq.import`);
+    }
+  } catch(e) { console.warn('[cleanOrphanCustomers]', e); }
 }
 
 async function autoGenerateSchedules() {
