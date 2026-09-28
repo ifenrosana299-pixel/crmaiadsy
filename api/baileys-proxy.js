@@ -9,14 +9,24 @@ export default async function handler(req, res) {
   const { path, session_id, ...queryRest } = req.query;
   if (!path) return res.status(400).json({ error: 'path required' });
 
-  const qs = new URLSearchParams({ secret: BAILEYS_SECRET, session_id: session_id || '', ...queryRest });
-  const url = `${BAILEYS_URL}${path}?${qs}`;
+  const qs = new URLSearchParams(queryRest);
+  const url = `${BAILEYS_URL}${path}${qs.toString() ? '?' + qs : ''}`;
 
   try {
+    // Inject secret + session_id ke body untuk POST
+    let body = undefined;
+    if (['POST','PUT','PATCH'].includes(req.method)) {
+      body = JSON.stringify({
+        secret: BAILEYS_SECRET,
+        session_id: session_id || '',
+        ...req.body,
+      });
+    }
+
     const upstream = await fetch(url, {
       method: req.method,
       headers: { 'Content-Type': 'application/json' },
-      body: ['POST','PUT','PATCH'].includes(req.method) ? JSON.stringify(req.body) : undefined,
+      body,
       signal: AbortSignal.timeout(25000)
     });
     const text = await upstream.text();
