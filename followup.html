@@ -510,7 +510,7 @@ async function doSendFU() {
     const r = await fetch(`/api/baileys-proxy?path=/send&session_id=${encodeURIComponent(currentUser.id)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: sendWaNum + '@s.whatsapp.net', text: pesan })
+      body: JSON.stringify({ wa_number: sendWaNum, message: pesan })
     });
     const d = await r.json();
     if (!d.success && !d.ok) throw new Error(d.error || 'Gagal kirim WA');
