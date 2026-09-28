@@ -184,7 +184,6 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
           <span class="badge badge-green" style="cursor:pointer" title="Status terakhir resi (dalam pengiriman, dll)" onclick="insertVar('{status_resi}')">&#123;status_resi&#125;</span>
           <span class="badge badge-green" style="cursor:pointer" title="Alamat pengiriman customer" onclick="insertVar('{alamat}')">&#123;alamat&#125;</span>
         </div>
-        <div style="margin-top:5px;font-size:11px;color:var(--text-2)">🟢 = dari data order (resi, ekspedisi, status, alamat) · 🔵 = dari data customer</div>
       </div>
       <div id="rule-err" style="color:var(--red);font-size:12px;display:none"></div>
     </div>
@@ -659,7 +658,7 @@ async function saveRule() {
   const payload = {
     user_id: currentUser.id,
     nama, tipe,
-    hari_setelah_delivered: isSebelum ? null : hari,
+    hari_setelah_delivered: isSebelum ? hari : hari,
     hari_sebelum_deliv: isSebelum ? hari : null,
     product_id: document.getElementById('rule-produk').value || null,
     templates,
