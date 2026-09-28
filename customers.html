@@ -65,6 +65,10 @@ body.light .step-line { background:#e2e8f0; }
 :root { --red:#ef4444; --accent:#3b82f6; }
 body.light { --red:#dc2626; }
 
+/* ── Danger button ── */
+.btn-danger { background:rgba(239,68,68,.1)!important; border-color:rgba(239,68,68,.25)!important; color:#f87171!important; }
+.btn-danger:hover { background:rgba(239,68,68,.18)!important; }
+
 /* ── Sidebar styles ── */
 .sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
 .sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
@@ -109,6 +113,7 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" onclick="trackAllPending()" id="btn-track-all">🔄 Track Semua</button>
         <button class="btn btn-ghost" onclick="openImportModal()">📥 Import Excel</button>
+        <button class="btn btn-danger" onclick="deleteAll()" title="Hapus semua data order">🗑️ Hapus Semua</button>
         <button class="btn btn-primary" onclick="openAddModal()">+ Tambah</button>
       </div>
     </div>
@@ -145,6 +150,13 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
           <span class="text-dim text-sm" id="count-label">-</span>
           <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↻ Refresh</button>
         </div>
+      </div>
+
+      <!-- BULK ACTION BAR -->
+      <div id="bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600;color:#60a5fa" id="bulk-label">0 dipilih</span>
+        <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Batal pilih</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteSelected()">🗑️ Hapus Dipilih</button>
       </div>
 
       <!-- TABLE -->
@@ -391,10 +403,72 @@ let allOrders    = [];
 let filteredOrders = [];
 let activeTab    = 'semua';
 let currentPage  = 1;
-const PAGE_SIZE  = 30;
+const PAGE_SIZE  = 15;
 let importData   = [];
 let currentDetailId = null;
 let trackingInProgress = new Set();
+let selectedIds  = new Set();
+
+// ── Selection helpers ───────────────────────────────────────────────
+function toggleSelect(id, cb) {
+  if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateBulkBar();
+  renderTable();
+}
+function toggleSelectAll(cb) {
+  const pageData = filteredOrders.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+  pageData.forEach(o => cb.checked ? selectedIds.add(o.id) : selectedIds.delete(o.id));
+  updateBulkBar();
+  renderTable();
+}
+function clearSelection() {
+  selectedIds.clear();
+  updateBulkBar();
+  renderTable();
+}
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const n   = selectedIds.size;
+  bar.style.display = n > 0 ? 'flex' : 'none';
+  document.getElementById('bulk-label').textContent = `${n} order dipilih`;
+}
+
+// ── Delete functions ────────────────────────────────────────────────
+async function deleteSelected() {
+  const n = selectedIds.size;
+  if (!n) return;
+  if (!confirm(`Hapus ${n} order yang dipilih? Tindakan ini tidak bisa dibatalkan.`)) return;
+  try {
+    const ids = [...selectedIds];
+    // Hapus batch per 50 (Supabase URL limit)
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      await sbDelete('orders', `id=in.(${batch.join(',')})&user_id=eq.${currentUser.id}`);
+    }
+    toast(`✅ ${n} order berhasil dihapus`, 'success');
+    selectedIds.clear();
+    updateBulkBar();
+    await loadOrders();
+  } catch(e) {
+    toast('Gagal hapus: ' + e.message, 'error');
+  }
+}
+
+async function deleteAll() {
+  const total = allOrders.length;
+  if (!total) { toast('Tidak ada data untuk dihapus', 'info'); return; }
+  const konfirmasi = prompt(`Ketik "HAPUS SEMUA" untuk menghapus seluruh ${total} order:`);
+  if (konfirmasi !== 'HAPUS SEMUA') { toast('Dibatalkan', 'info'); return; }
+  try {
+    await sbDelete('orders', `user_id=eq.${currentUser.id}`);
+    toast(`✅ Semua ${total} order berhasil dihapus`, 'success');
+    selectedIds.clear();
+    updateBulkBar();
+    await loadOrders();
+  } catch(e) {
+    toast('Gagal hapus: ' + e.message, 'error');
+  }
+}
 
 // ── Status helpers ──────────────────────────────────────────────────
 const STATUS_INFO = {
@@ -505,9 +579,13 @@ function renderTable() {
     return;
   }
 
+  const allPageIds = pageData.map(o => o.id);
+  const allChecked = allPageIds.length > 0 && allPageIds.every(id => selectedIds.has(id));
+
   document.getElementById('table-wrap').innerHTML = `
     <table>
       <thead><tr>
+        <th style="width:36px"><input type="checkbox" id="chk-all" ${allChecked?'checked':''} onchange="toggleSelectAll(this)" style="cursor:pointer;accent-color:#3b82f6"></th>
         <th>#</th>
         <th>Tanggal</th>
         <th>Customer</th>
@@ -524,7 +602,9 @@ function renderTable() {
         const badgeHtml  = isTracking
           ? `<span class="bdg bdg-gray"><span class="bdg-spin"></span> Tracking...</span>`
           : statusBadge(st);
-        return `<tr>
+        const checked = selectedIds.has(o.id);
+        return `<tr style="${checked?'background:rgba(59,130,246,.05)':''}">
+          <td><input type="checkbox" ${checked?'checked':''} onchange="toggleSelect('${o.id}',this)" style="cursor:pointer;accent-color:#3b82f6"></td>
           <td class="text-dim">${start + i + 1}</td>
           <td class="text-sm">${fmtDate(o.tanggal)}</td>
           <td>
