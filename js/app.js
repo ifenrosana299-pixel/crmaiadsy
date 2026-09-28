@@ -15,15 +15,44 @@ async function initConfig() {
 }
 
 /* ── Supabase REST helpers — semua baca window.__SB_URL saat dipanggil ── */
+const _SB_CACHE_TTL = 3 * 60 * 1000; // 3 menit
+const _NOCACHE_TABLES = new Set(['conv_messages','conversations']); // tabel realtime, skip cache
+
+function _cacheGet(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > _SB_CACHE_TTL) { sessionStorage.removeItem(key); return null; }
+    return data;
+  } catch { return null; }
+}
+function _cacheSet(key, data) {
+  try { sessionStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+}
+function sbCacheClear(tablePrefix) {
+  const prefix = tablePrefix ? `sb:${tablePrefix}` : 'sb:';
+  Object.keys(sessionStorage).filter(k => k.startsWith(prefix)).forEach(k => sessionStorage.removeItem(k));
+}
+
 async function sbGet(table, params = '') {
+  const useCache = !_NOCACHE_TABLES.has(table);
+  const cKey = `sb:${table}:${params}`;
+  if (useCache) {
+    const cached = _cacheGet(cKey);
+    if (cached) return cached;
+  }
   const r = await fetch(`${window.__SB_URL}/rest/v1/${table}?${params}`, {
     headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
   });
   if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const data = await r.json();
+  if (useCache) _cacheSet(cKey, data);
+  return data;
 }
 
 async function sbPost(table, body, opts = {}) {
+  sbCacheClear(table);
   const r = await fetch(`${window.__SB_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: {
@@ -39,6 +68,7 @@ async function sbPost(table, body, opts = {}) {
 }
 
 async function sbPatch(table, params, body) {
+  sbCacheClear(table);
   const r = await fetch(`${window.__SB_URL}/rest/v1/${table}?${params}`, {
     method: 'PATCH',
     headers: {
@@ -54,6 +84,7 @@ async function sbPatch(table, params, body) {
 }
 
 async function sbDelete(table, params) {
+  sbCacheClear(table);
   const r = await fetch(`${window.__SB_URL}/rest/v1/${table}?${params}`, {
     method: 'DELETE',
     headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` },
