@@ -526,7 +526,7 @@ async function doSendFU() {
       const newConv = await sbPost('conversations', {
         user_id: currentUser.id, customer_id: sendCustomerId,
         product_id: cust[0]?.product_id || null,
-        status: 'aktif', sumber: 'fu', state: {}
+        status: 'baru', sumber: 'fu', state: {}
       });
       convId = newConv[0].id;
     }

@@ -767,7 +767,7 @@ async function loadStats() {
   const today = new Date().toISOString().slice(0,10);
   let fuToday = 0;
   try {
-    const fuList = await _sbGet('followup_schedule', `?user_id=eq.${userId}&tanggal_kirim=eq.${today}&status=eq.pending`);
+    const fuList = await _sbGet('followup_schedule', `?user_id=eq.${userId}&scheduled_date=eq.${today}&status=eq.pending`);
     fuToday = fuList.length || 0;
   } catch(e) {}
 
@@ -814,10 +814,11 @@ async function renderInbox() {
   allConvs = convs;
 
   const _prodFilter = window.__activeProductFilter;
-  if (_prodFilter) convs = convs.filter(c => c.product_id === _prodFilter);
+  // Tampilkan konversasi tanpa product_id tetap muncul meski ada filter produk
+  if (_prodFilter) convs = convs.filter(c => !c.product_id || c.product_id === _prodFilter);
 
   if (tabFilter === 'eskalasi') convs = convs.filter(c => c.status === 'eskalasi');
-  else if (tabFilter === 'live') convs = convs.filter(c => c.status === 'baru' || c.status === 'diproses');
+  else if (tabFilter === 'live') convs = convs.filter(c => c.status === 'baru' || c.status === 'diproses' || c.status === 'aktif');
   else if (tabFilter === 'selesai') {
     convs = convs.filter(c => c.status === 'selesai');
     convs.sort((a,b) => {
