@@ -1416,16 +1416,62 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     // ── State conversation ────────────────────────────────────
     const convState = conversation.state || {};
 
+    // ── Fetch order terakhir customer (untuk inject ke system prompt) ──
+    let latestOrder = null;
+    try {
+      const normalized = normalizeWA(wa_number);
+      // Cari by nomer_hp + user_id, ambil order terbaru
+      let orderRows = await sbGet('orders',
+        `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(normalized)}&order=tanggal.desc,created_at.desc&limit=1`
+      ).catch(() => []);
+      // Fallback: cari by nomer_hp saja (tanpa prefix 62)
+      if (!orderRows.length) {
+        const altHp = normalized.startsWith('62') ? '0' + normalized.slice(2) : normalized;
+        orderRows = await sbGet('orders',
+          `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(altHp)}&order=tanggal.desc,created_at.desc&limit=1`
+        ).catch(() => []);
+      }
+      if (orderRows.length) latestOrder = orderRows[0];
+      console.log(`[order] found=${!!latestOrder} resi=${latestOrder?.nomer_resi}`);
+    } catch(e) { console.log('[order] fetch error', e.message); }
+
     // ── Build system prompt + inject ringkasan ────────────────
     let systemPrompt = buildTemplatePrompt(product, customer, conversation, sumber, userRekening);
 
-    // Inject data customer ke system prompt
+    // Inject data customer + order ke system prompt
     {
-      let ctx = '\n\nDATA CUSTOMER:';
+      const fmtRp = (v) => v ? `Rp ${Number(v).toLocaleString('id-ID')}` : null;
+      const fmtTgl = (v) => v ? new Date(v).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }) : null;
+
+      let ctx = '\n\nDATA CUSTOMER & ORDER TERAKHIR:';
       ctx += `\n- No HP/WA: ${wa_number}`;
       if (customer?.nama && customer.nama !== wa_number) ctx += `\n- Nama: ${customer.nama}`;
-      if (customer?.produk) ctx += `\n- Produk dibeli: ${customer.produk}`;
-      if (customer?.tgl_delivered) ctx += `\n- Tgl delivered: ${new Date(customer.tgl_delivered).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}`;
+
+      if (latestOrder) {
+        ctx += `\n\nDATA ORDER (sudah dibeli & dikirim):`;
+        ctx += `\n- Produk       : ${latestOrder.produk || product?.nama || '-'}`;
+        if (latestOrder.jumlah_produk) ctx += `\n- Jumlah       : ${latestOrder.jumlah_produk} pcs`;
+        if (latestOrder.harga_produk)  ctx += `\n- Harga produk : ${fmtRp(latestOrder.harga_produk)}`;
+        if (latestOrder.ongkir)        ctx += `\n- Ongkos kirim : ${fmtRp(latestOrder.ongkir)}`;
+        if (latestOrder.potongan_ongkir && latestOrder.potongan_ongkir > 0)
+                                       ctx += `\n- Potongan ongkir: ${fmtRp(latestOrder.potongan_ongkir)}`;
+        if (latestOrder.jumlah_cod)    ctx += `\n- Total dibayar: ${fmtRp(latestOrder.jumlah_cod)}`;
+        if (latestOrder.payment)       ctx += `\n- Metode bayar : ${latestOrder.payment}`;
+        if (latestOrder.ekspedisi)     ctx += `\n- Ekspedisi    : ${latestOrder.ekspedisi}`;
+        if (latestOrder.nomer_resi)    ctx += `\n- No. Resi     : ${latestOrder.nomer_resi}`;
+        if (latestOrder.status_resi)   ctx += `\n- Status resi  : ${latestOrder.status_resi}`;
+        if (latestOrder.tanggal)       ctx += `\n- Tgl order    : ${fmtTgl(latestOrder.tanggal)}`;
+        if (latestOrder.tgl_delivered || customer?.tgl_delivered) {
+          ctx += `\n- Tgl delivered: ${fmtTgl(latestOrder.tgl_delivered || customer.tgl_delivered)}`;
+        }
+        if (latestOrder.alamat_lengkap) ctx += `\n- Alamat kirim : ${latestOrder.alamat_lengkap}`;
+        if (latestOrder.cs)            ctx += `\n- CS yang handle: ${latestOrder.cs}`;
+        ctx += `\n\nGunakan data order di atas saat customer bertanya soal resi, ekspedisi, status pengiriman, harga, atau detail pesanan mereka. JANGAN pura-pura tidak tahu kalau datanya ada.`;
+      } else {
+        if (customer?.produk) ctx += `\n- Produk dibeli: ${customer.produk}`;
+        if (customer?.tgl_delivered) ctx += `\n- Tgl delivered: ${fmtTgl(customer.tgl_delivered)}`;
+      }
+
       if (customer?.catatan) ctx += `\n- Catatan: ${customer.catatan}`;
       if (convState.repeat_order) ctx += `\n- Sudah melakukan repeat order ✅`;
       systemPrompt += ctx;
