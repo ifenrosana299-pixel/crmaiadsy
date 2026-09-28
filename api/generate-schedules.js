@@ -49,18 +49,14 @@ export default async function handler(req, res) {
     const rules = await sb('followup_rules', ruleQ);
     if (!rules.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada rule aktif' });
 
-    // 2. Orders — filter by product_id kalau ada
-    const orderQ = product_id
-      ? `user_id=eq.${user_id}&product_id=eq.${product_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,product_id&order=created_at.desc&limit=2000`
-      : `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,product_id&order=created_at.desc&limit=2000`;
-    const orders = await sb('orders', orderQ);
+    // 2. Semua orders user (tidak filter by product_id — biar semua masuk)
+    const orders = await sb('orders',
+      `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,product_id&order=created_at.desc&limit=2000`);
     if (!orders.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada order' });
 
-    // 3. Existing customers
-    const custQ = product_id
-      ? `user_id=eq.${user_id}&product_id=eq.${product_id}&select=id,wa_number,product_id`
-      : `user_id=eq.${user_id}&select=id,wa_number,product_id`;
-    const customers = await sb('customers', custQ);
+    // 3. Semua customers user
+    const customers = await sb('customers',
+      `user_id=eq.${user_id}&select=id,wa_number,product_id`);
     const custMap = {};
     customers.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
 
@@ -126,8 +122,9 @@ export default async function handler(req, res) {
         const key = `${cust.id}__${rule.id}`;
         if (existSet.has(key)) { skipped++; continue; }
 
-        // Cek produk — kalau rule spesifik produk, harus match
-        if (rule.product_id && rule.product_id !== (cust.product_id || order.product_id)) {
+        // Cek produk — hanya skip kalau keduanya ada tapi tidak match
+        const orderProd = order.product_id || cust.product_id || null;
+        if (rule.product_id && orderProd && rule.product_id !== orderProd) {
           skipped++; continue;
         }
 
