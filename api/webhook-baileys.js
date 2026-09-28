@@ -238,9 +238,16 @@ function buildTemplatePrompt(product, customer, conversation, sumber, userRekeni
     ? product.sop_followup.join('\n')
     : (product?.sop_followup || '');
 
+  const hargaProduk = product?.harga
+    ? `Rp ${Number(product.harga).toLocaleString('id-ID')}`
+    : null;
+  const hargaBundling = Array.isArray(product?.harga_bundling) && product.harga_bundling.length
+    ? product.harga_bundling.map(b => `${b.qty} pcs = Rp ${Number(b.harga).toLocaleString('id-ID')}`).join(', ')
+    : null;
+
   const rekeningInfo = userRekening
     ? userRekening
-    : '(belum diisi — kalau customer mau repeat order, bilang "nanti kami kirimkan detail pemesanannya ya kak 🙏")';
+    : '(belum diisi — kalau customer mau transfer/bayar, bilang "Bisa hubungi admin kami ya kak untuk info rekening 🙏")';
 
   const alamatTersimpan = customer?.alamat
     ? [customer.alamat.jalan, customer.alamat.kelurahan, customer.alamat.kecamatan,
@@ -259,6 +266,7 @@ ${catatanCustomer ? `Catatan      : ${catatanCustomer}` : ''}
 ${sopFu ? `SOP Follow-up:\n${sopFu}` : ''}
 Product Knowledge: ${product?.product_knowledge || '(kosong — gunakan nama produk yang sudah diketahui: ' + namaProduk + ')'}
 Cara pakai   : ${product?.cara_pakai || '(lihat kemasan)'}
+${hargaProduk ? `Harga        : ${hargaProduk}${hargaBundling ? ` | Paket: ${hargaBundling}` : ''}` : ''}
 Rekening     : ${rekeningInfo}
 
 ⚠️ PENTING — NAMA PRODUK SUDAH DIKETAHUI:
@@ -302,8 +310,8 @@ HANDLE SITUASI UMUM
 - Customer puas → perkuat dengan afirmasi, dorong repeat order & minta review/testimoni kalau mau
 - Customer ada masalah produk → empati + bantu cari solusi dari product knowledge
 - Customer tidak cocok/kecewa → minta maaf dengan tulus, tawarkan solusi, JANGAN defensif
-- Customer tanya harga repeat order → kasih info rekening: ${rekeningInfo}
-- Customer mau order lagi → ikuti alur REPEAT ORDER di bawah
+- Customer tanya HARGA → LANGSUNG sebutkan harga${hargaProduk ? ` (${hargaProduk}${hargaBundling ? `, atau paket: ${hargaBundling}` : ''})` : ''}. JANGAN bilang "nanti kami kirimkan" atau menghindari pertanyaan harga. Ini customer yang sudah pernah beli, mereka tanya harga karena mau beli lagi — BANTU dan YAKINKAN mereka.
+- Customer mau order lagi → ikuti alur REPEAT ORDER di bawah, setelah konfirmasi qty + alamat → info rekening: ${rekeningInfo}
 
 REPEAT ORDER
 Kalau customer bilang mau order lagi / beli lagi / repeat:
