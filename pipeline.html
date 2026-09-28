@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline FU — AI CRM Adsy</title>
+
+<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+#sidebar{width:220px;min-width:220px;background:#1e293b;height:100vh;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;text-decoration:none;transition:all .12s}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
+.sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
+.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-item .si svg{width:16px;height:16px;display:block}
+.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light .sb-title{color:#0f172a}
+body.light .sb-item{color:#475569!important}
+body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
+body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
+body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
+
+/* ── Pipeline Board ── */
+.pipe-board{display:flex;gap:14px;overflow-x:auto;padding:0 0 16px;align-items:flex-start;min-height:60vh}
+.pipe-board::-webkit-scrollbar{height:6px}
+.pipe-board::-webkit-scrollbar-track{background:transparent}
+.pipe-board::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+body.light .pipe-board::-webkit-scrollbar-thumb{background:rgba(0,0,0,.1)}
+
+.pipe-col{min-width:240px;max-width:240px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;gap:0;overflow:hidden;flex-shrink:0}
+body.light .pipe-col{background:rgba(0,0,0,.02)}
+
+.pipe-col-hdr{padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
+body.light .pipe-col-hdr{background:#f8fafc}
+.pipe-col-hdr:not(body.light .pipe-col-hdr){background:#1e293b}
+.pipe-col-title{font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:7px;margin-bottom:2px}
+.pipe-col-meta{font-size:11px;color:var(--text-2)}
+.pipe-col-count{font-size:11px;font-weight:700;background:rgba(59,130,246,.15);color:#60a5fa;padding:2px 8px;border-radius:20px;margin-left:auto}
+.pipe-col-body{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:calc(100vh - 220px)}
+.pipe-col-body::-webkit-scrollbar{width:4px}
+.pipe-col-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+
+.pipe-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:11px 12px;cursor:default;transition:box-shadow .12s,transform .1s}
+.pipe-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.1);transform:translateY(-1px)}
+body.light .pipe-card{background:#fff}
+.pipe-card-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pipe-card-sub{font-size:11px;color:var(--text-2);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pipe-card-date{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-bottom:8px}
+.pipe-card-date.today{background:rgba(59,130,246,.15);color:#60a5fa}
+.pipe-card-date.overdue{background:rgba(239,68,68,.12);color:#f87171}
+.pipe-card-date.upcoming{background:rgba(255,255,255,.07);color:var(--text-2)}
+body.light .pipe-card-date.upcoming{background:rgba(0,0,0,.05)}
+.pipe-card-foot{display:flex;gap:6px}
+
+/* ── Top bar ── */
+.pipe-topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.pipe-stat{font-size:12px;color:var(--text-2)}
+.pipe-stat b{color:var(--text);font-weight:600}
+
+@keyframes pulse-blue{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.4)}50%{box-shadow:0 0 0 4px rgba(59,130,246,0)}}
+</style>
+</head>
+<body>
+<script>if(localStorage.getItem('cs_theme')!=='dark')document.body.classList.add('light');</script>
+<div class="app-layout">
+  <div id="sidebar"></div>
+
+  <div class="main-content">
+    <div class="page-header" style="padding-bottom:16px">
+      <div>
+        <div class="page-title">Pipeline Follow-up</div>
+        <div class="page-sub">Tampilan Kanban — status FU per rule</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="loadPipeline()" id="btn-refresh">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <!-- Top bar: search + stats -->
+      <div class="pipe-topbar">
+        <input type="text" class="search-input" id="pipe-search" placeholder="🔍 Cari nama / produk..." oninput="renderPipeline()" style="max-width:240px">
+        <div class="pipe-stat" id="pipe-stat">Memuat...</div>
+      </div>
+
+      <!-- Board -->
+      <div id="pipe-board" class="pipe-board">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat pipeline...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FU SEND MODAL -->
+<div class="modal-overlay" id="send-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="send-nama">-</div>
+        <div class="text-sm text-muted" id="send-sub">-</div>
+      </div>
+      <button class="modal-close" onclick="closeSendModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Pesan Follow-up</label>
+        <textarea class="form-textarea" id="send-pesan" rows="5" placeholder="Ketik pesan atau biarkan AI generate..."></textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="generatePesanAI()">🤖 Generate AI</button>
+      </div>
+      <div id="send-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSendModal()">Batal</button>
+      <button class="btn btn-primary" onclick="doSendFU()" id="btn-do-send">📤 Kirim WA</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+async function initConfig() {
+  const r = await fetch('/api/config');
+  const c = await r.json();
+  window.__SB_URL = c.supabase_url;
+  window.__SB_KEY = c.supabase_anon_key;
+  window.__BAILEYS_URL = c.baileys_url;
+}
+</script>
+<script src="js/app.js"></script>
+<script src="js/prod-switcher.js"></script>
+<script>
+let currentUser = null;
+let allSchedules = [];
+let allRules = [];
+// send modal state
+let sendFUId = null;
+let sendCustomerId = null;
+let sendWaNum = '';
+let sendRuleName = '';
+
+async function init() {
+  await initConfig();
+  currentUser = requireAuth();
+  if (!currentUser) return;
+  renderSidebar('pipeline');
+  await loadPipeline();
+}
+
+async function loadPipeline() {
+  const btn = document.getElementById('btn-refresh');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const [schedules, rules] = await Promise.all([
+      sbGet('followup_schedule',
+        `user_id=eq.${currentUser.id}&status=eq.pending&select=*,customers(nama,wa_number,produk,product_id)&order=scheduled_date.asc`),
+      sbGet('followup_rules',
+        `user_id=eq.${currentUser.id}&aktif=eq.true&order=urutan.asc&select=id,nama,tipe,hari_setelah_delivered,hari_sebelum_deliv,templates`)
+    ]);
+    allSchedules = schedules;
+    allRules = rules;
+    renderPipeline();
+  } catch(e) {
+    document.getElementById('pipe-board').innerHTML = `<div class="text-red text-sm">${e.message}</div>`;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh'; }
+}
+
+function renderPipeline() {
+  const today    = new Date().toISOString().slice(0, 10);
+  const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })();
+  const search   = document.getElementById('pipe-search').value.toLowerCase();
+
+  // Build columns: one per rule, in rule order
+  // Include rules even if no pending schedules (empty column)
+  const ruleOrder = allRules.map(r => r.id);
+  // Also catch rules that appear in schedules but not in allRules
+  const extraRuleIds = [...new Set(allSchedules.map(s => s.rule_id))].filter(id => !ruleOrder.includes(id));
+  const allRuleIds = [...ruleOrder, ...extraRuleIds];
+
+  // Group schedules by rule_id
+  const byRule = {};
+  allSchedules.forEach(s => {
+    const cust = s.customers;
+    if (search) {
+      const hay = `${cust?.nama} ${cust?.wa_number} ${cust?.produk}`.toLowerCase();
+      if (!hay.includes(search)) return;
+    }
+    if (!byRule[s.rule_id]) byRule[s.rule_id] = [];
+    byRule[s.rule_id].push(s);
+  });
+
+  // Rule meta map
+  const ruleMeta = {};
+  allRules.forEach(r => { ruleMeta[r.id] = r; });
+  // Fill rule_nama from schedules for extra rule ids
+  allSchedules.forEach(s => {
+    if (!ruleMeta[s.rule_id]) ruleMeta[s.rule_id] = { id: s.rule_id, nama: s.rule_nama || s.rule_id, templates: [] };
+  });
+
+  const board = document.getElementById('pipe-board');
+  if (!allRuleIds.length) {
+    board.innerHTML = '<div class="empty-state"><div class="empty-icon">🔔</div><div class="empty-title">Belum ada rule aktif</div><div class="empty-body">Buat rule follow-up di halaman <a href="followup.html" style="color:var(--primary)">Follow-up Engine</a></div></div>';
+    document.getElementById('pipe-stat').innerHTML = '';
+    return;
+  }
+
+  const bulanArr = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+
+  let totalPending = 0;
+  let totalToday = 0;
+  let totalOverdue = 0;
+
+  const colsHtml = allRuleIds.map(ruleId => {
+    const rule  = ruleMeta[ruleId] || {};
+    const cards = byRule[ruleId] || [];
+
+    const isSebelum = rule.tipe === 'sebelum_deliv';
+    const hariNum   = isSebelum ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0) : (rule.hari_setelah_delivered ?? 0);
+    const hariLabel = isSebelum ? `H+${hariNum}` : `D+${hariNum}`;
+    const dotColor  = isSebelum ? '#f59e0b' : '#22c55e';
+
+    totalPending += cards.length;
+
+    const cardHtml = cards.map(s => {
+      const cust  = s.customers || {};
+      const nama  = cust.nama || '-';
+      const wa    = cust.wa_number || '';
+      const waFmt = wa ? '+' + wa.replace(/(\d{2})(\d{3})(\d{4})(\d+)/, '$1 $2-$3-$4') : '-';
+      const prod  = cust.produk || '';
+
+      const dt      = s.scheduled_date;
+      const isToday   = dt === today;
+      const isOverdue = dt < today;
+      const [,mo,dy]  = (dt||'').split('-');
+      const tglLabel  = mo && dy ? `${dy} ${bulanArr[parseInt(mo)]}` : '-';
+      const dateCls   = isToday ? 'today' : isOverdue ? 'overdue' : 'upcoming';
+      const dateIcon  = isToday ? '📅' : isOverdue ? '⚠️' : '🗓️';
+
+      if (isToday) totalToday++;
+      if (isOverdue) totalOverdue++;
+
+      const namaCust = nama.replace(/'/g,"\\'");
+      const ruleNameEsc = (rule.nama||'').replace(/'/g,"\\'");
+
+      return `
+        <div class="pipe-card">
+          <div class="pipe-card-name" title="${nama}">${nama}</div>
+          <div class="pipe-card-sub" title="${waFmt}${prod?' · '+prod:''}">${waFmt}${prod?' · '+prod:''}</div>
+          <div class="pipe-card-date ${dateCls}">${dateIcon} ${tglLabel}${isToday?' · Hari ini':isOverdue?' · Terlambat':''}</div>
+          <div class="pipe-card-foot">
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="openSendModal('${s.id}','${s.customer_id}','${namaCust}','${wa}','${ruleNameEsc}')">📤 Kirim</button>
+            <button class="btn btn-ghost btn-sm" onclick="skipSchedule('${s.id}')">Skip</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    const emptyHtml = cards.length
+      ? ''
+      : `<div style="padding:16px;text-align:center;font-size:12px;color:var(--text-2)">Tidak ada pending</div>`;
+
+    return `
+      <div class="pipe-col">
+        <div class="pipe-col-hdr">
+          <div class="pipe-col-title">
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0"></span>
+            ${rule.nama || ruleId}
+            <span class="pipe-col-count">${cards.length}</span>
+          </div>
+          <div class="pipe-col-meta">${hariLabel} · ${isSebelum?'Sebelum diterima':'Setelah diterima'}</div>
+        </div>
+        <div class="pipe-col-body">
+          ${cardHtml}${emptyHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  board.innerHTML = colsHtml;
+
+  // Stat bar
+  const overdueHtml = totalOverdue ? ` · <span style="color:#f87171"><b>${totalOverdue}</b> terlambat</span>` : '';
+  const todayHtml   = totalToday   ? ` · <span style="color:#60a5fa"><b>${totalToday}</b> hari ini</span>` : '';
+  document.getElementById('pipe-stat').innerHTML =
+    `<b>${totalPending}</b> total pending${todayHtml}${overdueHtml}`;
+}
+
+async function skipSchedule(id) {
+  if (!confirm('Skip jadwal ini?')) return;
+  try {
+    await sbPatch('followup_schedule', `id=eq.${id}`, { status: 'skipped' });
+    toast('Di-skip');
+    allSchedules = allSchedules.filter(s => s.id !== id);
+    renderPipeline();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ---- SEND MODAL ----
+async function openSendModal(fuId, custId, nama, waNum, ruleName) {
+  sendFUId      = fuId;
+  sendCustomerId = custId;
+  sendWaNum     = waNum;
+  sendRuleName  = ruleName;
+  document.getElementById('send-nama').textContent  = nama || '-';
+  document.getElementById('send-sub').textContent   = `${waNum} · ${ruleName}`;
+  document.getElementById('send-pesan').value       = '';
+  document.getElementById('send-err').style.display = 'none';
+
+  await autoLoadTemplate(custId, ruleName);
+  document.getElementById('send-modal').classList.add('show');
+}
+
+async function autoLoadTemplate(custId, ruleName) {
+  try {
+    const [rules, custs] = await Promise.all([
+      sbGet('followup_rules', `user_id=eq.${currentUser.id}&nama=eq.${encodeURIComponent(ruleName)}&limit=1`),
+      sbGet('customers', `id=eq.${custId}&select=nama,produk,wa_number`)
+    ]);
+    const templates = rules[0]?.templates || [];
+    if (!templates.length) return;
+    const cust = custs[0] || {};
+    let order = {};
+    if (cust.wa_number) {
+      const orders = await sbGet('orders',
+        `nomer_hp=eq.${encodeURIComponent(cust.wa_number)}&order=tanggal.desc&limit=1&select=nomer_resi,ekspedisi,status_resi,alamat,produk`
+      ).catch(() => []);
+      order = orders[0] || {};
+    }
+    const pesan = templates[Math.floor(Math.random() * templates.length)];
+    const rule  = rules[0] || {};
+    const hariVal = rule.tipe === 'sebelum_deliv'
+      ? (rule.hari_sebelum_deliv || rule.hari_setelah_delivered || '')
+      : (rule.hari_setelah_delivered || '');
+    const filled = pesan
+      .replace(/{nama}/g,        cust.nama        || 'Kak')
+      .replace(/{produk}/g,      order.produk     || cust.produk || 'produk')
+      .replace(/{hari}/g,        hariVal)
+      .replace(/{resi}/g,        order.nomer_resi  || '')
+      .replace(/{ekspedisi}/g,   order.ekspedisi   || '')
+      .replace(/{status_resi}/g, order.status_resi || '')
+      .replace(/{alamat}/g,      order.alamat      || '');
+    document.getElementById('send-pesan').value = filled;
+  } catch(e) { console.warn('[autoLoadTemplate]', e); }
+}
+
+async function generatePesanAI() {
+  const btn = document.querySelector('#send-modal button[onclick="generatePesanAI()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const r = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'generate-fu-pesan', customer_id: sendCustomerId, rule_nama: sendRuleName, user_id: currentUser.id })
+    });
+    const d = await r.json();
+    if (d.pesan) document.getElementById('send-pesan').value = d.pesan;
+  } catch(e) { toast(e.message, 'error'); }
+  if (btn) { btn.disabled = false; btn.textContent = '🤖 Generate AI'; }
+}
+
+function closeSendModal() { document.getElementById('send-modal').classList.remove('show'); }
+
+async function doSendFU() {
+  const pesan = document.getElementById('send-pesan').value.trim();
+  if (!pesan || !sendWaNum) return;
+  const btn = document.getElementById('btn-do-send');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Mengirim...';
+
+  try {
+    // Ambil wa_session_id dari produk aktif
+    let sessionId = currentUser.id;
+    const prodId = window.__activeProductFilter;
+    if (prodId) {
+      const prods = await sbGet('products', `id=eq.${prodId}&select=wa_session_id`).catch(() => []);
+      if (prods[0]?.wa_session_id) sessionId = prods[0].wa_session_id;
+    }
+
+    // Kirim WA
+    const r = await fetch(`/api/baileys-proxy?path=/send&session_id=${encodeURIComponent(sessionId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wa_number: sendWaNum, message: pesan })
+    });
+    const d = await r.json();
+    if (!d.success && !d.ok) throw new Error(d.error || 'Gagal kirim WA');
+
+    // Buat / update conversation
+    let convs = await sbGet('conversations', `user_id=eq.${currentUser.id}&customer_id=eq.${sendCustomerId}&status=neq.selesai&limit=1`);
+    let convId;
+    if (convs.length) {
+      convId = convs[0].id;
+      await sbPatch('conversations', `id=eq.${convId}`, { updated_at: new Date().toISOString() });
+    } else {
+      const cust = await sbGet('customers', `id=eq.${sendCustomerId}&select=product_id`);
+      const newConv = await sbPost('conversations', {
+        user_id: currentUser.id, customer_id: sendCustomerId,
+        product_id: cust[0]?.product_id || null,
+        status: 'baru', sumber: 'fu', state: {}
+      });
+      convId = newConv[0].id;
+    }
+
+    // Simpan pesan
+    await sbPost('conv_messages', { conversation_id: convId, isi: pesan, role: 'ai' }, { prefer: 'return=minimal' });
+
+    // Update schedule
+    await sbPatch('followup_schedule', `id=eq.${sendFUId}`, {
+      status: 'sent', sent_at: new Date().toISOString(), pesan_terkirim: pesan
+    });
+
+    // Update customer
+    await sbPatch('customers', `id=eq.${sendCustomerId}`, {
+      last_fu_at: new Date().toISOString(), status: 'fu_aktif'
+    });
+
+    toast('Pesan terkirim!', 'success');
+    closeSendModal();
+    // Remove from local state + re-render (no full reload)
+    allSchedules = allSchedules.filter(s => s.id !== sendFUId);
+    renderPipeline();
+  } catch(e) {
+    document.getElementById('send-err').textContent = e.message;
+    document.getElementById('send-err').style.display = 'block';
+  }
+  btn.disabled = false; btn.innerHTML = '📤 Kirim WA';
+}
+
+init();
+</script>
+</body>
+</html>
