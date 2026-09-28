@@ -85,18 +85,20 @@ export default async function handler(req, res) {
         });
       }
 
-      // Batch insert customers baru
+      // Upsert customers — skip kalau sudah ada (ON CONFLICT DO NOTHING)
       for (let i = 0; i < toCreate.length; i += 200) {
         const created = await sb('customers', '', {
           method: 'POST',
-          prefer: 'return=representation',
+          prefer: 'return=representation,resolution=ignore-duplicates',
           body: toCreate.slice(i, i + 200)
         });
-        // Masukkan ke custMap
         if (Array.isArray(created)) {
           created.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
         }
       }
+      // Re-fetch customers supaya custMap lengkap (termasuk yang sudah ada sebelumnya)
+      const freshCusts = await sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id`);
+      freshCusts.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
     }
 
     // 5. Existing schedules (cegah duplikat)
