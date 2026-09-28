@@ -505,7 +505,9 @@ async function loadOrders() {
   document.getElementById('table-wrap').innerHTML =
     '<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat order...</div>';
   try {
-    allOrders = await sbGet('orders', `user_id=eq.${currentUser.id}&order=tanggal.desc,created_at.desc&select=*`);
+    const prodId = window.__activeProductFilter;
+    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+    allOrders = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&order=tanggal.desc,created_at.desc&select=*`);
     updateStats();
     loadCsFilter();
     renderTable();
@@ -866,6 +868,7 @@ async function saveOrder() {
   const ekspedisi = document.getElementById('inp-ekspedisi').value.trim();
   const payload = {
     user_id:         currentUser.id,
+    product_id:      window.__activeProductFilter || null,
     tanggal:         document.getElementById('inp-tanggal').value || null,
     cs:              document.getElementById('inp-cs').value.trim(),
     nama_customer:   nama,
@@ -1051,7 +1054,8 @@ async function doImport() {
   const btn = document.getElementById('btn-do-import');
   btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px"></span> Mengimport...';
   try {
-    const payload = importData.map(r => ({ ...r, user_id: currentUser.id }));
+    const prodId  = window.__activeProductFilter || null;
+    const payload = importData.map(r => ({ ...r, user_id: currentUser.id, product_id: prodId }));
     for (let i = 0; i < payload.length; i += 500) {
       await sbPost('orders', payload.slice(i, i+500), { prefer: 'return=minimal' });
     }
@@ -1068,6 +1072,13 @@ async function doImport() {
 }
 
 init();
+
+// Reload orders saat ganti produk di switcher
+window.addEventListener('productSwitch', () => {
+  selectedIds.clear();
+  updateBulkBar();
+  loadOrders();
+});
 </script>
 </body>
 </html>
