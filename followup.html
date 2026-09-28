@@ -1005,9 +1005,20 @@ async function saveRule() {
     } else {
       await sbPost('followup_rules', payload, { prefer: 'return=minimal' });
     }
-    toast('Rule disimpan!', 'success');
+    toast('Rule disimpan! Generating jadwal...', 'success');
     closeRuleModal();
     await loadRules();
+    // Auto-generate jadwal untuk rule baru
+    const r2 = await fetch('/api/generate-schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.id })
+    });
+    const d2 = await r2.json();
+    if (d2.created > 0) {
+      toast(`✅ ${d2.created} jadwal baru dibuat otomatis`, 'success');
+      await loadSchedules();
+    }
   } catch(e) {
     document.getElementById('rule-err').textContent = e.message;
     document.getElementById('rule-err').style.display = 'block';
