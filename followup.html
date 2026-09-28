@@ -823,7 +823,7 @@ async function generateJadwal() {
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Gagal');
-    toast(`✅ ${d.created} jadwal dibuat, ${d.skipped} dilewati`, 'success');
+    toast(`✅ ${d.created} jadwal dibuat · ${d.skipped} dilewati · Rules: ${d.rules||'-'}`, 'success');
     if (d.created > 0) await loadSchedules();
   } catch(e) {
     toast('Gagal generate: ' + e.message, 'error');
