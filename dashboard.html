@@ -703,8 +703,14 @@ async function _sbGet(t, q='') {
   const r = await fetch(`${window.__SB_URL}/rest/v1/${t}${q}`, {
     headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
   });
-  if (!r.ok) { console.error('sbGet', t, await r.text()); return []; }
-  return r.json();
+  if (!r.ok) {
+    const errTxt = await r.text();
+    console.error('[sbGet FAIL]', t, r.status, errTxt);
+    return [];
+  }
+  const data = await r.json();
+  if (t === 'conversations') console.log('[sbGet conversations]', data.length, 'rows | filter:', window.__activeProductFilter);
+  return data;
 }
 async function _sbPost(t, b) {
   const r = await fetch(`${window.__SB_URL}/rest/v1/${t}`, {
