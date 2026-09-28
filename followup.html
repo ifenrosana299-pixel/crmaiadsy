@@ -505,8 +505,16 @@ async function doSendFU() {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Mengirim...';
 
   try {
+    // Ambil wa_session_id dari produk aktif (fallback ke user id)
+    let sessionId = currentUser.id;
+    const prodId = window.__activeProductFilter;
+    if (prodId) {
+      const prods = await sbGet('products', `id=eq.${prodId}&select=wa_session_id`).catch(() => []);
+      if (prods[0]?.wa_session_id) sessionId = prods[0].wa_session_id;
+    }
+
     // Kirim WA
-    const r = await fetch(`/api/baileys-proxy?path=/send&session_id=${encodeURIComponent(currentUser.id)}`, {
+    const r = await fetch(`/api/baileys-proxy?path=/send&session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ wa_number: sendWaNum, message: pesan })
