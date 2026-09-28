@@ -246,7 +246,7 @@ async function sendBroadcast() {
         await fetch(`/api/baileys-proxy?path=${encodeURIComponent('/send')}&session_id=${encodeURIComponent(sessionId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: waNum + '@s.whatsapp.net', text: message }),
+          body: JSON.stringify({ wa_number: waNum, message, is_outbound: true }),
         });
       }
       sent++;
@@ -300,7 +300,7 @@ async function sendTest() {
     const r = await fetch(`/api/baileys-proxy?path=${encodeURIComponent('/send')}&session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: hp + '@s.whatsapp.net', text: message }),
+      body: JSON.stringify({ wa_number: hp, message }),
     });
     if (r.ok) {
       status.textContent = `✅ Test berhasil dikirim ke ${raw}`; status.style.color='#22c55e';
