@@ -203,10 +203,30 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
   // Expose active filter ke halaman lain
   window.__activeProductFilter = activeProductFilter;
 
+  // ── Cache key ─────────────────────────────────────────────
+  const CACHE_KEY = 'ps_products';
+
+  function loadCache() {
+    try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); } catch { return null; }
+  }
+  function saveCache(data) {
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch {}
+  }
+
   // ── Load produk dari Supabase ─────────────────────────────
   async function loadProds() {
     const userId = (typeof getUser === 'function' ? getUser() : (typeof Auth !== 'undefined' ? Auth : window.Auth)?.getUser?.())?.id;
     if (!userId) { console.log('[ProdSW] no userId'); return; }
+
+    // Tampil langsung dari cache dulu (tidak ada delay)
+    const cached = loadCache();
+    if (cached && cached.length) {
+      allUserProducts = cached;
+      window.__userProducts = allUserProducts;
+      resetFilterIfInvalid();
+      injectEl();
+      render();
+    }
 
     // Tunggu initConfig selesai (max 4 detik)
     let waited = 0;
@@ -216,24 +236,33 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
     }
     if (!window.__SB_URL) { console.log('[ProdSW] __SB_URL not ready'); return; }
 
+    // Fetch fresh di background
     try {
       let r = await fetch(
         `${window.__SB_URL}/rest/v1/products?user_id=eq.${userId}&aktif=eq.true&order=created_at.asc&select=id,nama,wa_status,wa_session_id`,
         { headers: { apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY } }
       );
-      if (r.ok) { allUserProducts = await r.json(); window.__userProducts = allUserProducts; console.log('[ProdSW] loaded', allUserProducts.length, 'products'); }
-      else { console.log('[ProdSW] fetch error', r.status, await r.text()); }
+      if (r.ok) {
+        const fresh = await r.json();
+        saveCache(fresh);
+        allUserProducts = fresh;
+        window.__userProducts = allUserProducts;
+        console.log('[ProdSW] loaded', allUserProducts.length, 'products');
+      } else { console.log('[ProdSW] fetch error', r.status); }
     } catch(e) { console.log('[ProdSW] fetch exception', e); }
 
+    resetFilterIfInvalid();
+    injectEl();
+    render();
+  }
+
+  function resetFilterIfInvalid() {
     // Reset filter kalau produk yang dipilih sudah tidak ada
     if (activeProductFilter && !allUserProducts.find(p => p.id === activeProductFilter)) {
       activeProductFilter = null;
       sessionStorage.removeItem('ps_active');
       window.__activeProductFilter = null;
     }
-
-    injectEl();
-    render();
   }
 
   // ── Init: tunggu #sb-bot-status (support sidebar dinamis) ─
