@@ -489,6 +489,14 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
             <input type="text" id="f-persona-gaya" placeholder="hangat, sabar, konsultatif">
           </div>
         </div>
+        <div class="form-group">
+          <label>Anthropic API Key <small style="color:#64748b;font-weight:400;text-transform:none">(opsional — override key default)</small></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="password" id="f-anthropic-key" placeholder="sk-ant-api03-..." autocomplete="off" style="font-family:monospace;flex:1">
+            <button type="button" onclick="var el=document.getElementById('f-anthropic-key');el.type=el.type==='password'?'text':'password'" style="padding:7px 10px;border:1px solid rgba(255,255,255,.1);background:none;color:#94a3b8;border-radius:7px;cursor:pointer;font-size:13px">👁</button>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">Jika diisi, produk ini pakai key ini. Jika kosong, pakai key default akun.</div>
+        </div>
       </div>
 
     </div>
@@ -794,6 +802,7 @@ function openAdd() {
   document.getElementById('f-knowledge').value = '';
   document.getElementById('f-persona-nama').value = 'Sari';
   document.getElementById('f-persona-gaya').value = 'hangat, sabar, konsultatif';
+  document.getElementById('f-anthropic-key').value = '';
   removeProdPhoto();
   loadTestiGrid([]);
   renderTags('keluhan'); renderTags('diagnosa');
@@ -816,6 +825,7 @@ async function openEdit(id) {
   document.getElementById('f-knowledge').value = p.product_knowledge || '';
   document.getElementById('f-persona-nama').value = p.persona_cs_nama || 'Sari';
   document.getElementById('f-persona-gaya').value = p.persona_cs_gaya || 'hangat, sabar, konsultatif';
+  document.getElementById('f-anthropic-key').value = p.anthropic_key || '';
   if (p.gambar_url) {
     document.getElementById('f-gambar-url').value = p.gambar_url;
     document.getElementById('prod-photo-thumb').innerHTML = `<img src="${p.gambar_url}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="document.getElementById('f-gambar-file').click()">`;
@@ -877,6 +887,7 @@ async function saveProduk() {
     persona_cs_nama:     document.getElementById('f-persona-nama').value.trim() || 'Sari',
     persona_cs_gaya:     document.getElementById('f-persona-gaya').value.trim(),
     harga_bundling:      getBundlingData(),
+    anthropic_key:       document.getElementById('f-anthropic-key').value.trim() || null,
   };
 
   try {
