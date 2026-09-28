@@ -272,6 +272,10 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
         <label class="form-label">Alamat Penerima</label>
         <textarea class="form-textarea" id="inp-alamat" placeholder="Alamat lengkap penerima" rows="2"></textarea>
       </div>
+      <div class="form-group">
+        <label class="form-label">Keluhan / Kondisi Customer</label>
+        <textarea class="form-textarea" id="inp-keluhan" placeholder="Contoh: nyeri lutut, susah tidur, dll" rows="2"></textarea>
+      </div>
       <div id="add-err" style="color:var(--red);font-size:12px;display:none;margin-top:4px"></div>
     </div>
     <div class="modal-footer">
@@ -298,7 +302,7 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
         </div>
         <div class="text-sm text-muted" style="line-height:2">
           <code>tanggal</code> · <code>ekspedisi</code> · <code>nomer_resi</code> · <code>payment</code> · <code>produk</code> · <code>jumlah_produk</code> ·
-          <code>promo</code> · <code>nama_customer</code> · <code>nomer_hp</code> · <code>alamat</code> · <code>cs</code> ·
+          <code>promo</code> · <code>nama_customer</code> · <code>nomer_hp</code> · <code>alamat</code> · <code>keluhan</code> · <code>cs</code> ·
           <code>ongkir</code> · <code>potongan_ongkir</code> · <code>admin</code> · <code>potongan_admin</code> · <code>harga_produk</code> · <code>jumlah_cod</code>
         </div>
         <div class="text-xs text-dim mt-2">Wajib: <strong>nama_customer</strong> dan <strong>nomer_hp</strong>. Format tanggal: YYYY-MM-DD atau DD/MM/YYYY.</div>
@@ -775,6 +779,7 @@ function openDetail(id) {
       <div><div class="text-xs text-dim">Nomer Resi</div><div class="fw-600 resi-cell">${escH(o.nomer_resi || '-')}</div></div>
       ${o.promo ? `<div><div class="text-xs text-dim">Promo</div><div class="fw-600">${escH(o.promo)}</div></div>` : ''}
       ${o.alamat ? `<div style="grid-column:1/-1"><div class="text-xs text-dim">Alamat</div><div class="text-sm">${escH(o.alamat)}</div></div>` : ''}
+      ${o.keluhan ? `<div style="grid-column:1/-1"><div class="text-xs text-dim">Keluhan</div><div class="text-sm" style="color:var(--accent)">${escH(o.keluhan)}</div></div>` : ''}
     </div>
 
     <!-- Financial -->
@@ -848,6 +853,7 @@ function openEditModal(id) {
   document.getElementById('inp-harga').value    = o.harga_produk || 0;
   document.getElementById('inp-cod').value      = o.jumlah_cod || 0;
   document.getElementById('inp-alamat').value   = o.alamat || '';
+  document.getElementById('inp-keluhan').value  = o.keluhan || '';
   document.getElementById('add-err').style.display = 'none';
   document.getElementById('add-modal').classList.add('show');
 }
@@ -886,6 +892,7 @@ async function saveOrder() {
     harga_produk:    parseInt(document.getElementById('inp-harga').value) || 0,
     jumlah_cod:      parseInt(document.getElementById('inp-cod').value) || 0,
     alamat:          document.getElementById('inp-alamat').value.trim(),
+    keluhan:         document.getElementById('inp-keluhan').value.trim(),
     status_resi:     resi ? 'DIKIRIM' : 'MENUNGGU_RESI',
     updated_at:      new Date().toISOString(),
   };
@@ -914,7 +921,7 @@ async function saveOrder() {
 
 // ── Import Excel ─────────────────────────────────────────────────────
 function downloadTemplate() {
-  const headers = ['tanggal','ekspedisi','nomer_resi','payment','produk','jumlah_produk','promo','nama_customer','nomer_hp','alamat','cs','ongkir','potongan_ongkir','admin','potongan_admin','harga_produk','jumlah_cod'];
+  const headers = ['tanggal','ekspedisi','nomer_resi','payment','produk','jumlah_produk','promo','nama_customer','nomer_hp','alamat','keluhan','cs','ongkir','potongan_ongkir','admin','potongan_admin','harga_produk','jumlah_cod'];
   const contoh = [
     ['2024-01-15','JNE','JNE123456789','COD','Herbanesia Kapsul',1,'DISKON10','Siti Rahayu','08123456789','Jl. Merdeka No.10, Jakarta Selatan','CS Rina',25000,0,2000,0,150000,177000],
     ['2024-01-16','J&T','JT9876543210','COD','Herbanesia Kapsul',2,'','Budi Santoso','08987654321','Jl. Sudirman No.5, Bandung','CS Rina',30000,5000,2000,0,300000,327000],
@@ -989,6 +996,7 @@ function parseExcel(file) {
         nama_customer:  findCol(headers,'nama_customer','nama','name','customer'),
         nomer_hp:       findCol(headers,'nomer_hp','hp','wa','phone','no_hp','telepon','nomor_hp'),
         alamat:         findCol(headers,'alamat','address','alamat_penerima','alamat_lengkap'),
+        keluhan:        findCol(headers,'keluhan','complaint','keluhan_customer','kondisi'),
         cs:             findCol(headers,'cs','nama_cs','customer_service'),
         ongkir:         findCol(headers,'ongkir','ongkos_kirim','shipping_cost'),
         pot_ongkir:     findCol(headers,'potongan_ongkir','pot_ongkir','diskon_ongkir'),
@@ -1016,6 +1024,7 @@ function parseExcel(file) {
           nama_customer:   String(g(r,'nama_customer')||'').trim(),
           nomer_hp:        normalizePhone(String(g(r,'nomer_hp')||'')),
           alamat:          String(g(r,'alamat')||'').trim(),
+          keluhan:         String(g(r,'keluhan')||'').trim(),
           cs:              String(g(r,'cs')||'').trim(),
           ongkir:          gi(r,'ongkir'),
           potongan_ongkir: gi(r,'pot_ongkir'),
