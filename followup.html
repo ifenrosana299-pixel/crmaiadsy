@@ -176,10 +176,15 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
       <div class="form-group mt-3">
         <label class="form-label">Variabel yang tersedia:</label>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <span class="badge badge-blue" style="cursor:pointer" onclick="insertVar('{nama}')">&#123;nama&#125;</span>
-          <span class="badge badge-blue" style="cursor:pointer" onclick="insertVar('{produk}')">&#123;produk&#125;</span>
-          <span class="badge badge-blue" style="cursor:pointer" onclick="insertVar('{hari}')">&#123;hari&#125;</span>
+          <span class="badge badge-blue" style="cursor:pointer" title="Nama customer" onclick="insertVar('{nama}')">&#123;nama&#125;</span>
+          <span class="badge badge-blue" style="cursor:pointer" title="Nama produk" onclick="insertVar('{produk}')">&#123;produk&#125;</span>
+          <span class="badge badge-blue" style="cursor:pointer" title="Jumlah hari rule" onclick="insertVar('{hari}')">&#123;hari&#125;</span>
+          <span class="badge badge-green" style="cursor:pointer" title="Nomor resi pengiriman" onclick="insertVar('{resi}')">&#123;resi&#125;</span>
+          <span class="badge badge-green" style="cursor:pointer" title="Nama ekspedisi (JNE, SiCepat, dll)" onclick="insertVar('{ekspedisi}')">&#123;ekspedisi&#125;</span>
+          <span class="badge badge-green" style="cursor:pointer" title="Status terakhir resi (dalam pengiriman, dll)" onclick="insertVar('{status_resi}')">&#123;status_resi&#125;</span>
+          <span class="badge badge-green" style="cursor:pointer" title="Alamat pengiriman customer" onclick="insertVar('{alamat}')">&#123;alamat&#125;</span>
         </div>
+        <div style="margin-top:5px;font-size:11px;color:var(--text-2)">🟢 = dari data order (resi, ekspedisi, status, alamat) · 🔵 = dari data customer</div>
       </div>
       <div id="rule-err" style="color:var(--red);font-size:12px;display:none"></div>
     </div>
@@ -366,19 +371,28 @@ async function openSendModal(fuId, custId, nama, waNum, ruleName) {
 
 async function autoLoadTemplate(custId, ruleName) {
   try {
-    const rules = await sbGet('followup_rules',
-      `user_id=eq.${currentUser.id}&nama=eq.${encodeURIComponent(ruleName)}&limit=1`);
+    const [rules, custs, orders] = await Promise.all([
+      sbGet('followup_rules', `user_id=eq.${currentUser.id}&nama=eq.${encodeURIComponent(ruleName)}&limit=1`),
+      sbGet('customers', `id=eq.${custId}&select=nama,produk,wa_number`),
+      sbGet('orders', `customer_id=eq.${custId}&order=tanggal.desc&limit=1&select=nomer_resi,ekspedisi,status_resi,alamat,produk`)
+    ]);
     const templates = rules[0]?.templates || [];
-    if (templates.length) {
-      const pesan = templates[Math.floor(Math.random() * templates.length)];
-      // Replace variabel
-      const cust = await sbGet('customers', `id=eq.${custId}&select=nama,produk`);
-      let filled = pesan
-        .replace(/{nama}/g, cust[0]?.nama || 'Kak')
-        .replace(/{produk}/g, cust[0]?.produk || 'produk')
-        .replace(/{hari}/g, rules[0]?.hari_setelah_delivered || '');
-      document.getElementById('send-pesan').value = filled;
-    }
+    if (!templates.length) return;
+    const pesan = templates[Math.floor(Math.random() * templates.length)];
+    const cust  = custs[0] || {};
+    const order = orders[0] || {};
+    const hariVal = rules[0]?.tipe === 'sebelum_deliv'
+      ? (rules[0]?.hari_sebelum_deliv || rules[0]?.hari_setelah_delivered || '')
+      : (rules[0]?.hari_setelah_delivered || '');
+    const filled = pesan
+      .replace(/{nama}/g,       cust.nama       || 'Kak')
+      .replace(/{produk}/g,     order.produk    || cust.produk || 'produk')
+      .replace(/{hari}/g,       hariVal)
+      .replace(/{resi}/g,       order.nomer_resi  || '[no resi]')
+      .replace(/{ekspedisi}/g,  order.ekspedisi   || '[ekspedisi]')
+      .replace(/{status_resi}/g,order.status_resi || '[status resi]')
+      .replace(/{alamat}/g,     order.alamat      || '[alamat]');
+    document.getElementById('send-pesan').value = filled;
   } catch(e) { console.warn(e); }
 }
 
