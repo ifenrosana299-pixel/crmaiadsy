@@ -137,6 +137,16 @@ body.light .bc-msg{background:#f8fafc}
         <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px 14px;font-size:12px;color:#fbbf24">
           ⚠️ Broadcast dikirim 1 per 1,5 detik agar tidak diblokir WhatsApp. Pastikan WA bot terhubung.
         </div>
+
+        <!-- TEST SEND -->
+        <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:8px;padding:12px 14px">
+          <div style="font-size:11px;font-weight:600;color:#93c5fd;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">🧪 Kirim Test ke 1 Nomor</div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="test-number" placeholder="08xxxxxxxxxx" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+            <button onclick="sendTest()" style="padding:7px 14px;border-radius:7px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Kirim Test</button>
+          </div>
+          <div id="test-status" style="font-size:11px;margin-top:6px;color:#64748b"></div>
+        </div>
       </div>
       <div class="send-btn">
         <button class="btn-primary" id="send-btn" onclick="sendBroadcast()">
@@ -254,6 +264,35 @@ async function sendBroadcast() {
   btn.disabled = false; btn.textContent = '📣 Kirim Broadcast';
   setTimeout(() => { document.getElementById('send-progress').style.display='none'; }, 5000);
   await loadHistory();
+}
+
+async function sendTest() {
+  const raw     = document.getElementById('test-number').value.trim();
+  const message = document.getElementById('bc-message').value.trim();
+  const status  = document.getElementById('test-status');
+  if (!raw)     { status.textContent = '⚠️ Masukkan nomor HP dulu'; status.style.color='#f59e0b'; return; }
+  if (!message) { status.textContent = '⚠️ Pesan tidak boleh kosong'; status.style.color='#f59e0b'; return; }
+
+  let hp = raw.replace(/\D/g,'');
+  if (hp.startsWith('0')) hp = '62' + hp.slice(1);
+  if (!hp.startsWith('62')) hp = '62' + hp;
+
+  status.textContent = '⏳ Mengirim test...'; status.style.color='#64748b';
+  try {
+    const r = await fetch('/api/baileys-proxy?path=' + encodeURIComponent('/send'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: hp + '@s.whatsapp.net', text: message }),
+    });
+    if (r.ok) {
+      status.textContent = `✅ Test berhasil dikirim ke ${raw}`; status.style.color='#22c55e';
+    } else {
+      const err = await r.text();
+      status.textContent = '❌ Gagal: ' + err; status.style.color='#f87171';
+    }
+  } catch(e) {
+    status.textContent = '❌ Error: ' + e.message; status.style.color='#f87171';
+  }
 }
 
 async function loadHistory() {
