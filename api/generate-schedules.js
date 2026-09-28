@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { user_id, product_id } = req.body || {};
+  const { user_id, product_id, force } = req.body || {};
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
 
   try {
@@ -101,14 +101,17 @@ export default async function handler(req, res) {
       freshCusts.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
     }
 
-    // 5. Existing schedules (cegah duplikat)
-    const existing = await sb('followup_schedule',
+    // 5. Existing schedules (cegah duplikat) — kalau force=true, hapus pending dulu
+    if (force) {
+      await sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending`, { method: 'DELETE' });
+    }
+    const existing = force ? [] : await sb('followup_schedule',
       `user_id=eq.${user_id}&status=eq.pending&select=customer_id,rule_id`);
     const existSet = new Set(existing.map(e => `${e.customer_id}__${e.rule_id}`));
 
     const today = new Date().toISOString().slice(0, 10);
     const toInsert = [];
-    let skipped = 0;
+    const skipReasons = { no_cust: 0, duplicate: 0, prod_mismatch: 0, no_base: 0, not_sampai: 0, too_old: 0 };
 
     for (const rule of rules) {
       const isSblm = rule.tipe === 'sebelum_deliv';
@@ -119,33 +122,33 @@ export default async function handler(req, res) {
       for (const order of orders) {
         const phone = normalizePhone(order.nomer_hp);
         const cust  = custMap[phone];
-        if (!cust) { skipped++; continue; }
+        if (!cust) { skipReasons.no_cust++; continue; }
 
         const key = `${cust.id}__${rule.id}`;
-        if (existSet.has(key)) { skipped++; continue; }
+        if (existSet.has(key)) { skipReasons.duplicate++; continue; }
 
         // Cek produk — hanya skip kalau keduanya ada tapi tidak match
         const orderProd = order.product_id || cust.product_id || null;
         if (rule.product_id && orderProd && rule.product_id !== orderProd) {
-          skipped++; continue;
+          skipReasons.prod_mismatch++; continue;
         }
 
         let scheduledDate = null;
         if (isSblm) {
           // Pakai tanggal order, fallback ke created_at kalau kosong
           const base = order.tanggal || (order.created_at ? order.created_at.slice(0, 10) : null);
-          if (!base) { skipped++; continue; }
+          if (!base) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base, hari);
         } else {
-          if (order.status_resi !== 'SAMPAI') { skipped++; continue; }
+          if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
           const base = order.last_tracked_at || order.tanggal || order.created_at;
-          if (!base) { skipped++; continue; }
+          if (!base) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base.slice(0, 10), hari);
         }
 
         // Skip jadwal yang sudah lewat >30 hari
         const diff = (new Date(today) - new Date(scheduledDate)) / 86400000;
-        if (diff > 30) { skipped++; continue; }
+        if (diff > 30) { skipReasons.too_old++; continue; }
 
         toInsert.push({
           user_id,
@@ -170,8 +173,16 @@ export default async function handler(req, res) {
       created += Math.min(200, toInsert.length - i);
     }
 
-    const ruleTypes = rules.map(r => `${r.nama}(${r.tipe||'?'})`).join(', ');
-    return res.json({ created, skipped, rules: ruleTypes, orders_total: orders.length, customers_total: Object.keys(custMap).length });
+    const skipped = Object.values(skipReasons).reduce((a, b) => a + b, 0);
+    const ruleTypes = rules.map(r => `${r.nama}(${r.tipe||'?'}) H+${r.hari_sebelum_deliv ?? r.hari_setelah_delivered ?? '?'}`).join(', ');
+    return res.json({
+      created, skipped, rules: ruleTypes,
+      orders_total: orders.length,
+      customers_in_db: customers.length,
+      custmap_size: Object.keys(custMap).length,
+      existing_schedules: existing.length,
+      skip_reasons: skipReasons
+    });
   } catch(e) {
     return res.status(500).json({ error: e.message });
   }
