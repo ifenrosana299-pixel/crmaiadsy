@@ -757,7 +757,7 @@ async function loadStats() {
   let convs = await _sbGet('conversations', `?user_id=eq.${userId}`);
 
   const prodFilter = window.__activeProductFilter;
-  if (prodFilter) convs = convs.filter(c => c.product_id === prodFilter);
+  if (prodFilter) convs = convs.filter(c => !c.product_id || c.product_id === prodFilter);
 
   const open    = convs.filter(c => c.status !== 'selesai').length;
   const esc     = convs.filter(c => c.status === 'eskalasi').length;
@@ -810,7 +810,7 @@ window.addEventListener('productSwitch', () => {
 
 async function renderInbox() {
   const userId = getUser()?.id;
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=last_msg_at.${sortOrder}.nullslast`);
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=updated_at.${sortOrder}.nullslast`);
   allConvs = convs;
 
   const _prodFilter = window.__activeProductFilter;
