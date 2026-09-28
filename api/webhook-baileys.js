@@ -1393,6 +1393,11 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     const savedMsg = await saveMessage(conversation.id, 'customer', msgText, msgId);
     const savedMsgId = savedMsg?.[0]?.id;
 
+    // Update last_msg_at saat pesan customer masuk agar inbox langsung refresh
+    await sbPatch('conversations', `?id=eq.${conversation.id}`, {
+      last_msg_at: new Date().toISOString(),
+    }).catch(() => {});
+
     // ── Debounce: kalau customer kirim 2+ pesan cepat, proses hanya yang terakhir ──
     // 2500ms cukup untuk menangkap ketikan cepat berturut-turut
     await new Promise(r => setTimeout(r, 2500));
@@ -1596,6 +1601,12 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     // Kirim teks reply dulu — capture wamid untuk fitur edit/hapus
     const { wamid: wamid_reply } = await sendWA(waSession, reply_jid, reply).catch(()=>({}));
     await saveMessage(conversation.id, 'ai', reply, wamid_reply);
+
+    // Update last_msg_at agar inbox refresh & sort benar
+    await sbPatch('conversations', `?id=eq.${conversation.id}`, {
+      last_msg_at: new Date().toISOString(),
+      status: conversation.status === 'selesai' ? 'baru' : conversation.status,
+    }).catch(() => {});
 
     // Kalau customer tanya foto dan ada gambar produk → selalu kirim (tidak peduli sudah pernah)
     if (tanyaFoto && adaGambarProduk) {
