@@ -263,6 +263,14 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
       sessionStorage.removeItem('ps_active');
       window.__activeProductFilter = null;
     }
+    // Auto-select produk pertama kalau belum ada pilihan (isolasi per produk seperti BotWA)
+    // Hanya auto-select kalau sessionStorage belum pernah di-set (bukan user yang pilih "Semua")
+    const hadSavedChoice = sessionStorage.getItem('ps_active') !== null;
+    if (!activeProductFilter && !hadSavedChoice && allUserProducts.length > 0) {
+      activeProductFilter = allUserProducts[0].id;
+      sessionStorage.setItem('ps_active', activeProductFilter);
+      window.__activeProductFilter = activeProductFilter;
+    }
   }
 
   // ── Init: tunggu #sb-bot-status (support sidebar dinamis) ─
