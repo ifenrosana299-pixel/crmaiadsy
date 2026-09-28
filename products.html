@@ -283,9 +283,9 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
       <div class="kb-nav-item active" id="nav-produk" onclick="showSection('produk',this)">
         <span class="ni">📦</span> Katalog Produk
       </div>
-      <div class="kb-nav-item" id="nav-sop" onclick="showSection('sop',this)">
-        <span class="ni">📋</span> SOP Follow Up
-      </div>
+      <a href="followup.html" class="kb-nav-item" style="text-decoration:none">
+        <span class="ni">🔔</span> Follow-up Engine
+      </a>
     </div>
 
     <div class="kb-content">
@@ -311,17 +311,8 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
         </div>
       </div>
 
-      <!-- Section: SOP Follow Up -->
-      <div class="kb-section" id="sec-sop">
-        <div class="section-action">
-          <div>
-            <div class="section-title">SOP Follow Up</div>
-            <div class="section-desc">Panduan follow up customer berdasarkan waktu & kondisi</div>
-          </div>
-          <button class="btn-primary" onclick="openSOPModal()">+ Tambah SOP</button>
-        </div>
-
-        <!-- Follow Up Config Card -->
+      <!-- Section: SOP Follow Up DIHAPUS — dikelola di Follow-up Engine -->
+      <div class="kb-section" id="sec-sop" style="display:none">
         <div class="fu-card" id="fu-config-card">
           <div class="fu-card-head" onclick="toggleFUCard()">
             <h4>⚡ Aturan Follow Up Otomatis <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:4px">— kapan bot kirim follow up?</span></h4>
