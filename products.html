@@ -624,7 +624,7 @@ document.getElementById('fu-same-enabled')?.addEventListener('change', syncFULab
 async function loadFUConfig() {
   if (!currentUserId) return;
   try {
-    const data = await sbGet('followup_config', `?user_id=eq.${currentUserId}&limit=1`);
+    const data = await sbGet('followup_config', `user_id=eq.${currentUserId}&limit=1`);
     if (data && data[0]) {
       const c = data[0];
       document.getElementById('fu-same-enabled').checked = c.same_day_enabled  ?? true;
@@ -647,7 +647,7 @@ async function saveFUConfig() {
     updated_at:         new Date().toISOString(),
   };
   try {
-    const existing = await sbGet('followup_config', `?user_id=eq.${currentUserId}&limit=1`);
+    const existing = await sbGet('followup_config', `user_id=eq.${currentUserId}&limit=1`);
     if (existing && existing[0]) {
       await sbPatch('followup_config', `?user_id=eq.${currentUserId}`, payload);
     } else {
@@ -673,7 +673,7 @@ function resetFUConfig() {
    KATALOG PRODUK
 ══════════════════════════════════════ */
 async function loadProducts() {
-  allProducts = await sbGet('products', `?user_id=eq.${currentUserId}&order=created_at.desc&select=*`);
+  allProducts = await sbGet('products', `user_id=eq.${currentUserId}&order=created_at.desc&select=*`);
   renderGrid();
 }
 
@@ -1012,7 +1012,7 @@ const SOP_CAT_NUM_COLOR = {
 };
 
 async function loadSOPs() {
-  allSOPs = await sbGet('sops', `?user_id=eq.${currentUserId}&order=created_at.asc`);
+  allSOPs = await sbGet('sops', `user_id=eq.${currentUserId}&order=created_at.asc`);
   renderSOPs();
 }
 
