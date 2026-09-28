@@ -92,7 +92,8 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
         <div class="page-sub">Jadwal & aturan follow-up otomatis</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:10px">
-        <button class="btn btn-ghost" onclick="generateJadwal()" id="btn-gen-jadwal">⚡ Generate Jadwal</button>
+        <button class="btn btn-ghost" onclick="generateJadwal(false)" id="btn-gen-jadwal">⚡ Generate Jadwal</button>
+        <button class="btn btn-ghost" onclick="generateJadwal(true)" id="btn-gen-force" title="Hapus semua pending lalu generate ulang">🔄 Reset & Generate</button>
         <button class="btn btn-primary" onclick="openRuleModal()">+ Buat Rule FU</button>
       </div>
     </div>
@@ -813,23 +814,29 @@ async function deleteRule(id) {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-async function generateJadwal() {
-  const btn = document.getElementById('btn-gen-jadwal');
-  btn.disabled = true; btn.textContent = '⏳ Memproses...';
+async function generateJadwal(force = false) {
+  const btn = document.getElementById(force ? 'btn-gen-force' : 'btn-gen-jadwal');
+  const allBtns = [document.getElementById('btn-gen-jadwal'), document.getElementById('btn-gen-force')];
+  allBtns.forEach(b => { if(b) b.disabled = true; });
+  btn.textContent = '⏳ Memproses...';
   try {
     const r = await fetch('/api/generate-schedules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
+      body: JSON.stringify({ user_id: currentUser.id, force })
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Gagal');
-    toast(`✅ ${d.created} jadwal dibuat · ${d.skipped} dilewati · Rules: ${d.rules||'-'}`, 'success');
-    if (d.created > 0) await loadSchedules();
+    const sr = d.skip_reasons || {};
+    const srTxt = Object.entries(sr).filter(([,v])=>v>0).map(([k,v])=>`${k}:${v}`).join(' ');
+    toast(`✅ ${d.created} jadwal dibuat · ${d.skipped} skip [${srTxt||'-'}] · orders:${d.orders_total} cust_db:${d.customers_in_db} custmap:${d.custmap_size} exist_sched:${d.existing_schedules}`, d.created>0?'success':'info');
+    if (d.created > 0 || force) await loadSchedules();
   } catch(e) {
     toast('Gagal generate: ' + e.message, 'error');
   }
-  btn.disabled = false; btn.textContent = '⚡ Generate Jadwal';
+  allBtns.forEach(b => { if(b) b.disabled = false; });
+  document.getElementById('btn-gen-jadwal').textContent = '⚡ Generate Jadwal';
+  document.getElementById('btn-gen-force').textContent = '🔄 Reset & Generate';
 }
 
 init();
