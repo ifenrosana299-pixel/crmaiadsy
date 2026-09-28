@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { user_id, product_id, force } = req.body || {};
+  const { user_id, product_id } = req.body || {};
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
 
   try {
@@ -101,11 +101,8 @@ export default async function handler(req, res) {
       freshCusts.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
     }
 
-    // 5. Existing schedules (cegah duplikat) — kalau force=true, hapus pending dulu
-    if (force) {
-      await sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending`, { method: 'DELETE' });
-    }
-    const existing = force ? [] : await sb('followup_schedule',
+    // 5. Existing schedules (cegah duplikat)
+    const existing = await sb('followup_schedule',
       `user_id=eq.${user_id}&status=eq.pending&select=customer_id,rule_id`);
     const existSet = new Set(existing.map(e => `${e.customer_id}__${e.rule_id}`));
 
