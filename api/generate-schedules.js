@@ -51,8 +51,8 @@ export default async function handler(req, res) {
 
     // 2. Orders — filter by product_id kalau ada
     const orderQ = product_id
-      ? `user_id=eq.${user_id}&product_id=eq.${product_id}&select=id,nomer_hp,nama_customer,produk,tanggal,status_resi,last_tracked_at,product_id&order=tanggal.desc&limit=2000`
-      : `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,status_resi,last_tracked_at,product_id&order=tanggal.desc&limit=2000`;
+      ? `user_id=eq.${user_id}&product_id=eq.${product_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,product_id&order=created_at.desc&limit=2000`
+      : `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,product_id&order=created_at.desc&limit=2000`;
     const orders = await sb('orders', orderQ);
     if (!orders.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada order' });
 
@@ -133,11 +133,13 @@ export default async function handler(req, res) {
 
         let scheduledDate = null;
         if (isSblm) {
-          if (!order.tanggal) { skipped++; continue; }
-          scheduledDate = addDays(order.tanggal, hari);
+          // Pakai tanggal order, fallback ke created_at kalau kosong
+          const base = order.tanggal || (order.created_at ? order.created_at.slice(0, 10) : null);
+          if (!base) { skipped++; continue; }
+          scheduledDate = addDays(base, hari);
         } else {
           if (order.status_resi !== 'SAMPAI') { skipped++; continue; }
-          const base = (order.last_tracked_at || order.tanggal);
+          const base = order.last_tracked_at || order.tanggal || order.created_at;
           if (!base) { skipped++; continue; }
           scheduledDate = addDays(base.slice(0, 10), hari);
         }
@@ -169,7 +171,8 @@ export default async function handler(req, res) {
       created += Math.min(200, toInsert.length - i);
     }
 
-    return res.json({ created, skipped, customers_created: missingOrders.length > 0 ? Object.keys(custMap).length : 0 });
+    const ruleTypes = rules.map(r => `${r.nama}(${r.tipe||'?'})`).join(', ');
+    return res.json({ created, skipped, rules: ruleTypes, orders_total: orders.length, customers_total: Object.keys(custMap).length });
   } catch(e) {
     return res.status(500).json({ error: e.message });
   }
