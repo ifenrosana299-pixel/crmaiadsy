@@ -113,8 +113,8 @@ export default async function handler(req, res) {
     for (const rule of rules) {
       const isSblm = rule.tipe === 'sebelum_deliv';
       const hari = isSblm
-        ? (rule.hari_sebelum_deliv || rule.hari_setelah_delivered || 1)
-        : (rule.hari_setelah_delivered || 1);
+        ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0)
+        : (rule.hari_setelah_delivered ?? 1);
 
       for (const order of orders) {
         const phone = normalizePhone(order.nomer_hp);
