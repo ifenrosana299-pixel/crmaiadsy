@@ -135,8 +135,8 @@ export default async function handler(req, res) {
 
         let scheduledDate = null;
         if (isSblm) {
-          // Pakai tanggal order, fallback ke created_at kalau kosong
-          const base = order.tanggal || (order.created_at ? order.created_at.slice(0, 10) : null);
+          // Pakai created_at (tanggal order masuk) sebagai base — bukan tanggal delivery
+          const base = order.created_at ? order.created_at.slice(0, 10) : order.tanggal || null;
           if (!base) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base, hari);
         } else {
