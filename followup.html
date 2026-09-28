@@ -392,6 +392,7 @@ function loadRuleFilter() {
 
 function switchTab(tab, el) {
   activeTab = tab;
+  fuPage = 1;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   renderSchedule();
@@ -432,18 +433,24 @@ function renderSchedule() {
     }
   });
 
-  document.getElementById('fu-count-label').textContent = `${custIds.length} customer`;
   if (currentView === 'pipeline') { renderPipeline(); return; }
 
+  const totalCust = custIds.length;
+  const totalPages = Math.max(1, Math.ceil(totalCust / FU_PER_PAGE));
+  if (fuPage > totalPages) fuPage = totalPages;
+  const pageIds = custIds.slice((fuPage-1)*FU_PER_PAGE, fuPage*FU_PER_PAGE);
+
+  document.getElementById('fu-count-label').textContent = `${totalCust} customer`;
+
   const el = document.getElementById('fu-schedule-list');
-  if (!custIds.length) {
+  if (!totalCust) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">${activeTab === 'hari_ini' ? 'Tidak ada FU hari ini!' : 'Tidak ada jadwal pending'}</div></div>`;
     return;
   }
 
   const bulanArr = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
 
-  el.innerHTML = custIds.map(cid => {
+  el.innerHTML = pageIds.map(cid => {
     const { cust, rules } = byCustomer[cid];
     const nama = cust?.nama || '-';
     const wa   = cust?.wa_number || '';
@@ -495,7 +502,7 @@ function renderSchedule() {
 
     return `
       <div class="cfu-card">
-        <div class="cfu-head open" onclick="toggleCfuCard('${cardId}')">
+        <div class="cfu-head" onclick="toggleCfuCard('${cardId}')">
           <div class="cfu-avatar">${inisial}</div>
           <div style="flex:1;min-width:0">
             <div class="cfu-name">${nama}</div>
@@ -503,14 +510,38 @@ function renderSchedule() {
           </div>
           <div class="cfu-progress">${dots}</div>
           ${pendingCount ? `<span style="font-size:11px;font-weight:600;background:rgba(59,130,246,.12);color:#60a5fa;padding:2px 8px;border-radius:20px;margin-left:8px">${pendingCount} pending</span>` : ''}
-          <div class="cfu-arrow open" id="${cardId}-arrow">▼</div>
+          <div class="cfu-arrow" id="${cardId}-arrow">▼</div>
         </div>
-        <div class="cfu-rules open" id="${cardId}">${ruleRows}</div>
+        <div class="cfu-rules" id="${cardId}">${ruleRows}</div>
       </div>`;
   }).join('');
+
+  // Pagination
+  if (totalPages > 1) {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(`<button class="btn btn-ghost btn-sm${i===fuPage?' active-view':''}" onclick="gotoFuPage(${i})">${i}</button>`);
+    }
+    el.innerHTML += `<div style="display:flex;justify-content:center;gap:6px;padding:12px 0;border-top:1px solid var(--border);margin-top:4px">
+      <button class="btn btn-ghost btn-sm" onclick="gotoFuPage(${fuPage-1})" ${fuPage<=1?'disabled':''}>‹</button>
+      ${pages.join('')}
+      <button class="btn btn-ghost btn-sm" onclick="gotoFuPage(${fuPage+1})" ${fuPage>=totalPages?'disabled':''}>›</button>
+    </div>`;
+  }
+}
+
+function gotoFuPage(p) {
+  const totalPages = Math.ceil(Object.keys(
+    allSchedules.reduce((m,s)=>{m[s.customer_id]=1;return m},{})
+  ).length / FU_PER_PAGE);
+  fuPage = Math.max(1, Math.min(p, totalPages || 1));
+  renderSchedule();
+  document.getElementById('fu-schedule-list').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 let currentView = 'list';
+let fuPage = 1;
+const FU_PER_PAGE = 10;
 function switchView(view) {
   currentView = view;
   document.getElementById('fu-schedule-list').style.display = view === 'list' ? 'flex' : 'none';
