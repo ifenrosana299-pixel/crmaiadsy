@@ -914,6 +914,8 @@ async function saveOrder() {
       const newOrder = allOrders.find(o => o.nomer_resi === resi);
       if (newOrder) setTimeout(() => trackOne(newOrder.id), 500);
     }
+    // Auto-generate jadwal FU
+    autoGenerateSchedules();
   } catch(e) {
     document.getElementById('add-err').textContent = e.message;
     document.getElementById('add-err').style.display = 'block';
@@ -1089,7 +1091,7 @@ async function autoGenerateSchedules() {
     await fetch('/api/generate-schedules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
+      body: JSON.stringify({ user_id: currentUser.id, product_id: window.__activeProductFilter || null })
     });
   } catch(e) { console.warn('[autoGenerateSchedules]', e); }
 }
