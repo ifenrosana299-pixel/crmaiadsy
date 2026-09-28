@@ -100,6 +100,28 @@ body.light .rule-card-top:hover{background:rgba(0,0,0,.02)}
 .rule-card-detail.open{display:block}
 .rule-card-tmpl{font-size:11px;color:var(--text-2);font-style:italic;padding:6px 10px;background:rgba(255,255,255,.04);border-radius:6px;margin-top:6px;line-height:1.5}
 body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
+
+/* ── Pipeline View ── */
+.active-view{background:rgba(59,130,246,.15)!important;color:#60a5fa!important;border-color:rgba(59,130,246,.3)!important}
+.pipe-col{width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.pipe-col-hdr{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+body.light .pipe-col-hdr{background:#fff}
+.pipe-col-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.pipe-col-sub{font-size:11px;color:var(--text-2)}
+.pipe-col-count{font-size:11px;font-weight:700;background:rgba(255,255,255,.08);color:var(--text-2);padding:1px 7px;border-radius:20px;border:1px solid var(--border);float:right;margin-top:-2px}
+body.light .pipe-col-count{background:rgba(0,0,0,.05)}
+.pipe-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:default;transition:box-shadow .15s}
+.pipe-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.1)}
+body.light .pipe-card{background:#fff}
+.pipe-card.today{border-color:#3b82f6}
+.pipe-card.overdue{border-color:#ef4444}
+.pipe-card-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.pipe-card-sub{font-size:11px;color:var(--text-2);margin-bottom:8px}
+.pipe-card-date{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block}
+.pipe-card-date.today{background:rgba(59,130,246,.12);color:#60a5fa}
+.pipe-card-date.overdue{background:rgba(239,68,68,.1);color:#f87171}
+.pipe-card-date.upcoming{background:rgba(255,255,255,.06);color:var(--text-2)}
+body.light .pipe-card-date.upcoming{background:rgba(0,0,0,.05)}
 </style>
 </head>
 <body>
@@ -124,12 +146,18 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
 
         <!-- LEFT: JADWAL FU -->
         <div>
-          <!-- TABS -->
-          <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('hari_ini',this)">📅 Hari Ini</button>
-            <button class="tab-btn" onclick="switchTab('besok',this)">Besok</button>
-            <button class="tab-btn" onclick="switchTab('minggu_ini',this)">Minggu Ini</button>
-            <button class="tab-btn" onclick="switchTab('semua',this)">Semua Pending</button>
+          <!-- VIEW TOGGLE + TABS -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div class="tabs" style="margin-bottom:0;flex:1">
+              <button class="tab-btn active" onclick="switchTab('hari_ini',this)">📅 Hari Ini</button>
+              <button class="tab-btn" onclick="switchTab('besok',this)">Besok</button>
+              <button class="tab-btn" onclick="switchTab('minggu_ini',this)">Minggu Ini</button>
+              <button class="tab-btn" onclick="switchTab('semua',this)">Semua</button>
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="btn btn-ghost btn-sm active-view" id="btn-view-list" onclick="switchView('list')" title="List View">☰</button>
+              <button class="btn btn-ghost btn-sm" id="btn-view-pipe" onclick="switchView('pipeline')" title="Pipeline View">⬛⬛⬛</button>
+            </div>
           </div>
 
           <div class="filter-bar">
@@ -142,8 +170,14 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             </div>
           </div>
 
+          <!-- LIST VIEW -->
           <div id="fu-schedule-list" style="display:flex;flex-direction:column;gap:10px">
             <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat...</div>
+          </div>
+
+          <!-- PIPELINE VIEW -->
+          <div id="fu-pipeline" style="display:none;overflow-x:auto;padding-bottom:8px">
+            <div id="fu-pipeline-cols" style="display:flex;gap:14px;min-width:max-content"></div>
           </div>
         </div>
 
@@ -399,6 +433,7 @@ function renderSchedule() {
   });
 
   document.getElementById('fu-count-label').textContent = `${custIds.length} customer`;
+  if (currentView === 'pipeline') { renderPipeline(); return; }
 
   const el = document.getElementById('fu-schedule-list');
   if (!custIds.length) {
@@ -471,6 +506,77 @@ function renderSchedule() {
           <div class="cfu-arrow open" id="${cardId}-arrow">▼</div>
         </div>
         <div class="cfu-rules open" id="${cardId}">${ruleRows}</div>
+      </div>`;
+  }).join('');
+}
+
+let currentView = 'list';
+function switchView(view) {
+  currentView = view;
+  document.getElementById('fu-schedule-list').style.display = view === 'list' ? 'flex' : 'none';
+  document.getElementById('fu-pipeline').style.display = view === 'pipeline' ? 'block' : 'none';
+  document.getElementById('btn-view-list').classList.toggle('active-view', view === 'list');
+  document.getElementById('btn-view-pipe').classList.toggle('active-view', view === 'pipeline');
+  if (view === 'pipeline') renderPipeline();
+}
+
+function renderPipeline() {
+  const today    = todayStr();
+  const search   = document.getElementById('search-fu').value.toLowerCase();
+  const bulanArr = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+
+  // Kumpulkan rules unik (ordered by hari)
+  const ruleMap = {};
+  allSchedules.forEach(s => {
+    if (!ruleMap[s.rule_id]) ruleMap[s.rule_id] = { id: s.rule_id, nama: s.rule_nama, cards: [] };
+  });
+
+  // Isi cards: hanya pending per rule, filter search
+  allSchedules.filter(s => s.status === 'pending').forEach(s => {
+    if (!ruleMap[s.rule_id]) return;
+    if (search) {
+      const hay = `${s.customers?.nama} ${s.customers?.wa_number} ${s.customers?.produk}`.toLowerCase();
+      if (!hay.includes(search)) return;
+    }
+    ruleMap[s.rule_id].cards.push(s);
+  });
+
+  const cols = Object.values(ruleMap);
+  const el = document.getElementById('fu-pipeline-cols');
+
+  if (!cols.length) {
+    el.innerHTML = `<div class="empty-state">Tidak ada jadwal pending</div>`;
+    return;
+  }
+
+  el.innerHTML = cols.map(col => {
+    const cards = col.cards.map(s => {
+      const isToday  = s.scheduled_date === today;
+      const isOverdue = s.scheduled_date < today;
+      const [,mo,dy] = (s.scheduled_date||'').split('-');
+      const tgl = mo && dy ? `${dy} ${bulanArr[parseInt(mo)]}` : '-';
+      const cls  = isOverdue ? 'overdue' : isToday ? 'today' : '';
+      const dateCls = isOverdue ? 'overdue' : isToday ? 'today' : 'upcoming';
+      const nama = (s.customers?.nama||'-').replace(/'/g,"\\'");
+      const wa   = s.customers?.wa_number || '';
+      return `
+        <div class="pipe-card ${cls}">
+          <div class="pipe-card-name">${s.customers?.nama||'-'}</div>
+          <div class="pipe-card-sub">${s.customers?.produk||''}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+            <span class="pipe-card-date ${dateCls}">${isToday?'Hari ini':isOverdue?'⚠ '+tgl:tgl}</span>
+            <button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:11px" onclick="openSendModal('${s.id}','${s.customer_id}','${nama}','${wa}','${s.rule_nama||''}')">Kirim</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="pipe-col">
+        <div class="pipe-col-hdr">
+          <span class="pipe-col-count">${col.cards.length}</span>
+          <div class="pipe-col-title">${col.nama||'-'}</div>
+        </div>
+        ${cards || `<div style="text-align:center;padding:20px 0;font-size:12px;color:var(--text-2)">Kosong</div>`}
       </div>`;
   }).join('');
 }
