@@ -35,19 +35,35 @@ body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563e
 body.light .sb-divider{background:rgba(0,0,0,.07)}
 body.light .bot-online{background:rgba(34,197,94,.06)}
 
-/* ── Fu Card ── */
-.fu-card{display:flex;align-items:flex-start;gap:14px;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;transition:box-shadow .15s}
-.fu-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.fu-card-info{flex:1;min-width:0}
-.fu-card-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
-.fu-card-sub{font-size:12px;color:var(--text-2);margin-bottom:4px}
-.fu-card-rule{font-size:12px;color:var(--text-2)}
-.fu-card-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
-.fu-date-badge{text-align:center;min-width:52px;flex-shrink:0}
-.fu-date-badge .fu-day{font-size:20px;font-weight:800;color:var(--text);line-height:1}
-.fu-date-badge .fu-mon{font-size:10px;color:var(--text-2);font-weight:500;text-transform:uppercase;margin-top:2px}
-.fu-date-badge .fu-ico{font-size:22px;margin-top:4px}
-body.light .fu-card{background:#fff}
+/* ── Customer FU Card ── */
+.cfu-card{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:box-shadow .15s}
+.cfu-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+body.light .cfu-card{background:#fff}
+.cfu-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.cfu-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.cfu-name{font-size:14px;font-weight:600;color:var(--text)}
+.cfu-sub{font-size:12px;color:var(--text-2);margin-top:1px}
+.cfu-progress{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0}
+.cfu-prog-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.cfu-prog-dot.done{background:#22c55e}
+.cfu-prog-dot.today{background:#3b82f6}
+.cfu-prog-dot.pending{background:#475569}
+/* Rule checklist rows */
+.cfu-rules{padding:8px 0}
+.cfu-rule-row{display:flex;align-items:center;gap:12px;padding:9px 16px;transition:background .1s}
+.cfu-rule-row:hover{background:rgba(255,255,255,.03)}
+body.light .cfu-rule-row:hover{background:rgba(0,0,0,.02)}
+.cfu-check{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;transition:all .15s}
+.cfu-check.done{background:#22c55e;border-color:#22c55e;color:#fff}
+.cfu-check.today{background:#3b82f6;border-color:#3b82f6;color:#fff;animation:pulse-blue 2s infinite}
+.cfu-check.overdue{background:#ef4444;border-color:#ef4444;color:#fff}
+.cfu-check.skipped{background:#475569;border-color:#475569;color:#fff}
+@keyframes pulse-blue{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.4)}50%{box-shadow:0 0 0 4px rgba(59,130,246,0)}}
+.cfu-rule-info{flex:1;min-width:0}
+.cfu-rule-name{font-size:13px;font-weight:500;color:var(--text)}
+.cfu-rule-name.done{color:var(--text-2);text-decoration:line-through}
+.cfu-rule-date{font-size:11px;color:var(--text-2);margin-top:1px}
+.cfu-rule-acts{display:flex;gap:6px;flex-shrink:0}
 
 /* ── Rule Section Collapsible ── */
 .rule-section{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden}
@@ -107,8 +123,7 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             <button class="tab-btn active" onclick="switchTab('hari_ini',this)">📅 Hari Ini</button>
             <button class="tab-btn" onclick="switchTab('besok',this)">Besok</button>
             <button class="tab-btn" onclick="switchTab('minggu_ini',this)">Minggu Ini</button>
-            <button class="tab-btn" onclick="switchTab('semua',this)">Semua</button>
-            <button class="tab-btn" onclick="switchTab('selesai',this)">Selesai</button>
+            <button class="tab-btn" onclick="switchTab('semua',this)">Semua Pending</button>
           </div>
 
           <div class="filter-bar">
@@ -318,6 +333,7 @@ async function init() {
 // ---- SCHEDULES ----
 async function loadSchedules() {
   try {
+    // Fetch SEMUA schedule (pending + sent) supaya bisa tampil journey lengkap per customer
     const rows = await sbGet('followup_schedule',
       `user_id=eq.${currentUser.id}&order=scheduled_date.asc&select=*,customers(nama,wa_number,produk,status)`);
     allSchedules = rows;
@@ -342,71 +358,107 @@ function switchTab(tab, el) {
 }
 
 function renderSchedule() {
-  const today     = todayStr();
-  const tomorrow  = addDays(today, 1);
-  const weekEnd   = addDays(today, 6);
-  const search    = document.getElementById('search-fu').value.toLowerCase();
-  const ruleFilter= document.getElementById('rule-filter').value;
+  const today    = todayStr();
+  const tomorrow = addDays(today, 1);
+  const weekEnd  = addDays(today, 6);
+  const search   = document.getElementById('search-fu').value.toLowerCase();
+  const ruleFilter = document.getElementById('rule-filter').value;
 
-  let filtered = allSchedules.filter(s => {
-    if (ruleFilter && s.rule_nama !== ruleFilter) return false;
+  // Group semua schedules by customer_id
+  const byCustomer = {};
+  allSchedules.forEach(s => {
+    if (ruleFilter && s.rule_nama !== ruleFilter) return;
+    const cid = s.customer_id;
+    if (!byCustomer[cid]) byCustomer[cid] = { cust: s.customers, rules: [] };
+    byCustomer[cid].rules.push(s);
+  });
+
+  // Filter customers yang punya pending sesuai tab
+  const custIds = Object.keys(byCustomer).filter(cid => {
+    const { cust, rules } = byCustomer[cid];
+    // Search filter
     if (search) {
-      const hay = `${s.customers?.nama} ${s.customers?.wa_number} ${s.customers?.produk}`.toLowerCase();
+      const hay = `${cust?.nama} ${cust?.wa_number} ${cust?.produk}`.toLowerCase();
       if (!hay.includes(search)) return false;
     }
+    // Tab filter: customer muncul kalau ada salah satu pending yang match
+    const pending = rules.filter(r => r.status === 'pending');
     switch (activeTab) {
-      case 'hari_ini':   return s.status === 'pending' && s.scheduled_date === today;
-      case 'besok':      return s.status === 'pending' && s.scheduled_date === tomorrow;
-      case 'minggu_ini': return s.status === 'pending' && s.scheduled_date >= today && s.scheduled_date <= weekEnd;
-      case 'semua':      return s.status === 'pending';
-      case 'selesai':    return s.status !== 'pending';
-      default: return true;
+      case 'hari_ini':   return pending.some(r => r.scheduled_date === today);
+      case 'besok':      return pending.some(r => r.scheduled_date === tomorrow);
+      case 'minggu_ini': return pending.some(r => r.scheduled_date >= today && r.scheduled_date <= weekEnd);
+      case 'semua':      return pending.length > 0;
+      default:           return pending.length > 0;
     }
   });
 
-  document.getElementById('fu-count-label').textContent = `${filtered.length} jadwal`;
+  document.getElementById('fu-count-label').textContent = `${custIds.length} customer`;
 
   const el = document.getElementById('fu-schedule-list');
-  if (!filtered.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">${activeTab === 'hari_ini' ? 'Tidak ada FU hari ini!' : 'Tidak ada jadwal'}</div></div>`;
+  if (!custIds.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">${activeTab === 'hari_ini' ? 'Tidak ada FU hari ini!' : 'Tidak ada jadwal pending'}</div></div>`;
     return;
   }
 
-  el.innerHTML = filtered.map(s => {
-    const isToday  = s.scheduled_date === today;
-    const isPast   = s.scheduled_date < today && s.status === 'pending';
-    const isDone   = s.status !== 'pending';
-    const ico      = isPast ? '⚠️' : isDone ? '✅' : isToday ? '📞' : '🕐';
-    const [yr, mo, dy] = (s.scheduled_date || '').split('-');
-    const bulan    = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'][parseInt(mo)] || '';
-    const nama     = (s.customers?.nama || '-').replace(/'/g,"\\'");
-    const wa       = s.customers?.wa_number || '';
-    const waFmt    = wa ? '+' + wa.replace(/(\d{2})(\d{3})(\d{4})(\d+)/, '$1 $2-$3-$4') : '-';
+  const bulanArr = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+
+  el.innerHTML = custIds.map(cid => {
+    const { cust, rules } = byCustomer[cid];
+    const nama = cust?.nama || '-';
+    const wa   = cust?.wa_number || '';
+    const waFmt = wa ? '+' + wa.replace(/(\d{2})(\d{3})(\d{4})(\d+)/, '$1 $2-$3-$4') : '-';
+    const inisial = nama.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+    // Progress dots
+    const dots = rules.map(r => {
+      const cls = r.status !== 'pending' ? 'done' : r.scheduled_date === today ? 'today' : 'pending';
+      return `<div class="cfu-prog-dot ${cls}" title="${r.rule_nama}"></div>`;
+    }).join('');
+
+    // Rule rows
+    const ruleRows = rules.map(r => {
+      const isDone    = r.status === 'sent' || r.status === 'failed';
+      const isSkipped = r.status === 'skipped';
+      const isToday   = r.scheduled_date === today && r.status === 'pending';
+      const isOverdue = r.scheduled_date < today && r.status === 'pending';
+      const checkCls  = isDone ? 'done' : isSkipped ? 'skipped' : isToday ? 'today' : isOverdue ? 'overdue' : '';
+      const checkIco  = isDone ? '✓' : isSkipped ? '–' : isToday || isOverdue ? '!' : '';
+      const [,mo,dy]  = (r.scheduled_date||'').split('-');
+      const tglLabel  = mo && dy ? `${dy} ${bulanArr[parseInt(mo)]}` : '-';
+      const namaCust  = nama.replace(/'/g,"\\'");
+
+      return `
+        <div class="cfu-rule-row">
+          <div class="cfu-check ${checkCls}">${checkIco}</div>
+          <div class="cfu-rule-info">
+            <div class="cfu-rule-name ${isDone||isSkipped?'done':''}">${r.rule_nama||'-'}</div>
+            <div class="cfu-rule-date">
+              ${tglLabel}
+              ${isToday ? '<span style="color:#3b82f6;font-weight:600"> · Hari ini</span>' : ''}
+              ${isOverdue ? '<span style="color:#ef4444;font-weight:600"> · Terlambat</span>' : ''}
+              ${isDone && r.sent_at ? ' · Terkirim ' + fmtDateTime(r.sent_at) : ''}
+              ${isSkipped ? ' · Di-skip' : ''}
+            </div>
+          </div>
+          ${!isDone && !isSkipped ? `
+            <div class="cfu-rule-acts">
+              <button class="btn btn-primary btn-sm" onclick="openSendModal('${r.id}','${r.customer_id}','${namaCust}','${wa}','${r.rule_nama||''}')">📤 Kirim</button>
+              <button class="btn btn-ghost btn-sm" onclick="skipSchedule('${r.id}')">Skip</button>
+            </div>` : ''}
+        </div>`;
+    }).join('');
 
     return `
-      <div class="fu-card" style="${isPast ? 'border-color:var(--red)' : isToday ? 'border-color:#3b82f6' : ''}">
-        <div class="fu-date-badge">
-          <div class="fu-day">${dy||'--'}</div>
-          <div class="fu-mon">${bulan}</div>
-          <div class="fu-ico">${ico}</div>
-        </div>
-        <div class="fu-card-info">
-          <div class="fu-card-name">${s.customers?.nama || '-'}</div>
-          <div class="fu-card-sub">${waFmt}${s.customers?.produk ? ' · ' + s.customers.produk : ''}</div>
-          <div class="fu-card-rule">
-            <span style="background:rgba(99,102,241,.1);color:#818cf8;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">${s.rule_nama || '-'}</span>
-            ${s.tipe === 'sebelum_deliv' ? '<span style="color:#f59e0b;font-size:11px;margin-left:6px">📦 Sebelum Terima</span>' : ''}
-            ${isPast ? '<span style="color:var(--red);font-size:11px;margin-left:6px">⚠ Terlambat</span>' : ''}
-            ${isToday && !isPast ? '<span style="color:#3b82f6;font-size:11px;margin-left:6px">● Hari ini</span>' : ''}
+      <div class="cfu-card">
+        <div class="cfu-head">
+          <div class="cfu-avatar">${inisial}</div>
+          <div>
+            <div class="cfu-name">${nama}</div>
+            <div class="cfu-sub">${waFmt}${cust?.produk ? ' · ' + cust.produk : ''}</div>
           </div>
-          ${isDone ? `<div style="font-size:11px;color:var(--text-2);margin-top:4px">${s.status} ${s.sent_at ? '· ' + fmtDateTime(s.sent_at) : ''}</div>` : ''}
-          ${s.pesan_terkirim ? `<div style="font-size:11px;color:var(--text-2);margin-top:4px;font-style:italic">"${s.pesan_terkirim.slice(0,70)}..."</div>` : ''}
+          <div class="cfu-progress">${dots}</div>
         </div>
-        ${!isDone ? `
-          <div class="fu-card-actions">
-            <button class="btn btn-primary btn-sm" onclick="openSendModal('${s.id}','${s.customer_id}','${nama}','${wa}','${s.rule_nama||''}')">📤 Kirim</button>
-            <button class="btn btn-ghost btn-sm" onclick="skipSchedule('${s.id}')">Skip</button>
-          </div>` : ''}
+        <div class="cfu-rules">${ruleRows}</div>
       </div>`;
   }).join('');
 }
