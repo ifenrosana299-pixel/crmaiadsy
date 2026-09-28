@@ -83,9 +83,24 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
 
         <!-- RIGHT: RULES -->
         <div>
-          <div class="fw-700 mb-3" style="font-size:15px">⚙️ Rules Follow-up</div>
-          <div id="rules-list" style="display:flex;flex-direction:column;gap:10px">
-            <div class="text-dim text-sm">Memuat rules...</div>
+          <div class="fw-700 mb-2" style="font-size:15px">⚙️ Rules Follow-up</div>
+
+          <div style="margin-bottom:14px">
+            <div style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>Setelah Diterima
+            </div>
+            <div id="rules-list-setelah" style="display:flex;flex-direction:column;gap:8px">
+              <div class="text-dim text-sm">Memuat...</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Sebelum Diterima
+            </div>
+            <div id="rules-list-sebelum" style="display:flex;flex-direction:column;gap:8px">
+              <div class="text-dim text-sm">Memuat...</div>
+            </div>
           </div>
         </div>
 
@@ -103,14 +118,38 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
     </div>
     <div class="modal-body">
       <input type="hidden" id="rule-edit-id">
+
+      <!-- Tipe Toggle -->
+      <div class="form-group">
+        <label class="form-label">Tipe Follow-up *</label>
+        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <button type="button" id="tipe-setelah" onclick="setTipe('setelah_deliv')"
+            style="flex:1;padding:9px 12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--primary);color:#fff">
+            ✅ Setelah Diterima (D+)
+          </button>
+          <button type="button" id="tipe-sebelum" onclick="setTipe('sebelum_deliv')"
+            style="flex:1;padding:9px 12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
+            📦 Sebelum Diterima (H-)
+          </button>
+        </div>
+        <input type="hidden" id="rule-tipe" value="setelah_deliv">
+        <div style="margin-top:6px;font-size:11px;color:var(--text-2)" id="tipe-desc">
+          FU dikirim X hari <b>setelah</b> paket diterima customer — cocok untuk testimoni, repeat order.
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label class="form-label">Nama Rule *</label>
           <input type="text" class="form-input" id="rule-nama" placeholder="contoh: FU Hari ke-1">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="wrap-hari-setelah">
           <label class="form-label">Hari Setelah Delivered (D+) *</label>
           <input type="number" class="form-input" id="rule-hari" placeholder="1" min="1">
+        </div>
+        <div class="form-group" id="wrap-hari-sebelum" style="display:none">
+          <label class="form-label">Hari Setelah Order / Sebelum Tiba (H-) *</label>
+          <input type="number" class="form-input" id="rule-hari-sebelum" placeholder="3" min="1">
         </div>
       </div>
       <div class="form-group">
@@ -282,7 +321,7 @@ function renderSchedule() {
         <div class="fu-card-info">
           <div class="fu-card-name">${s.customers?.nama || '-'}</div>
           <div class="fu-card-sub">${s.customers?.wa_number || '-'} · ${s.customers?.produk || '-'}</div>
-          <div class="fu-card-rule">${s.rule_nama || '-'}${isPast ? ' · <span style="color:var(--red)">Terlambat!</span>' : ''}</div>
+          <div class="fu-card-rule">${s.rule_nama || '-'}${s.tipe === 'sebelum_deliv' ? ' · <span style="color:#f59e0b;font-size:11px">📦 Sebelum Terima</span>' : ''}${isPast ? ' · <span style="color:var(--red)">Terlambat!</span>' : ''}</div>
           ${isDone ? `<div class="text-xs text-dim mt-1">${s.status} ${s.sent_at ? '· ' + fmtDateTime(s.sent_at) : ''}</div>` : ''}
           ${s.pesan_terkirim ? `<div class="text-xs text-muted mt-1" style="font-style:italic">"${s.pesan_terkirim.slice(0,60)}..."</div>` : ''}
         </div>
@@ -426,18 +465,17 @@ async function loadRules() {
   } catch(e) { document.getElementById('rules-list').innerHTML = `<div class="text-red text-sm">${e.message}</div>`; }
 }
 
-function renderRules() {
-  const el = document.getElementById('rules-list');
-  if (!allRules.length) {
-    el.innerHTML = `<div class="empty-state" style="padding:30px"><div class="empty-icon">⚙️</div><div class="empty-title">Belum ada rule</div><div class="empty-sub">Klik "+ Buat Rule FU" untuk mulai</div></div>`;
-    return;
-  }
-  el.innerHTML = allRules.map(r => `
+function renderRuleCard(r) {
+  const isSebelum = r.tipe === 'sebelum_deliv';
+  const hariLabel = isSebelum
+    ? `H+${r.hari_sebelum_deliv || r.hari_setelah_delivered} setelah order`
+    : `D+${r.hari_setelah_delivered} setelah terima`;
+  return `
     <div class="card card-sm" style="${!r.aktif ? 'opacity:.5' : ''}">
       <div class="flex items-center justify-between">
         <div>
           <div class="fw-600">${r.nama}</div>
-          <div class="text-xs text-muted mt-1">D+${r.hari_setelah_delivered} · ${r.templates?.length || 0} variasi template</div>
+          <div class="text-xs text-muted mt-1">${hariLabel} · ${r.templates?.length || 0} variasi template</div>
         </div>
         <div style="display:flex;gap:6px;align-items:center">
           <label class="text-xs text-dim">${r.aktif ? '✅' : '⏸️'}</label>
@@ -451,8 +489,22 @@ function renderRules() {
           ${r.templates.slice(0,2).map(t => `<div class="text-xs text-muted" style="font-style:italic;margin-bottom:4px">"${t.slice(0,80)}${t.length>80?'...':''}"</div>`).join('')}
           ${r.templates.length > 2 ? `<div class="text-xs text-dim">+${r.templates.length-2} variasi lainnya</div>` : ''}
         </div>` : ''}
-    </div>
-  `).join('');
+    </div>`;
+}
+
+function renderRules() {
+  const setelah = allRules.filter(r => !r.tipe || r.tipe === 'setelah_deliv');
+  const sebelum = allRules.filter(r => r.tipe === 'sebelum_deliv');
+
+  const emptyHtml = `<div class="text-dim text-sm" style="padding:10px 0">Belum ada rule — klik "+ Buat Rule FU"</div>`;
+
+  document.getElementById('rules-list-setelah').innerHTML = setelah.length
+    ? setelah.map(renderRuleCard).join('')
+    : emptyHtml;
+
+  document.getElementById('rules-list-sebelum').innerHTML = sebelum.length
+    ? sebelum.map(renderRuleCard).join('')
+    : emptyHtml;
 }
 
 async function loadRuleProdukOptions() {
@@ -469,15 +521,31 @@ async function loadRuleProdukOptions() {
 // ---- RULE MODAL ----
 let templateCount = 0;
 
+function setTipe(tipe) {
+  document.getElementById('rule-tipe').value = tipe;
+  const isSebelum = tipe === 'sebelum_deliv';
+  document.getElementById('tipe-setelah').style.background = isSebelum ? 'transparent' : 'var(--primary)';
+  document.getElementById('tipe-setelah').style.color     = isSebelum ? 'var(--text-2)' : '#fff';
+  document.getElementById('tipe-sebelum').style.background = isSebelum ? 'var(--primary)' : 'transparent';
+  document.getElementById('tipe-sebelum').style.color      = isSebelum ? '#fff' : 'var(--text-2)';
+  document.getElementById('wrap-hari-setelah').style.display = isSebelum ? 'none' : '';
+  document.getElementById('wrap-hari-sebelum').style.display = isSebelum ? '' : 'none';
+  document.getElementById('tipe-desc').innerHTML = isSebelum
+    ? 'FU dikirim X hari <b>setelah order dibuat</b> — cocok untuk update pengiriman, antisipasi pertanyaan customer.'
+    : 'FU dikirim X hari <b>setelah paket diterima</b> — cocok untuk testimoni, repeat order.';
+}
+
 function openRuleModal() {
   document.getElementById('rule-modal-title').textContent = 'Buat Rule Follow-up';
   document.getElementById('rule-edit-id').value = '';
   document.getElementById('rule-nama').value = '';
   document.getElementById('rule-hari').value = '';
+  document.getElementById('rule-hari-sebelum').value = '';
   document.getElementById('rule-produk').value = '';
   document.getElementById('templates-list').innerHTML = '';
   templateCount = 0;
   addTemplate();
+  setTipe('setelah_deliv');
   document.getElementById('rule-err').style.display = 'none';
   document.getElementById('rule-modal').classList.add('show');
 }
@@ -485,15 +553,18 @@ function openRuleModal() {
 function openEditRule(id) {
   const r = allRules.find(x => x.id === id);
   if (!r) return;
+  const tipe = r.tipe || 'setelah_deliv';
   document.getElementById('rule-modal-title').textContent = 'Edit Rule';
   document.getElementById('rule-edit-id').value = r.id;
   document.getElementById('rule-nama').value = r.nama;
-  document.getElementById('rule-hari').value = r.hari_setelah_delivered;
+  document.getElementById('rule-hari').value = r.hari_setelah_delivered || '';
+  document.getElementById('rule-hari-sebelum').value = r.hari_sebelum_deliv || r.hari_setelah_delivered || '';
   document.getElementById('rule-produk').value = r.product_id || '';
   document.getElementById('templates-list').innerHTML = '';
   templateCount = 0;
   (r.templates || []).forEach(t => addTemplate(t));
   if (!r.templates?.length) addTemplate();
+  setTipe(tipe);
   document.getElementById('rule-err').style.display = 'none';
   document.getElementById('rule-modal').classList.add('show');
 }
@@ -550,7 +621,12 @@ async function generateTemplates() {
 
 async function saveRule() {
   const nama = document.getElementById('rule-nama').value.trim();
-  const hari = parseInt(document.getElementById('rule-hari').value);
+  const tipe = document.getElementById('rule-tipe').value;
+  const isSebelum = tipe === 'sebelum_deliv';
+  const hariSetelah = parseInt(document.getElementById('rule-hari').value) || null;
+  const hariSebelum = parseInt(document.getElementById('rule-hari-sebelum').value) || null;
+  const hari = isSebelum ? hariSebelum : hariSetelah;
+
   if (!nama || !hari) {
     document.getElementById('rule-err').textContent = 'Nama rule dan hari wajib diisi.';
     document.getElementById('rule-err').style.display = 'block'; return;
@@ -568,7 +644,9 @@ async function saveRule() {
 
   const payload = {
     user_id: currentUser.id,
-    nama, hari_setelah_delivered: hari,
+    nama, tipe,
+    hari_setelah_delivered: isSebelum ? null : hari,
+    hari_sebelum_deliv: isSebelum ? hari : null,
     product_id: document.getElementById('rule-produk').value || null,
     templates,
     aktif: true,
