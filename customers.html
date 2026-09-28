@@ -676,6 +676,8 @@ async function trackOne(id) {
     const idx = allOrders.findIndex(o => o.id === id);
     if (idx >= 0) { allOrders[idx].status_resi = stage; allOrders[idx].status_resi_step = step; }
     toast(`Status: ${STATUS_INFO[stage]?.label || stage}`, 'success');
+    // Auto-generate jadwal FU kalau baru sampai
+    if (stage === 'SAMPAI') autoGenerateSchedules();
   } catch(e) {
     toast('Tracking gagal: ' + e.message, 'error');
   } finally {
@@ -1073,11 +1075,23 @@ async function doImport() {
     await loadOrders();
     // Auto-track yang punya resi
     setTimeout(autoTrackPending, 1000);
+    // Auto-generate jadwal FU (non-blocking)
+    autoGenerateSchedules();
   } catch(e) {
     document.getElementById('import-err').textContent   = e.message;
     document.getElementById('import-err').style.display = 'block';
   }
   btn.disabled = false; btn.innerHTML = `✅ Import <span id="import-count-btn">${importData.length}</span> Order`;
+}
+
+async function autoGenerateSchedules() {
+  try {
+    await fetch('/api/generate-schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.id })
+    });
+  } catch(e) { console.warn('[autoGenerateSchedules]', e); }
 }
 
 init();
