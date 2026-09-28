@@ -505,10 +505,10 @@ async function doSendFU() {
 
   try {
     // Kirim WA
-    const r = await fetch('/api/baileys-proxy', {
+    const r = await fetch(`/api/baileys-proxy?path=/send&session_id=${encodeURIComponent(currentUser.id)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: '/send', session_id: currentUser.id, to: sendWaNum + '@s.whatsapp.net', text: pesan })
+      body: JSON.stringify({ to: sendWaNum + '@s.whatsapp.net', text: pesan })
     });
     const d = await r.json();
     if (!d.success && !d.ok) throw new Error(d.error || 'Gagal kirim WA');
