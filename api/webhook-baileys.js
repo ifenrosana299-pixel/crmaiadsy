@@ -1507,25 +1507,29 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
       if (customer?.nama && customer.nama !== wa_number) ctx += `\n- Nama: ${customer.nama}`;
 
       if (latestOrder) {
-        ctx += `\n\nDATA ORDER (sudah dibeli & dikirim):`;
+        ctx += `\n\nDATA ORDER TERAKHIR (sudah dibeli & dikirim):`;
+        ctx += `\n- Nama customer: ${latestOrder.nama_customer || customer?.nama || '-'}`;
         ctx += `\n- Produk       : ${latestOrder.produk || product?.nama || '-'}`;
-        if (latestOrder.jumlah_produk) ctx += `\n- Jumlah       : ${latestOrder.jumlah_produk} pcs`;
-        if (latestOrder.harga_produk)  ctx += `\n- Harga produk : ${fmtRp(latestOrder.harga_produk)}`;
-        if (latestOrder.ongkir)        ctx += `\n- Ongkos kirim : ${fmtRp(latestOrder.ongkir)}`;
-        if (latestOrder.potongan_ongkir && latestOrder.potongan_ongkir > 0)
-                                       ctx += `\n- Potongan ongkir: ${fmtRp(latestOrder.potongan_ongkir)}`;
-        if (latestOrder.jumlah_cod)    ctx += `\n- Total dibayar: ${fmtRp(latestOrder.jumlah_cod)}`;
-        if (latestOrder.payment)       ctx += `\n- Metode bayar : ${latestOrder.payment}`;
-        if (latestOrder.ekspedisi)     ctx += `\n- Ekspedisi    : ${latestOrder.ekspedisi}`;
-        if (latestOrder.nomer_resi)    ctx += `\n- No. Resi     : ${latestOrder.nomer_resi}`;
-        if (latestOrder.status_resi)   ctx += `\n- Status resi  : ${latestOrder.status_resi}`;
-        if (latestOrder.tanggal)       ctx += `\n- Tgl order    : ${fmtTgl(latestOrder.tanggal)}`;
+        if (latestOrder.jumlah_produk)  ctx += `\n- Jumlah       : ${latestOrder.jumlah_produk} pcs`;
+        if (latestOrder.keluhan)        ctx += `\n- Keluhan/kondisi: ${latestOrder.keluhan}`;
+        if (latestOrder.tanggal)        ctx += `\n- Tgl order    : ${fmtTgl(latestOrder.tanggal)}`;
+        if (latestOrder.cs)             ctx += `\n- CS yang handle: ${latestOrder.cs}`;
+        if (latestOrder.payment)        ctx += `\n- Metode bayar : ${latestOrder.payment}`;
+        if (latestOrder.promo)          ctx += `\n- Promo        : ${latestOrder.promo}`;
+        if (latestOrder.ekspedisi)      ctx += `\n- Ekspedisi    : ${latestOrder.ekspedisi}`;
+        if (latestOrder.nomer_resi)     ctx += `\n- No. Resi     : ${latestOrder.nomer_resi}`;
+        if (latestOrder.status_resi)    ctx += `\n- Status resi  : ${latestOrder.status_resi}`;
         if (latestOrder.tgl_delivered || customer?.tgl_delivered) {
           ctx += `\n- Tgl delivered: ${fmtTgl(latestOrder.tgl_delivered || customer.tgl_delivered)}`;
         }
-        if (latestOrder.alamat) ctx += `\n- Alamat kirim : ${latestOrder.alamat}`;
-        if (latestOrder.cs)            ctx += `\n- CS yang handle: ${latestOrder.cs}`;
-        ctx += `\n\nGunakan data order di atas saat customer bertanya soal resi, ekspedisi, status pengiriman, harga, atau detail pesanan mereka. JANGAN pura-pura tidak tahu kalau datanya ada.`;
+        if (latestOrder.harga_produk)   ctx += `\n- Harga produk : ${fmtRp(latestOrder.harga_produk)}`;
+        if (latestOrder.ongkir)         ctx += `\n- Ongkos kirim : ${fmtRp(latestOrder.ongkir)}`;
+        if (latestOrder.potongan_ongkir > 0) ctx += `\n- Pot. ongkir  : ${fmtRp(latestOrder.potongan_ongkir)}`;
+        if (latestOrder.admin > 0)      ctx += `\n- Biaya admin  : ${fmtRp(latestOrder.admin)}`;
+        if (latestOrder.potongan_admin > 0) ctx += `\n- Pot. admin   : ${fmtRp(latestOrder.potongan_admin)}`;
+        if (latestOrder.jumlah_cod)     ctx += `\n- Total COD    : ${fmtRp(latestOrder.jumlah_cod)}`;
+        if (latestOrder.alamat)         ctx += `\n- Alamat kirim : ${latestOrder.alamat}`;
+        ctx += `\n\nGunakan semua data di atas saat customer bertanya. JANGAN pura-pura tidak tahu kalau datanya ada di sini.`;
 
         // Override REPEAT ORDER — pakai alamat dari order, tidak perlu tanya ulang
         if (latestOrder.alamat) {
