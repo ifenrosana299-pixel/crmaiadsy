@@ -1,5 +1,5 @@
 // api/baileys-proxy.js — proxy frontend → VPS Baileys
-const BAILEYS_URL   = process.env.BAILEYS_URL || 'http://13.140.178.4:3000';
+const BAILEYS_URL   = process.env.BAILEYS_URL || 'http://13.140.178.4';
 const BAILEYS_SECRET = process.env.WEBHOOK_SECRET || 'adsysukses2026';
 
 export default async function handler(req, res) {
