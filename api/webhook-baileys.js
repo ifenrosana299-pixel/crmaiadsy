@@ -1157,6 +1157,13 @@ function buildCustomerConfirmMsg({ customer, alamat, area, qty, productNama, sat
 Sudah bener kak? 😊`;
 }
 
+/* ── IN-MEMORY DEDUP (anti-double dari 2 session sama nomor) ─ */
+const _wamidSeen = new Map();
+function _markWamid(id) {
+  _wamidSeen.set(id, Date.now());
+  setTimeout(() => _wamidSeen.delete(id), 60000);
+}
+
 /* ── MAIN HANDLER ─────────────────────────────────────────── */
 module.exports = async function handler(req, res) {
   // Vercel body size config
@@ -1187,9 +1194,17 @@ module.exports = async function handler(req, res) {
 
     // ── Idempotency check: skip kalau msg_id sudah pernah diproses ──
     if (msgId) {
-      const alreadyProcessed = await sbGet('conv_messages', `?wamid=eq.${encodeURIComponent(msgId)}&limit=1`);
+      // 1) In-memory check (cegah race condition 2 session sama nomor)
+      if (_wamidSeen.has(msgId)) {
+        console.log(`[dedup] msg_id ${msgId} sudah di in-memory, skip`);
+        return res.status(200).json({ ok: true, skipped: 'duplicate_inmem' });
+      }
+      _markWamid(msgId); // tandai sekarang, sebelum proses apapun
+
+      // 2) DB check (kalau Vercel spawn instance berbeda)
+      const alreadyProcessed = await sbGet('conv_messages', `?wamid=eq.${encodeURIComponent(msgId)}&limit=1`).catch(() => []);
       if (alreadyProcessed.length) {
-        console.log(`[dedup] msg_id ${msgId} sudah diproses, skip`);
+        console.log(`[dedup] msg_id ${msgId} sudah di DB, skip`);
         return res.status(200).json({ ok: true, skipped: 'duplicate_msgid' });
       }
     }
