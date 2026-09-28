@@ -649,7 +649,7 @@ async function saveFUConfig() {
   try {
     const existing = await sbGet('followup_config', `user_id=eq.${currentUserId}&limit=1`);
     if (existing && existing[0]) {
-      await sbPatch('followup_config', `?user_id=eq.${currentUserId}`, payload);
+      await sbPatch('followup_config', `user_id=eq.${currentUserId}`, payload);
     } else {
       await sbPost('followup_config', payload);
     }
@@ -881,7 +881,7 @@ async function saveProduk() {
 
   try {
     if (editId) {
-      await sbPatch('products', `?id=eq.${editId}`, payload);
+      await sbPatch('products', `id=eq.${editId}`, payload);
     } else {
       await sbPost('products', payload);
     }
@@ -894,14 +894,14 @@ async function saveProduk() {
 }
 
 async function toggleAktif(id, current) {
-  await sbPatch('products', `?id=eq.${id}`, { aktif: !current });
+  await sbPatch('products', `id=eq.${id}`, { aktif: !current });
   toast(`Produk ${!current ? 'diaktifkan' : 'dinonaktifkan'}`);
   await loadProducts();
 }
 
 async function hapusProduk(id) {
   if (!confirm('Hapus produk ini?')) return;
-  await sbDelete('products', `?id=eq.${id}`);
+  await sbDelete('products', `id=eq.${id}`);
   toast('Produk dihapus');
   await loadProducts();
 }
@@ -1156,7 +1156,7 @@ async function saveSOP() {
 
   try {
     if (sopEditId) {
-      await sbPatch('sops', `?id=eq.${sopEditId}`, payload);
+      await sbPatch('sops', `id=eq.${sopEditId}`, payload);
       toast('SOP diupdate!');
     } else {
       await sbPost('sops', payload);
@@ -1171,7 +1171,7 @@ async function saveSOP() {
 
 async function deleteSOP(id) {
   if (!confirm('Hapus SOP ini?')) return;
-  await sbDelete('sops', `?id=eq.${id}`);
+  await sbDelete('sops', `id=eq.${id}`);
   toast('SOP dihapus');
   await loadSOPs();
 }
