@@ -229,6 +229,13 @@ async function sendBroadcast() {
   btn.disabled = true; btn.textContent = 'Mengirim...';
   document.getElementById('send-progress').style.display = 'block';
 
+  const sessionId = getSessionId();
+  if (!sessionId) {
+    toast('WA session belum ada — hubungkan WA di Pengaturan dulu', 'error');
+    isSending = false; btn.disabled = false; btn.textContent = '📣 Kirim Broadcast';
+    return;
+  }
+
   let sent = 0;
   for (const c of targets) {
     document.getElementById('progress-label').textContent = `Mengirim ke ${c.nama||c.wa_number}... (${sent+1}/${targets.length})`;
@@ -236,7 +243,7 @@ async function sendBroadcast() {
     try {
       const waNum = String(c.wa_number||'').split('@')[0].replace(/\D/g,'');
       if (waNum) {
-        await fetch('/api/baileys-proxy?path=' + encodeURIComponent('/send'), {
+        await fetch(`/api/baileys-proxy?path=${encodeURIComponent('/send')}&session_id=${encodeURIComponent(sessionId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ to: waNum + '@s.whatsapp.net', text: message }),
@@ -266,6 +273,14 @@ async function sendBroadcast() {
   await loadHistory();
 }
 
+function getSessionId() {
+  // Ambil session_id dari produk aktif (product switcher) atau produk pertama
+  const prods = window.__userProducts || [];
+  const activeId = window.__activeProductFilter;
+  const prod = activeId ? prods.find(p => p.id === activeId) : prods[0];
+  return prod?.wa_session_id || '';
+}
+
 async function sendTest() {
   const raw     = document.getElementById('test-number').value.trim();
   const message = document.getElementById('bc-message').value.trim();
@@ -273,13 +288,16 @@ async function sendTest() {
   if (!raw)     { status.textContent = '⚠️ Masukkan nomor HP dulu'; status.style.color='#f59e0b'; return; }
   if (!message) { status.textContent = '⚠️ Pesan tidak boleh kosong'; status.style.color='#f59e0b'; return; }
 
+  const sessionId = getSessionId();
+  if (!sessionId) { status.textContent = '⚠️ WA session belum ada — hubungkan WA di Pengaturan dulu'; status.style.color='#f59e0b'; return; }
+
   let hp = raw.replace(/\D/g,'');
   if (hp.startsWith('0')) hp = '62' + hp.slice(1);
   if (!hp.startsWith('62')) hp = '62' + hp;
 
   status.textContent = '⏳ Mengirim test...'; status.style.color='#64748b';
   try {
-    const r = await fetch('/api/baileys-proxy?path=' + encodeURIComponent('/send'), {
+    const r = await fetch(`/api/baileys-proxy?path=${encodeURIComponent('/send')}&session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: hp + '@s.whatsapp.net', text: message }),
