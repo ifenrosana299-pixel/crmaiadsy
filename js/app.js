@@ -51,6 +51,12 @@ async function sbGet(table, params = '') {
   return data;
 }
 
+async function _parseRes(r) {
+  const txt = await r.text();
+  if (!txt) return null;
+  try { return JSON.parse(txt); } catch { return null; }
+}
+
 async function sbPost(table, body, opts = {}) {
   sbCacheClear(table);
   const r = await fetch(`${window.__SB_URL}/rest/v1/${table}`, {
@@ -64,7 +70,7 @@ async function sbPost(table, body, opts = {}) {
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return _parseRes(r);
 }
 
 async function sbPatch(table, params, body) {
@@ -80,7 +86,7 @@ async function sbPatch(table, params, body) {
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return _parseRes(r);
 }
 
 async function sbDelete(table, params) {
