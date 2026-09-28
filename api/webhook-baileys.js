@@ -1523,6 +1523,11 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
         if (latestOrder.alamat_lengkap) ctx += `\n- Alamat kirim : ${latestOrder.alamat_lengkap}`;
         if (latestOrder.cs)            ctx += `\n- CS yang handle: ${latestOrder.cs}`;
         ctx += `\n\nGunakan data order di atas saat customer bertanya soal resi, ekspedisi, status pengiriman, harga, atau detail pesanan mereka. JANGAN pura-pura tidak tahu kalau datanya ada.`;
+
+        // Override REPEAT ORDER — pakai alamat dari order, tidak perlu tanya ulang
+        if (latestOrder.alamat_lengkap) {
+          ctx += `\n\nUNTUK REPEAT ORDER: Alamat pengiriman customer SUDAH DIKETAHUI dari order sebelumnya: "${latestOrder.alamat_lengkap}". Saat customer mau order lagi, LANGSUNG konfirmasi: "Masih ke alamat yang sama ya kak? (${latestOrder.alamat_lengkap}) 😊" — JANGAN tanya alamat dari nol.`;
+        }
       } else {
         if (customer?.produk) ctx += `\n- Produk dibeli: ${customer.produk}`;
         if (customer?.tgl_delivered) ctx += `\n- Tgl delivered: ${fmtTgl(customer.tgl_delivered)}`;
