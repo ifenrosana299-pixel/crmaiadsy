@@ -38,21 +38,29 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { user_id } = req.body || {};
+  const { user_id, product_id } = req.body || {};
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
 
   try {
-    // 1. Rules aktif
-    const rules = await sb('followup_rules', `user_id=eq.${user_id}&aktif=eq.true&order=urutan.asc`);
+    // 1. Rules aktif — filter by product kalau ada
+    const ruleQ = product_id
+      ? `user_id=eq.${user_id}&aktif=eq.true&or=(product_id.eq.${product_id},product_id.is.null)&order=urutan.asc`
+      : `user_id=eq.${user_id}&aktif=eq.true&order=urutan.asc`;
+    const rules = await sb('followup_rules', ruleQ);
     if (!rules.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada rule aktif' });
 
-    // 2. Semua orders user
-    const orders = await sb('orders',
-      `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,status_resi,last_tracked_at,product_id&order=tanggal.desc&limit=2000`);
+    // 2. Orders — filter by product_id kalau ada
+    const orderQ = product_id
+      ? `user_id=eq.${user_id}&product_id=eq.${product_id}&select=id,nomer_hp,nama_customer,produk,tanggal,status_resi,last_tracked_at,product_id&order=tanggal.desc&limit=2000`
+      : `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,status_resi,last_tracked_at,product_id&order=tanggal.desc&limit=2000`;
+    const orders = await sb('orders', orderQ);
     if (!orders.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada order' });
 
-    // 3. Existing customers (phone → customer)
-    const customers = await sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id`);
+    // 3. Existing customers
+    const custQ = product_id
+      ? `user_id=eq.${user_id}&product_id=eq.${product_id}&select=id,wa_number,product_id`
+      : `user_id=eq.${user_id}&select=id,wa_number,product_id`;
+    const customers = await sb('customers', custQ);
     const custMap = {};
     customers.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
 
@@ -75,7 +83,7 @@ export default async function handler(req, res) {
           wa_number: phone,
           nama: o.nama_customer || phone,
           produk: o.produk || '',
-          product_id: o.product_id || null,
+          product_id: o.product_id || product_id || null,
           source: 'import',
           status: 'baru'
         });
