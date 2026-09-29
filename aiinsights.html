@@ -126,6 +126,7 @@ tbody tr:hover{background:rgba(59,130,246,.03)}
     </div>
     <div class="ph-right">
       <button style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-2);font-size:12px;cursor:pointer" onclick="init()">↻ Refresh</button>
+      <button id="btn-analyze" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(167,139,250,.3);background:rgba(167,139,250,.08);color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer" onclick="runAnalysis()">🧠 Analisis Pola Closing</button>
       <a class="btn-sop" href="products.html" style="padding:7px 14px;font-size:12px">📋 Buka Katalog Produk</a>
     </div>
   </div>
@@ -183,6 +184,34 @@ tbody tr:hover{background:rgba(59,130,246,.03)}
       <div class="pager-btns">
         <button class="pager-btn" id="btn-prev" onclick="prevPage()" disabled>‹ Prev</button>
         <button class="pager-btn" id="btn-next" onclick="nextPage()" disabled>Next ›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: POLA CLOSING -->
+  <div class="tc" style="margin-top:0">
+    <div class="tc-hdr">
+      <div class="tc-hdr-left">
+        <div class="tc-hdr-icon" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2)">🧠</div>
+        <div>
+          <div class="tc-hdr-title">Pola Closing yang Dipelajari AI</div>
+          <div class="tc-hdr-sub" id="insights-sub">Klik "Analisis Pola Closing" untuk mulai belajar dari percakapan</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="tabs2" id="insights-tabs">
+          <button class="tab2 active" onclick="setInsightTab('objection',this)">Objeksi <span class="cnt" id="cnt-obj">0</span></button>
+          <button class="tab2" onclick="setInsightTab('closing_signal',this)">Sinyal Closing <span class="cnt" id="cnt-sig">0</span></button>
+          <button class="tab2" onclick="setInsightTab('success_pattern',this)">Pola Sukses <span class="cnt" id="cnt-pat">0</span></button>
+        </div>
+        <button style="padding:5px 12px;border-radius:7px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.06);color:#fca5a5;font-size:11px;cursor:pointer" onclick="clearInsights()" title="Hapus semua insights dan analisis ulang">🗑 Reset</button>
+      </div>
+    </div>
+    <div id="insights-list" style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">
+      <div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--text-2)">
+        <div style="font-size:36px;margin-bottom:12px;opacity:.4">🧠</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Belum ada data pola closing</div>
+        <div style="font-size:12px;color:var(--text-3)">Klik tombol "Analisis Pola Closing" di atas untuk mulai belajar dari percakapan yang sudah selesai</div>
       </div>
     </div>
   </div>
@@ -255,6 +284,7 @@ async function init(){
 
     page=1;
     renderTable();
+    loadInsights(); // load pola closing (non-blocking)
 
     window.addEventListener('productSwitch',()=>{window.location.reload();});
   }catch(e){
@@ -347,6 +377,150 @@ function prevPage(){if(page>1){page--;renderTable();}}
 function nextPage(){if(page*PER_PAGE<getFiltered().length){page++;renderTable();}}
 
 function logout(){localStorage.removeItem('crm_user');location.href='login.html';}
+
+// ---- POLA CLOSING ----
+let allInsights = [];
+let insightTab  = 'objection';
+
+async function loadInsights() {
+  try {
+    const rows = await sbGet('closing_insights',
+      `?user_id=eq.${uid}&order=frequency.desc&limit=100`);
+    allInsights = rows;
+    renderInsights();
+  } catch(e) {
+    console.error('[insights]', e);
+  }
+}
+
+function setInsightTab(tab, btn) {
+  insightTab = tab;
+  document.querySelectorAll('#insights-tabs .tab2').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderInsights();
+}
+
+const TYPE_COLORS = {
+  harga:       { bg: 'rgba(239,68,68,.1)',   color: '#fca5a5',  label: '💰 Harga' },
+  kualitas:    { bg: 'rgba(245,158,11,.1)',   color: '#fcd34d',  label: '⭐ Kualitas' },
+  kepercayaan: { bg: 'rgba(99,102,241,.1)',   color: '#a5b4fc',  label: '🤝 Kepercayaan' },
+  waktu:       { bg: 'rgba(59,130,246,.1)',   color: '#93c5fd',  label: '⏰ Waktu' },
+  pesaing:     { bg: 'rgba(236,72,153,.1)',   color: '#f9a8d4',  label: '🏆 Pesaing' },
+  stok:        { bg: 'rgba(16,185,129,.1)',   color: '#6ee7b7',  label: '📦 Stok' },
+  pengiriman:  { bg: 'rgba(6,182,212,.1)',    color: '#67e8f9',  label: '🚚 Pengiriman' },
+  lainnya:     { bg: 'rgba(100,116,139,.1)',  color: '#94a3b8',  label: '💬 Lainnya' },
+};
+
+function renderInsights() {
+  const filtered = allInsights.filter(r => r.type === insightTab);
+  document.getElementById('cnt-obj').textContent = allInsights.filter(r => r.type === 'objection').length;
+  document.getElementById('cnt-sig').textContent = allInsights.filter(r => r.type === 'closing_signal').length;
+  document.getElementById('cnt-pat').textContent = allInsights.filter(r => r.type === 'success_pattern').length;
+
+  const total = allInsights.length;
+  document.getElementById('insights-sub').textContent =
+    total ? `${total} pola dipelajari dari percakapan nyata · AI menggunakan ini saat merespons customer` : 'Klik "Analisis Pola Closing" untuk mulai belajar dari percakapan';
+
+  const el = document.getElementById('insights-list');
+  if (!filtered.length) {
+    el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:32px 20px;color:var(--text-2)">
+      <div style="font-size:13px">Belum ada data untuk tab ini</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(row => {
+    const typeColor = TYPE_COLORS[row.objection_type] || TYPE_COLORS.lainnya;
+    const freqWidth = Math.min(100, (row.frequency / (filtered[0]?.frequency || 1)) * 100);
+
+    return `<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);flex:1">${escH(row.label)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          ${row.objection_type ? `<span style="font-size:10px;font-weight:600;background:${typeColor.bg};color:${typeColor.color};padding:2px 8px;border-radius:20px">${typeColor.label}</span>` : ''}
+          <span style="font-size:10px;font-weight:700;background:rgba(167,139,250,.12);color:#a78bfa;padding:2px 8px;border-radius:20px" title="Muncul ${row.frequency}x">×${row.frequency}</span>
+        </div>
+      </div>
+
+      ${row.example_trigger ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;border-left:3px solid ${row.type === 'closing_signal' ? '#22c55e' : '#f59e0b'}">
+        <div style="font-size:10px;font-weight:600;color:var(--text-3);margin-bottom:4px">${row.type === 'closing_signal' ? '🎯 Sinyal dari customer' : '💬 Customer biasanya bilang'}</div>
+        <div style="font-size:12px;color:var(--text-2);font-style:italic">"${escH(row.example_trigger)}"</div>
+      </div>` : ''}
+
+      ${row.successful_response ? `<div style="background:rgba(34,197,94,.05);border-radius:8px;padding:10px 12px;border-left:3px solid #22c55e">
+        <div style="font-size:10px;font-weight:600;color:var(--text-3);margin-bottom:4px">${row.type === 'closing_signal' ? '⚡ Yang harus dilakukan' : '✅ Respons yang berhasil'}</div>
+        <div style="font-size:12px;color:var(--text)">${escH(row.successful_response)}</div>
+      </div>` : ''}
+
+      ${row.why_it_works ? `<div style="font-size:11px;color:var(--text-3);padding:0 2px">💡 ${escH(row.why_it_works)}</div>` : ''}
+
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${freqWidth}%;background:linear-gradient(90deg,#a78bfa,#6366f1);border-radius:2px"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-3)">Frekuensi: ${row.frequency}x</div>
+        <button onclick="deleteInsight('${row.id}')" style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-3);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center" title="Hapus insight ini">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function runAnalysis() {
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = true;
+  btn.textContent = '⏳ Menganalisis...';
+  try {
+    const r = await fetch('/api/analyze-conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: uid, limit: 30 })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Gagal analisis');
+    toast(`Analisis selesai: ${d.analyzed} percakapan, ${d.insights_saved} pola baru ditemukan`, 'success');
+    await loadInsights();
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🧠 Analisis Pola Closing';
+  }
+}
+
+async function deleteInsight(id) {
+  try {
+    await fetch(`${window.__SB_URL}/rest/v1/closing_insights?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
+    });
+    allInsights = allInsights.filter(r => r.id !== id);
+    renderInsights();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function clearInsights() {
+  if (!confirm('Hapus semua pola closing? Data akan dikumpulkan ulang saat analisis berikutnya.')) return;
+  try {
+    await fetch(`${window.__SB_URL}/rest/v1/closing_insights?user_id=eq.${uid}`, {
+      method: 'DELETE',
+      headers: { apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}` }
+    });
+    // Reset flag analyzed_for_closing agar bisa dianalisis ulang
+    await fetch(`${window.__SB_URL}/rest/v1/conversations?user_id=eq.${uid}&status=eq.selesai`, {
+      method: 'PATCH',
+      headers: {
+        apikey: window.__SB_KEY, Authorization: `Bearer ${window.__SB_KEY}`,
+        'Content-Type': 'application/json', Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({ analyzed_for_closing: null })
+    });
+    allInsights = [];
+    renderInsights();
+    toast('Semua pola dihapus. Siap analisis ulang.', 'info');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 window.addEventListener('load',init);
 </script>
