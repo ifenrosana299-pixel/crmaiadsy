@@ -1538,6 +1538,44 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
       console.log(`[order] found=${!!latestOrder} resi=${latestOrder?.nomer_resi}`);
     } catch(e) { console.log('[order] fetch error', e.message); }
 
+    // ── Real-time tracking: inject kalau customer tanya soal resi/paket ──
+    let realtimeTracking = null;
+    if (latestOrder?.nomer_resi && latestOrder?.ekspedisi) {
+      const tanyaResi = /sampai mana|mana paket|paket(nya|ku|saya)|pesanan(nya|ku|saya)|kiriman|tracking|cek resi|lacak|nomor resi|no resi|nomer resi|kapan (sampai|nyampe|tiba)|estimasi|sudah (dikirim|dimana|ada dimana|sampai)|belum (sampai|diterima)|kenapa belum|lama banget|lama nih/i.test(message);
+      if (tanyaResi) {
+        try {
+          const courierMap = {
+            'JNE':'JNE','JNT':'JT','J&T':'JT','SICEPAT':'SiCepat','SICE':'SiCepat',
+            'ANTERAJA':'anteraja','ANTER':'anteraja','NINJA':'Ninja','SAP':'SAP',
+            'LION':'lion','LIONPARCEL':'lion','TIKI':'tiki','IDEXPRESS':'iDexpress','IDEX':'iDexpress',
+            'REX':'rex','GRAB':'grab','GOJEK':'gojek','GOSEND':'gojek',
+          };
+          const courierKey = (latestOrder.ekspedisi || '').toUpperCase().replace(/[^A-Z0-9&]/g,'');
+          const courierNorm = courierMap[courierKey] || latestOrder.ekspedisi;
+          const trackUrl = `order/getPublic?tracking_number=${encodeURIComponent(latestOrder.nomer_resi)}&courier=${encodeURIComponent(courierNorm)}`;
+          const trackData = await mengantarFetch(trackUrl, 10000);
+          if (trackData?.success && trackData?.data) {
+            const d = trackData.data;
+            const history = Array.isArray(d.history) ? d.history : [];
+            const recent = history.slice(-5); // 5 event terbaru
+            const lines = recent.map(h => {
+              const ts = h.date ? new Date(h.date).toLocaleDateString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+              return `- ${ts ? ts + ': ' : ''}${h.desc || h.code || ''}`;
+            });
+            realtimeTracking = [
+              `Resi: ${latestOrder.nomer_resi} (${latestOrder.ekspedisi})`,
+              `Status: ${d.statusCategory || d.status || latestOrder.status_resi || '-'}`,
+              `Update terbaru:`,
+              ...lines,
+            ].join('\n');
+            console.log(`[tracking] live data injected for ${latestOrder.nomer_resi}`);
+          }
+        } catch(e) {
+          console.log('[tracking] fetch gagal:', e.message);
+        }
+      }
+    }
+
     // ── Build system prompt + inject ringkasan ────────────────
     let systemPrompt = buildTemplatePrompt(product, customer, conversation, sumber, userRekening);
 
@@ -1574,6 +1612,10 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
         if (latestOrder.jumlah_cod)     ctx += `\n- Total COD    : ${fmtRp(latestOrder.jumlah_cod)}`;
         if (latestOrder.alamat)         ctx += `\n- Alamat kirim : ${latestOrder.alamat}`;
         ctx += `\n\nGunakan semua data di atas saat customer bertanya. JANGAN pura-pura tidak tahu kalau datanya ada di sini.`;
+
+        if (realtimeTracking) {
+          ctx += `\n\nINFO RESI REAL-TIME (baru dicek barusan):\n${realtimeTracking}\nGunakan info ini untuk jawab pertanyaan customer soal posisi/status paket. Sampaikan dengan bahasa natural dan ramah.`;
+        }
 
         // Override REPEAT ORDER — pakai alamat dari order, tidak perlu tanya ulang
         if (latestOrder.alamat) {
