@@ -150,11 +150,14 @@ export default async function handler(req, res) {
     const existDoneSet = new Set(existDone.map(e => `${e.customer_id}__${e.rule_nama}`));
 
     for (const rule of rules) {
-      const isSblm    = rule.tipe === 'sebelum_deliv';
-      const isReorder = rule.tipe === 'reorder';
+      const isSblm       = rule.tipe === 'sebelum_deliv';
+      const isReorder    = rule.tipe === 'reorder';
+      const isEventOtw   = rule.tipe === 'event_otw';
+      const isEventSampai = rule.tipe === 'event_sampai';
+      const isEvent      = isEventOtw || isEventSampai;
       const hari = isSblm
         ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0)
-        : isReorder ? null  // calculated per order
+        : (isReorder || isEvent) ? null  // calculated per order
         : (rule.hari_setelah_delivered ?? 1);
 
       for (const order of orders) {
@@ -190,6 +193,17 @@ export default async function handler(req, res) {
           const totalDays = (qty * prod.konsumsi_hari) - buffer;
           if (totalDays <= 0) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base.slice(0, 10), totalDays);
+        } else if (isEventOtw) {
+          // Event OTW: jadwal hari ini kalau status = OTW/KOTA_TUJUAN
+          const OTW_STATUSES = ['OTW', 'KOTA_TUJUAN'];
+          if (!OTW_STATUSES.includes(order.status_resi)) { skipReasons.not_sampai++; continue; }
+          scheduledDate = today;
+        } else if (isEventSampai) {
+          // Event SAMPAI: jadwal hari yang sama paket tiba (D+0)
+          if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
+          const base = order.last_tracked_at || order.tanggal || order.created_at;
+          if (!base) { skipReasons.no_base++; continue; }
+          scheduledDate = base.slice(0, 10); // hari paket tiba
         } else {
           if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
           const base = order.last_tracked_at || order.tanggal || order.created_at;
