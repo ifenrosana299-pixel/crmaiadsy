@@ -999,10 +999,8 @@ async function saveRule() {
       body: JSON.stringify({ user_id: currentUser.id })
     });
     const d2 = await r2.json();
-    if (d2.created > 0) {
-      toast(`✅ ${d2.created} jadwal baru dibuat otomatis`, 'success');
-      await loadSchedules();
-    }
+    if (d2.created > 0) toast(`✅ ${d2.created} jadwal baru dibuat otomatis`, 'success');
+    await loadSchedules();
   } catch(e) {
     document.getElementById('rule-err').textContent = e.message;
     document.getElementById('rule-err').style.display = 'block';
