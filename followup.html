@@ -289,6 +289,10 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
       <button class="modal-close" onclick="closeSendModal()">✕</button>
     </div>
     <div class="modal-body">
+      <div id="send-img-preview" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-2);margin-bottom:6px">Gambar template:</div>
+        <img id="send-img-thumb" src="" style="max-height:120px;border-radius:8px;border:1px solid rgba(255,255,255,.1);object-fit:cover">
+      </div>
       <div class="form-group">
         <label class="form-label">Pesan Follow-up</label>
         <textarea class="form-textarea" id="send-pesan" rows="5" placeholder="Ketik pesan atau biarkan AI generate..."></textarea>
@@ -296,6 +300,7 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn btn-ghost btn-sm" onclick="generatePesan()">🤖 Generate AI</button>
       </div>
+      <input type="hidden" id="send-image-url" value="">
       <div id="send-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
     </div>
     <div class="modal-footer">
@@ -459,7 +464,7 @@ function renderSchedule() {
           </div>
           ${!isDone && !isSkipped ? `
             <div class="cfu-rule-acts">
-              <button class="btn btn-primary btn-sm" onclick="openSendModal('${r.id}','${r.customer_id}','${namaCust}','${wa}','${r.rule_nama||''}')">📤 Kirim</button>
+              <button class="btn btn-primary btn-sm" onclick="openSendModal('${r.id}','${r.customer_id}','${namaCust}','${wa}','${r.rule_id||''}')">📤 Kirim</button>
               <button class="btn btn-ghost btn-sm" onclick="skipSchedule('${r.id}')">Skip</button>
             </div>` : ''}
         </div>`;
@@ -533,38 +538,35 @@ async function skipSchedule(id) {
 
 // ---- SEND MODAL ----
 let sendWaNum = '';
+let sendRuleId = '';
 let sendRuleName = '';
 
-async function openSendModal(fuId, custId, nama, waNum, ruleName) {
-  sendFUId = fuId;
+async function openSendModal(fuId, custId, nama, waNum, ruleId) {
+  sendFUId       = fuId;
   sendCustomerId = custId;
-  sendWaNum = waNum;
-  sendRuleName = ruleName;
-  document.getElementById('send-nama').textContent = nama || '-';
-  document.getElementById('send-sub').textContent = `${waNum} · ${ruleName}`;
-  document.getElementById('send-pesan').value = '';
-  document.getElementById('send-err').style.display = 'none';
+  sendWaNum      = waNum;
+  sendRuleId     = ruleId;
+  const ruleObj  = allRules.find(r => r.id === ruleId) || {};
+  sendRuleName   = ruleObj.nama || '';
+  document.getElementById('send-nama').textContent       = nama || '-';
+  document.getElementById('send-sub').textContent        = `${waNum} · ${sendRuleName}`;
+  document.getElementById('send-pesan').value            = '';
+  document.getElementById('send-err').style.display      = 'none';
+  document.getElementById('send-image-url').value        = '';
+  document.getElementById('send-img-preview').style.display = 'none';
 
-  // Auto-load template
-  await autoLoadTemplate(custId, ruleName);
+  await autoLoadTemplate(custId, ruleObj);
   document.getElementById('send-modal').classList.add('show');
 }
 
-async function autoLoadTemplate(custId, ruleName) {
+async function autoLoadTemplate(custId, rule) {
   try {
-    // 1. Ambil rule + customer secara paralel
-    const [rules, custs] = await Promise.all([
-      sbGet('followup_rules', `user_id=eq.${currentUser.id}&nama=eq.${encodeURIComponent(ruleName)}&limit=1`),
-      sbGet('customers', `id=eq.${custId}&select=nama,produk,wa_number`)
-    ]);
-
-    const templates = rules[0]?.templates || [];
+    const templates = rule?.templates || [];
     if (!templates.length) return;
 
-    const cust = custs[0] || {};
-
-    // 2. Cari order by nomer_hp (bukan customer_id)
-    let order = {};
+    const custs = await sbGet('customers', `id=eq.${custId}&select=nama,produk,wa_number`);
+    const cust  = custs[0] || {};
+    let order   = {};
     if (cust.wa_number) {
       const orders = await sbGet('orders',
         `nomer_hp=eq.${encodeURIComponent(cust.wa_number)}&order=tanggal.desc&limit=1&select=nomer_resi,ekspedisi,status_resi,alamat,produk`
@@ -572,16 +574,18 @@ async function autoLoadTemplate(custId, ruleName) {
       order = orders[0] || {};
     }
 
-    // 3. Isi template
-    const pesan = templates[Math.floor(Math.random() * templates.length)];
-    const rule  = rules[0] || {};
+    const tmpl    = templates[Math.floor(Math.random() * templates.length)];
     const hariVal = rule.tipe === 'sebelum_deliv'
       ? (rule.hari_sebelum_deliv || rule.hari_setelah_delivered || '')
       : (rule.hari_setelah_delivered || '');
 
-    const filled = pesan
-      .replace(/{nama}/g,        cust.nama        || 'Kak')
-      .replace(/{produk}/g,      order.produk     || cust.produk || 'produk')
+    // backward compat: template lama bisa string biasa
+    const rawText  = (typeof tmpl === 'object' && tmpl) ? (tmpl.text || '') : (tmpl || '');
+    const imageUrl = (typeof tmpl === 'object' && tmpl) ? (tmpl.image_url || '') : '';
+
+    const filled = rawText
+      .replace(/{nama}/g,        cust.nama         || 'Kak')
+      .replace(/{produk}/g,      order.produk      || cust.produk || 'produk')
       .replace(/{hari}/g,        hariVal)
       .replace(/{resi}/g,        order.nomer_resi  || '')
       .replace(/{ekspedisi}/g,   order.ekspedisi   || '')
@@ -589,6 +593,11 @@ async function autoLoadTemplate(custId, ruleName) {
       .replace(/{alamat}/g,      order.alamat      || '');
 
     document.getElementById('send-pesan').value = filled;
+    if (imageUrl) {
+      document.getElementById('send-image-url').value        = imageUrl;
+      document.getElementById('send-img-thumb').src          = imageUrl;
+      document.getElementById('send-img-preview').style.display = '';
+    }
   } catch(e) { console.warn('[autoLoadTemplate]', e); }
 }
 
@@ -624,11 +633,17 @@ async function doSendFU() {
       if (prods[0]?.wa_session_id) sessionId = prods[0].wa_session_id;
     }
 
-    // Kirim WA
+    // Kirim WA (dengan gambar jika ada)
+    const imgUrl = document.getElementById('send-image-url').value.trim();
     const r = await fetch(`/api/baileys-proxy?path=/send&session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wa_number: sendWaNum, message: pesan })
+      body: JSON.stringify({
+        wa_number: sendWaNum,
+        message:   imgUrl ? undefined : pesan,
+        image_url: imgUrl || undefined,
+        caption:   imgUrl ? (pesan || undefined) : undefined,
+      })
     });
     const d = await r.json();
     if (!d.success && !d.ok) throw new Error(d.error || 'Gagal kirim WA');
@@ -650,11 +665,12 @@ async function doSendFU() {
     }
 
     // Simpan pesan
-    await sbPost('conv_messages', { conversation_id: convId, isi: pesan, role: 'ai' }, { prefer: 'return=minimal' });
+    const isiLog = imgUrl ? `[Gambar] ${pesan}` : pesan;
+    await sbPost('conv_messages', { conversation_id: convId, isi: isiLog, role: 'ai' }, { prefer: 'return=minimal' });
 
     // Update schedule
     await sbPatch('followup_schedule', `id=eq.${sendFUId}`, {
-      status: 'sent', sent_at: new Date().toISOString(), pesan_terkirim: pesan
+      status: 'sent', sent_at: new Date().toISOString(), pesan_terkirim: isiLog
     });
 
     // Update last_fu_at

@@ -159,6 +159,7 @@ let allRules = [];
 let sendFUId = null;
 let sendCustomerId = null;
 let sendWaNum = '';
+let sendRuleId = '';
 let sendRuleName = '';
 
 async function init() {
@@ -263,7 +264,6 @@ function renderPipeline() {
       if (isOverdue) totalOverdue++;
 
       const namaCust = nama.replace(/'/g,"\\'");
-      const ruleNameEsc = (rule.nama||'').replace(/'/g,"\\'");
 
       return `
         <div class="pipe-card">
@@ -271,7 +271,7 @@ function renderPipeline() {
           <div class="pipe-card-sub" title="${waFmt}${prod?' · '+prod:''}">${waFmt}${prod?' · '+prod:''}</div>
           <div class="pipe-card-date ${dateCls}">${dateIcon} ${tglLabel}${isToday?' · Hari ini':isOverdue?' · Terlambat':''}</div>
           <div class="pipe-card-foot">
-            <button class="btn btn-primary btn-sm" style="flex:1" onclick="openSendModal('${s.id}','${s.customer_id}','${namaCust}','${wa}','${ruleNameEsc}')">📤 Kirim</button>
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="openSendModal('${s.id}','${s.customer_id}','${namaCust}','${wa}','${s.rule_id}')">📤 Kirim</button>
             <button class="btn btn-ghost btn-sm" onclick="skipSchedule('${s.id}')">Skip</button>
           </div>
         </div>`;
@@ -317,59 +317,61 @@ async function skipSchedule(id) {
 }
 
 // ---- SEND MODAL ----
-async function openSendModal(fuId, custId, nama, waNum, ruleName) {
-  sendFUId      = fuId;
+async function openSendModal(fuId, custId, nama, waNum, ruleId) {
+  sendFUId       = fuId;
   sendCustomerId = custId;
-  sendWaNum     = waNum;
-  sendRuleName  = ruleName;
+  sendWaNum      = waNum;
+  sendRuleId     = ruleId;
+  const ruleObj  = allRules.find(r => r.id === ruleId) || {};
+  sendRuleName   = ruleObj.nama || ruleId;
   document.getElementById('send-nama').textContent  = nama || '-';
-  document.getElementById('send-sub').textContent   = `${waNum} · ${ruleName}`;
+  document.getElementById('send-sub').textContent   = `${waNum} · ${sendRuleName}`;
   document.getElementById('send-pesan').value       = '';
   document.getElementById('send-err').style.display = 'none';
   document.getElementById('send-image-url').value   = '';
   document.getElementById('send-img-preview').style.display = 'none';
 
-  await autoLoadTemplate(custId, ruleName);
+  await autoLoadTemplate(custId, ruleObj);
   document.getElementById('send-modal').classList.add('show');
 }
 
-async function autoLoadTemplate(custId, ruleName) {
+async function autoLoadTemplate(custId, rule) {
   try {
-    const [rules, custs] = await Promise.all([
-      sbGet('followup_rules', `user_id=eq.${currentUser.id}&nama=eq.${encodeURIComponent(ruleName)}&limit=1`),
-      sbGet('customers', `id=eq.${custId}&select=nama,produk,wa_number`)
-    ]);
-    const templates = rules[0]?.templates || [];
+    const templates = rule?.templates || [];
     if (!templates.length) return;
-    const cust = custs[0] || {};
-    let order = {};
+
+    const custs = await sbGet('customers', `id=eq.${custId}&select=nama,produk,wa_number`);
+    const cust  = custs[0] || {};
+    let order   = {};
     if (cust.wa_number) {
       const orders = await sbGet('orders',
         `nomer_hp=eq.${encodeURIComponent(cust.wa_number)}&order=tanggal.desc&limit=1&select=nomer_resi,ekspedisi,status_resi,alamat,produk`
       ).catch(() => []);
       order = orders[0] || {};
     }
-    const tmpl = templates[Math.floor(Math.random() * templates.length)];
-    const rule = rules[0] || {};
+
+    const tmpl    = templates[Math.floor(Math.random() * templates.length)];
     const hariVal = rule.tipe === 'sebelum_deliv'
       ? (rule.hari_sebelum_deliv || rule.hari_setelah_delivered || '')
       : (rule.hari_setelah_delivered || '');
+
     // backward compat: template lama bisa string biasa
-    const rawText   = (typeof tmpl === 'object' && tmpl) ? (tmpl.text || '') : (tmpl || '');
-    const imageUrl  = (typeof tmpl === 'object' && tmpl) ? (tmpl.image_url || '') : '';
+    const rawText  = (typeof tmpl === 'object' && tmpl) ? (tmpl.text || '') : (tmpl || '');
+    const imageUrl = (typeof tmpl === 'object' && tmpl) ? (tmpl.image_url || '') : '';
+
     const filled = rawText
-      .replace(/{nama}/g,        cust.nama        || 'Kak')
-      .replace(/{produk}/g,      order.produk     || cust.produk || 'produk')
+      .replace(/{nama}/g,        cust.nama         || 'Kak')
+      .replace(/{produk}/g,      order.produk      || cust.produk || 'produk')
       .replace(/{hari}/g,        hariVal)
       .replace(/{resi}/g,        order.nomer_resi  || '')
       .replace(/{ekspedisi}/g,   order.ekspedisi   || '')
       .replace(/{status_resi}/g, order.status_resi || '')
       .replace(/{alamat}/g,      order.alamat      || '');
+
     document.getElementById('send-pesan').value = filled;
-    // Tampil preview gambar jika ada
     if (imageUrl) {
       document.getElementById('send-image-url').value = imageUrl;
-      document.getElementById('send-img-thumb').src = imageUrl;
+      document.getElementById('send-img-thumb').src   = imageUrl;
       document.getElementById('send-img-preview').style.display = '';
     }
   } catch(e) { console.warn('[autoLoadTemplate]', e); }
