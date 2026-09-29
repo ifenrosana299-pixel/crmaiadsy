@@ -48,8 +48,9 @@ export default async function handler(req, res) {
       const { user_id } = body;
       if (!user_id) return res.status(400).json({ error: 'user_id wajib' });
       const patch = {};
-      if ('rekening' in body)  patch.rekening  = body.rekening;
-      if ('group_jid' in body) patch.group_jid = body.group_jid;
+      if ('rekening'           in body) patch.rekening            = body.rekening;
+      if ('group_jid'          in body) patch.group_jid           = body.group_jid;
+      if ('wa_internal_notif'  in body) patch.wa_internal_notif   = body.wa_internal_notif;
       if (!Object.keys(patch).length) return res.status(400).json({ error: 'Tidak ada field yang diupdate' });
       await sb('users', `id=eq.${user_id}`, { method: 'PATCH', body: patch });
       return res.json({ ok: true });
