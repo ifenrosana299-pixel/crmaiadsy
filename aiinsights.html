@@ -250,7 +250,7 @@ function fmtDate(iso){
 }
 
 let uid=null,allData=[],custMap={},currentTab='semua',searchQ='',page=1;
-const PER_PAGE=20;
+const PER_PAGE=15;
 const today=new Date().toISOString().slice(0,10);
 
 async function init(){
@@ -383,6 +383,8 @@ function logout(){localStorage.removeItem('crm_user');location.href='login.html'
 // ---- POLA CLOSING ----
 let allInsights = [];
 let insightTab  = 'objection';
+let insightPage = 1;
+const INSIGHT_PER_PAGE = 15;
 
 async function loadInsights() {
   try {
@@ -397,6 +399,7 @@ async function loadInsights() {
 
 function setInsightTab(tab, btn) {
   insightTab = tab;
+  insightPage = 1;
   document.querySelectorAll('#insights-tabs .tab2').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderInsights();
@@ -431,7 +434,11 @@ function renderInsights() {
     return;
   }
 
-  el.innerHTML = filtered.map(row => {
+  const totalPages = Math.max(1, Math.ceil(filtered.length / INSIGHT_PER_PAGE));
+  if (insightPage > totalPages) insightPage = totalPages;
+  const pageItems = filtered.slice((insightPage - 1) * INSIGHT_PER_PAGE, insightPage * INSIGHT_PER_PAGE);
+
+  el.innerHTML = pageItems.map(row => {
     const typeColor = TYPE_COLORS[row.objection_type] || TYPE_COLORS.lainnya;
     const freqWidth = Math.min(100, (row.frequency / (filtered[0]?.frequency || 1)) * 100);
 
@@ -465,6 +472,26 @@ function renderInsights() {
       </div>
     </div>`;
   }).join('');
+
+  if (totalPages > 1) {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(`<button class="pager-btn${i===insightPage?' active':''}" style="${i===insightPage?'border-color:#a78bfa;color:#a78bfa':''}" onclick="gotoInsightPage(${i})">${i}</button>`);
+    }
+    el.innerHTML += `<div style="grid-column:1/-1;display:flex;justify-content:center;align-items:center;gap:6px;padding:8px 0;border-top:1px solid var(--border);margin-top:4px">
+      <button class="pager-btn" onclick="gotoInsightPage(${insightPage-1})" ${insightPage<=1?'disabled':''}>‹</button>
+      ${pages.join('')}
+      <button class="pager-btn" onclick="gotoInsightPage(${insightPage+1})" ${insightPage>=totalPages?'disabled':''}>›</button>
+    </div>`;
+  }
+}
+
+function gotoInsightPage(p) {
+  const filtered = allInsights.filter(r => r.type === insightTab);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / INSIGHT_PER_PAGE));
+  insightPage = Math.max(1, Math.min(p, totalPages));
+  renderInsights();
+  document.getElementById('insights-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function runAnalysis() {
