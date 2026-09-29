@@ -104,10 +104,41 @@ export default async function handler(req, res) {
     // 5. Existing schedules (cegah duplikat)
     // Cek pending by rule_id — cegah double insert dalam satu run
     // Cek sent/skipped by rule_nama — cegah bikin ulang kalau rule dihapus lalu dibuat baru dengan nama sama
-    const [existPending, existDone] = await Promise.all([
-      sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending&select=customer_id,rule_id`),
+    const [existPendingRaw, existDone] = await Promise.all([
+      sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending&select=id,customer_id,rule_id`),
       sb('followup_schedule', `user_id=eq.${user_id}&status=in.(sent,skipped)&select=customer_id,rule_nama`)
     ]);
+    let existPending = existPendingRaw;
+
+    // 5a. Auto-skip pending sebelum_deliv untuk customer yang paketnya sudah SAMPAI
+    // → cegah customer dapat pesan "paket dalam perjalanan" padahal sudah diterima
+    const sblmRuleIds = new Set(rules.filter(r => r.tipe === 'sebelum_deliv').map(r => r.id));
+    if (sblmRuleIds.size) {
+      const sampaiPhones = new Set(
+        orders.filter(o => o.status_resi === 'SAMPAI').map(o => normalizePhone(o.nomer_hp))
+      );
+      const sampaiCustIds = new Set(
+        [...sampaiPhones].map(p => custMap[p]?.id).filter(Boolean)
+      );
+
+      const toSkip = existPending.filter(e => sampaiCustIds.has(e.customer_id) && sblmRuleIds.has(e.rule_id));
+
+      if (toSkip.length) {
+        // Batch PATCH → skip per 50
+        for (let i = 0; i < toSkip.length; i += 50) {
+          const ids = toSkip.slice(i, i + 50).map(e => e.id);
+          await sb('followup_schedule',
+            `or=(${ids.map(id => `id.eq.${id}`).join(',')})`,
+            { method: 'PATCH', body: { status: 'skipped' } }
+          );
+        }
+        // Hapus dari existPending supaya tidak blokir generate setelah_deliv
+        const skippedIds = new Set(toSkip.map(e => e.id));
+        existPending = existPending.filter(e => !skippedIds.has(e.id));
+        skipReasons.auto_skip_sampai = (skipReasons.auto_skip_sampai || 0) + toSkip.length;
+      }
+    }
+
     const existSet     = new Set(existPending.map(e => `${e.customer_id}__${e.rule_id}`));
     const existDoneSet = new Set(existDone.map(e => `${e.customer_id}__${e.rule_nama}`));
 
