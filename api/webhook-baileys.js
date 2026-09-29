@@ -1465,7 +1465,7 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
 
     // ── Smart timing: pelajari jam response customer ──
     // Kalau conv sumber FU → catat jam customer balas → update optimal_send_hour
-    learnResponseTime(conversation, customerId).catch(() => {});
+    learnResponseTime(conversation, customer.id).catch(() => {});
 
 
     // ── Debounce: kalau customer kirim 2+ pesan cepat, proses hanya yang terakhir ──

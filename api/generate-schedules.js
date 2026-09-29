@@ -51,12 +51,16 @@ export default async function handler(req, res) {
 
     // 2. Semua orders user (tidak filter by product_id — biar semua masuk)
     const orders = await sb('orders',
-      `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,product_id&order=created_at.desc&limit=2000`);
+      `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,product_id,qty&order=created_at.desc&limit=2000`);
     if (!orders.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada order' });
 
-    // 3. Semua customers user
-    const customers = await sb('customers',
-      `user_id=eq.${user_id}&select=id,wa_number,product_id`);
+    // 3. Semua customers user + produk untuk konsumsi_hari
+    const [customers, products] = await Promise.all([
+      sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id`),
+      sb('products',  `user_id=eq.${user_id}&select=id,konsumsi_hari,buffer_reorder_hari`)
+    ]);
+    const productMap = {};
+    products.forEach(p => { productMap[p.id] = p; });
     const custMap = {};
     customers.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
 
@@ -109,6 +113,9 @@ export default async function handler(req, res) {
       sb('followup_schedule', `user_id=eq.${user_id}&status=in.(sent,skipped)&select=customer_id,rule_nama`)
     ]);
     let existPending = existPendingRaw;
+    const today = new Date().toISOString().slice(0, 10);
+    const toInsert = [];
+    const skipReasons = { no_cust: 0, duplicate: 0, prod_mismatch: 0, no_base: 0, not_sampai: 0, too_old: 0, auto_skip_sampai: 0 };
 
     // 5a. Auto-skip pending sebelum_deliv untuk customer yang paketnya sudah SAMPAI
     // → cegah customer dapat pesan "paket dalam perjalanan" padahal sudah diterima
@@ -142,14 +149,12 @@ export default async function handler(req, res) {
     const existSet     = new Set(existPending.map(e => `${e.customer_id}__${e.rule_id}`));
     const existDoneSet = new Set(existDone.map(e => `${e.customer_id}__${e.rule_nama}`));
 
-    const today = new Date().toISOString().slice(0, 10);
-    const toInsert = [];
-    const skipReasons = { no_cust: 0, duplicate: 0, prod_mismatch: 0, no_base: 0, not_sampai: 0, too_old: 0 };
-
     for (const rule of rules) {
-      const isSblm = rule.tipe === 'sebelum_deliv';
+      const isSblm    = rule.tipe === 'sebelum_deliv';
+      const isReorder = rule.tipe === 'reorder';
       const hari = isSblm
         ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0)
+        : isReorder ? null  // calculated per order
         : (rule.hari_setelah_delivered ?? 1);
 
       for (const order of orders) {
@@ -173,6 +178,18 @@ export default async function handler(req, res) {
           const base = order.created_at ? order.created_at.slice(0, 10) : order.tanggal || null;
           if (!base) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base, hari);
+        } else if (isReorder) {
+          // Reorder: hitung dari qty × konsumsi_hari produk − buffer
+          if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
+          const prod = productMap[order.product_id || cust.product_id];
+          if (!prod?.konsumsi_hari) { skipReasons.no_base++; continue; }
+          const qty    = parseInt(order.qty) || 1;
+          const buffer = rule.buffer_reorder_hari ?? prod.buffer_reorder_hari ?? 5;
+          const base   = order.last_tracked_at || order.tanggal || order.created_at;
+          if (!base) { skipReasons.no_base++; continue; }
+          const totalDays = (qty * prod.konsumsi_hari) - buffer;
+          if (totalDays <= 0) { skipReasons.no_base++; continue; }
+          scheduledDate = addDays(base.slice(0, 10), totalDays);
         } else {
           if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
           const base = order.last_tracked_at || order.tanggal || order.created_at;
@@ -214,7 +231,7 @@ export default async function handler(req, res) {
       orders_total: orders.length,
       customers_in_db: customers.length,
       custmap_size: Object.keys(custMap).length,
-      existing_schedules: existing.length,
+      existing_schedules: existPendingRaw.length,
       skip_reasons: skipReasons
     });
   } catch(e) {
