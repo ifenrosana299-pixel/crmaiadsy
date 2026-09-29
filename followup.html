@@ -140,6 +140,12 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             <select class="form-select" style="width:auto" id="rule-filter" onchange="renderSchedule()">
               <option value="">Semua Rule</option>
             </select>
+            <select class="form-select" style="width:auto" id="fu-status-filter" onchange="renderSchedule()">
+              <option value="">Semua Status</option>
+              <option value="aktif">✅ Aktif</option>
+              <option value="tidak_responsif">⚠️ Tidak Responsif</option>
+              <option value="blacklist">🚫 Blacklist</option>
+            </select>
             <div style="margin-left:auto">
               <span class="text-dim text-sm" id="fu-count-label">-</span>
             </div>
@@ -411,7 +417,7 @@ async function loadSchedules() {
   try {
     // Fetch SEMUA schedule (pending + sent) supaya bisa tampil journey lengkap per customer
     const rows = await sbGet('followup_schedule',
-      `user_id=eq.${currentUser.id}&order=scheduled_date.asc&select=*,customers(nama,wa_number,produk,status)`);
+      `user_id=eq.${currentUser.id}&order=scheduled_date.asc&select=*,customers(nama,wa_number,produk,status,fu_status,fu_no_reply_count,fu_sent_count)`);
     allSchedules = rows;
     loadRuleFilter();
     renderSchedule();
@@ -438,8 +444,9 @@ function renderSchedule() {
   const today    = todayStr();
   const tomorrow = addDays(today, 1);
   const weekEnd  = addDays(today, 6);
-  const search   = document.getElementById('search-fu').value.toLowerCase();
-  const ruleFilter = document.getElementById('rule-filter').value;
+  const search      = document.getElementById('search-fu').value.toLowerCase();
+  const ruleFilter  = document.getElementById('rule-filter').value;
+  const statusFilter = document.getElementById('fu-status-filter')?.value || '';
 
   // Group semua schedules by customer_id
   const byCustomer = {};
@@ -457,6 +464,11 @@ function renderSchedule() {
     if (search) {
       const hay = `${cust?.nama} ${cust?.wa_number} ${cust?.produk}`.toLowerCase();
       if (!hay.includes(search)) return false;
+    }
+    // Fu status filter
+    if (statusFilter) {
+      const cs = cust?.fu_status || 'aktif';
+      if (cs !== statusFilter) return false;
     }
     // Tab filter: customer muncul kalau ada salah satu pending yang match
     const pending = rules.filter(r => r.status === 'pending');
@@ -492,6 +504,17 @@ function renderSchedule() {
     const wa   = cust?.wa_number || '';
     const waFmt = wa ? '+' + wa.replace(/(\d{2})(\d{3})(\d{4})(\d+)/, '$1 $2-$3-$4') : '-';
     const inisial = nama.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+    // FU status badge
+    const fuStatus = cust?.fu_status || 'aktif';
+    const noReply  = cust?.fu_no_reply_count || 0;
+    const fuBadge = fuStatus === 'blacklist'
+      ? `<span style="font-size:10px;font-weight:700;background:rgba(239,68,68,.15);color:#fca5a5;padding:2px 8px;border-radius:20px;margin-left:6px">🚫 Blacklist</span>`
+      : fuStatus === 'tidak_responsif'
+      ? `<span style="font-size:10px;font-weight:700;background:rgba(245,158,11,.15);color:#fcd34d;padding:2px 8px;border-radius:20px;margin-left:6px" title="${noReply}x FU tidak dibalas — hanya dapat FU reorder">⚠️ ${noReply}x tidak balas</span>`
+      : noReply > 0
+      ? `<span style="font-size:10px;font-weight:600;background:rgba(100,116,139,.12);color:#94a3b8;padding:2px 8px;border-radius:20px;margin-left:6px">${noReply}x belum balas</span>`
+      : '';
 
     // Progress dots
     const dots = rules.map(r => {
@@ -536,16 +559,26 @@ function renderSchedule() {
     const pendingCount = rules.filter(r => r.status === 'pending').length;
     const cardId = `cfu-${cid.slice(0,8)}`;
 
+    const overrideBtn = fuStatus === 'blacklist'
+      ? `<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px" onclick="setFuStatus('${cid}','aktif',event)" title="Hapus dari blacklist, aktifkan semua FU">↩ Aktifkan</button>`
+      : fuStatus === 'tidak_responsif'
+      ? `<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px" onclick="setFuStatus('${cid}','aktif',event)" title="Aktifkan semua FU kembali (sekarang hanya dapat FU reorder)">↩ Aktifkan</button>`
+      : `<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:#fca5a5" onclick="setFuStatus('${cid}','blacklist',event)" title="Stop semua FU permanen">🚫</button>`;
+
     return `
       <div class="cfu-card">
         <div class="cfu-head" onclick="toggleCfuCard('${cardId}')">
           <div class="cfu-avatar">${inisial}</div>
           <div style="flex:1;min-width:0">
-            <div class="cfu-name">${nama}</div>
+            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+              <div class="cfu-name">${nama}</div>
+              ${fuBadge}
+            </div>
             <div class="cfu-sub">${waFmt}${cust?.produk ? ' · ' + cust.produk : ''}</div>
           </div>
           <div class="cfu-progress">${dots}</div>
           ${pendingCount ? `<span style="font-size:11px;font-weight:600;background:rgba(59,130,246,.12);color:#60a5fa;padding:2px 8px;border-radius:20px;margin-left:8px">${pendingCount} pending</span>` : ''}
+          ${overrideBtn}
           <div class="cfu-arrow" id="${cardId}-arrow">▼</div>
         </div>
         <div class="cfu-rules" id="${cardId}">${ruleRows}</div>
@@ -594,6 +627,19 @@ async function skipSchedule(id) {
   try {
     await sbPatch('followup_schedule', `id=eq.${id}`, { status: 'skipped' });
     toast('Di-skip', 'info');
+    await loadSchedules();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function setFuStatus(custId, newStatus, evt) {
+  evt?.stopPropagation();
+  const label = newStatus === 'blacklist' ? 'blacklist' : 'aktifkan kembali';
+  if (!confirm(`${label === 'blacklist' ? 'Tambahkan ke blacklist' : 'Aktifkan kembali'} customer ini?`)) return;
+  try {
+    const updates = { fu_status: newStatus };
+    if (newStatus === 'aktif') updates.fu_no_reply_count = 0;
+    await sbPatch('customers', `id=eq.${custId}`, updates);
+    toast(newStatus === 'blacklist' ? 'Ditambahkan ke blacklist' : 'Customer diaktifkan kembali', newStatus === 'blacklist' ? 'info' : 'success');
     await loadSchedules();
   } catch(e) { toast(e.message, 'error'); }
 }
