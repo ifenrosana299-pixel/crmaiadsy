@@ -107,6 +107,8 @@ body.light .pipe-prog-dot.upcoming{background:rgba(0,0,0,.12)}
           <option value="sebelum_deliv">📦 Sebelum Diterima</option>
           <option value="setelah_deliv">✅ Setelah Diterima</option>
           <option value="reorder">🔄 Reorder</option>
+          <option value="event_otw">🚚 Sedang Diantarkan</option>
+          <option value="event_sampai">📬 Baru Sampai</option>
         </select>
         <div class="pipe-stat" id="pipe-stat">Memuat...</div>
       </div>
@@ -276,13 +278,23 @@ function renderPipeline() {
     const rule  = ruleMeta[ruleId] || {};
     const cards = byRule[ruleId] || [];
 
-    const isSebelum  = rule.tipe === 'sebelum_deliv';
-    const isReorder  = rule.tipe === 'reorder';
+    const isSebelum     = rule.tipe === 'sebelum_deliv';
+    const isReorder     = rule.tipe === 'reorder';
+    const isEventOtw    = rule.tipe === 'event_otw';
+    const isEventSampai = rule.tipe === 'event_sampai';
     const hariNum    = isSebelum ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0)
                      : isReorder ? (rule.buffer_reorder_hari ?? 5)
                      : (rule.hari_setelah_delivered ?? 0);
-    const hariLabel  = isSebelum ? `H+${hariNum}` : isReorder ? `H-${hariNum} habis` : `D+${hariNum}`;
-    const dotColor   = isSebelum ? '#f59e0b' : isReorder ? '#a78bfa' : '#22c55e';
+    const hariLabel  = isSebelum ? `H+${hariNum}`
+                     : isReorder ? `H-${hariNum} habis`
+                     : isEventOtw ? `🚚 OTW`
+                     : isEventSampai ? `📬 D+0`
+                     : `D+${hariNum}`;
+    const dotColor   = isSebelum ? '#f59e0b'
+                     : isReorder ? '#a78bfa'
+                     : isEventOtw ? '#38bdf8'
+                     : isEventSampai ? '#34d399'
+                     : '#22c55e';
 
     totalPending += cards.length;
 

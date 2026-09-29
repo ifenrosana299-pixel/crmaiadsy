@@ -200,6 +200,36 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
             </div>
           </div>
+
+          <!-- Section: Sedang Diantarkan (OTW) -->
+          <div class="rule-section" id="sec-event_otw">
+            <div class="rule-sec-hdr" onclick="toggleSection('event_otw')">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="rule-dot" style="background:#38bdf8"></span>
+                <span class="rule-sec-title">Sedang Diantarkan</span>
+                <span class="rule-sec-cnt" id="cnt-event_otw">0</span>
+              </div>
+              <span class="rule-sec-arrow" id="arr-event_otw">▾</span>
+            </div>
+            <div class="rule-sec-body" id="rules-list-event_otw">
+              <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
+            </div>
+          </div>
+
+          <!-- Section: Baru Sampai (D+0) -->
+          <div class="rule-section" id="sec-event_sampai">
+            <div class="rule-sec-hdr" onclick="toggleSection('event_sampai')">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="rule-dot" style="background:#34d399"></span>
+                <span class="rule-sec-title">Baru Sampai (D+0)</span>
+                <span class="rule-sec-cnt" id="cnt-event_sampai">0</span>
+              </div>
+              <span class="rule-sec-arrow" id="arr-event_sampai">▾</span>
+            </div>
+            <div class="rule-sec-body" id="rules-list-event_sampai">
+              <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -220,18 +250,26 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
       <!-- Tipe Toggle -->
       <div class="form-group">
         <label class="form-label">Tipe Follow-up *</label>
-        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden">
           <button type="button" id="tipe-setelah" onclick="setTipe('setelah_deliv')"
-            style="flex:1;padding:9px 12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--primary);color:#fff">
+            style="flex:1;min-width:140px;padding:9px 10px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--primary);color:#fff">
             ✅ Setelah Diterima (D+)
           </button>
           <button type="button" id="tipe-sebelum" onclick="setTipe('sebelum_deliv')"
-            style="flex:1;padding:9px 12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
+            style="flex:1;min-width:140px;padding:9px 10px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
             📦 Sebelum Diterima (H-)
           </button>
           <button type="button" id="tipe-reorder" onclick="setTipe('reorder')"
-            style="flex:1;padding:9px 12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
-            🔄 Reorder (Habis Pakai)
+            style="flex:1;min-width:140px;padding:9px 10px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
+            🔄 Reorder Otomatis
+          </button>
+          <button type="button" id="tipe-event_otw" onclick="setTipe('event_otw')"
+            style="flex:1;min-width:140px;padding:9px 10px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
+            🚚 Sedang Diantarkan
+          </button>
+          <button type="button" id="tipe-event_sampai" onclick="setTipe('event_sampai')"
+            style="flex:1;min-width:140px;padding:9px 10px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
+            📬 Baru Sampai (D+0)
           </button>
         </div>
         <input type="hidden" id="rule-tipe" value="setelah_deliv">
@@ -724,12 +762,14 @@ async function loadRules() {
 }
 
 function renderRuleCard(r) {
-  const isSebelum = r.tipe === 'sebelum_deliv';
-  const isReorder = r.tipe === 'reorder';
-  const hari = isSebelum
-    ? `H+${r.hari_sebelum_deliv || r.hari_setelah_delivered}`
-    : isReorder
-    ? `H-${r.buffer_reorder_hari || 5} habis`
+  const isSebelum     = r.tipe === 'sebelum_deliv';
+  const isReorder     = r.tipe === 'reorder';
+  const isEventOtw    = r.tipe === 'event_otw';
+  const isEventSampai = r.tipe === 'event_sampai';
+  const hari = isSebelum      ? `H+${r.hari_sebelum_deliv || r.hari_setelah_delivered}`
+    : isReorder               ? `H-${r.buffer_reorder_hari || 5} habis`
+    : isEventOtw              ? `🚚 OTW`
+    : isEventSampai           ? `📬 D+0`
     : `D+${r.hari_setelah_delivered}`;
   const aktifDot = r.aktif
     ? '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>'
@@ -782,15 +822,14 @@ function toggleSection(key) {
 }
 
 function renderRules() {
-  const setelah = allRules.filter(r => !r.tipe || r.tipe === 'setelah_deliv');
-  const sebelum = allRules.filter(r => r.tipe === 'sebelum_deliv');
-  const reorder = allRules.filter(r => r.tipe === 'reorder');
+  const setelah     = allRules.filter(r => !r.tipe || r.tipe === 'setelah_deliv');
+  const sebelum     = allRules.filter(r => r.tipe === 'sebelum_deliv');
+  const reorder     = allRules.filter(r => r.tipe === 'reorder');
+  const eventOtw    = allRules.filter(r => r.tipe === 'event_otw');
+  const eventSampai = allRules.filter(r => r.tipe === 'event_sampai');
 
   document.getElementById('cnt-setelah').textContent = setelah.length;
   document.getElementById('cnt-sebelum').textContent = sebelum.length;
-
-  const cntReorder = document.getElementById('cnt-reorder');
-  if (cntReorder) cntReorder.textContent = reorder.length;
 
   const emptyHtml = `<div style="padding:6px 2px;font-size:12px;color:var(--text-2)">Belum ada rule</div>`;
 
@@ -798,9 +837,22 @@ function renderRules() {
     ? setelah.map(renderRuleCard).join('') : emptyHtml;
   document.getElementById('rules-list-sebelum').innerHTML = sebelum.length
     ? sebelum.map(renderRuleCard).join('') : emptyHtml;
+
   const rlReorder = document.getElementById('rules-list-reorder');
-  if (rlReorder) rlReorder.innerHTML = reorder.length
-    ? reorder.map(renderRuleCard).join('') : emptyHtml;
+  if (rlReorder) {
+    document.getElementById('cnt-reorder').textContent = reorder.length;
+    rlReorder.innerHTML = reorder.length ? reorder.map(renderRuleCard).join('') : emptyHtml;
+  }
+  const rlOtw = document.getElementById('rules-list-event_otw');
+  if (rlOtw) {
+    document.getElementById('cnt-event_otw').textContent = eventOtw.length;
+    rlOtw.innerHTML = eventOtw.length ? eventOtw.map(renderRuleCard).join('') : emptyHtml;
+  }
+  const rlSampai = document.getElementById('rules-list-event_sampai');
+  if (rlSampai) {
+    document.getElementById('cnt-event_sampai').textContent = eventSampai.length;
+    rlSampai.innerHTML = eventSampai.length ? eventSampai.map(renderRuleCard).join('') : emptyHtml;
+  }
 }
 
 async function loadRuleProdukOptions() {
@@ -819,29 +871,31 @@ let templateCount = 0;
 
 function setTipe(tipe) {
   document.getElementById('rule-tipe').value = tipe;
-  const isSebelum  = tipe === 'sebelum_deliv';
-  const isReorder  = tipe === 'reorder';
-  const isSetelah  = !isSebelum && !isReorder;
+  const isSebelum   = tipe === 'sebelum_deliv';
+  const isReorder   = tipe === 'reorder';
+  const isEventOtw  = tipe === 'event_otw';
+  const isEventSampai = tipe === 'event_sampai';
+  const isSetelah   = !isSebelum && !isReorder && !isEventOtw && !isEventSampai;
 
-  const btnSetelah = document.getElementById('tipe-setelah');
-  const btnSebelum = document.getElementById('tipe-sebelum');
-  const btnReorder = document.getElementById('tipe-reorder');
-  btnSetelah.style.background = isSetelah  ? 'var(--primary)' : 'transparent';
-  btnSetelah.style.color      = isSetelah  ? '#fff' : 'var(--text-2)';
-  btnSebelum.style.background = isSebelum  ? 'var(--primary)' : 'transparent';
-  btnSebelum.style.color      = isSebelum  ? '#fff' : 'var(--text-2)';
-  btnReorder.style.background = isReorder  ? 'var(--primary)' : 'transparent';
-  btnReorder.style.color      = isReorder  ? '#fff' : 'var(--text-2)';
+  ['setelah','sebelum','reorder','event_otw','event_sampai'].forEach(k => {
+    const btn = document.getElementById('tipe-' + k);
+    if (!btn) return;
+    const active = tipe === (k === 'setelah' ? 'setelah_deliv' : k === 'sebelum' ? 'sebelum_deliv' : k);
+    btn.style.background = active ? 'var(--primary)' : 'transparent';
+    btn.style.color      = active ? '#fff' : 'var(--text-2)';
+  });
 
-  document.getElementById('wrap-hari-setelah').style.display = isSetelah  ? '' : 'none';
-  document.getElementById('wrap-hari-sebelum').style.display = isSebelum  ? '' : 'none';
-  document.getElementById('wrap-hari-reorder').style.display = isReorder  ? '' : 'none';
+  document.getElementById('wrap-hari-setelah').style.display = isSetelah     ? '' : 'none';
+  document.getElementById('wrap-hari-sebelum').style.display = isSebelum     ? '' : 'none';
+  document.getElementById('wrap-hari-reorder').style.display = isReorder     ? '' : 'none';
 
-  document.getElementById('tipe-desc').innerHTML = isSebelum
-    ? 'FU dikirim X hari <b>setelah order dibuat</b> — cocok untuk update pengiriman, antisipasi pertanyaan customer.'
-    : isReorder
-    ? 'FU dikirim otomatis <b>X hari sebelum estimasi produk habis</b> berdasarkan qty × konsumsi/box — cocok untuk reminder reorder + promo.'
-    : 'FU dikirim X hari <b>setelah paket diterima</b> — cocok untuk testimoni, repeat order.';
+  const descMap = {
+    sebelum_deliv: 'FU dikirim X hari <b>setelah order dibuat</b> — cocok untuk update pengiriman, antisipasi pertanyaan customer.',
+    reorder:       'FU dikirim otomatis <b>X hari sebelum estimasi produk habis</b> berdasarkan qty × konsumsi/box — cocok untuk reminder reorder + promo.',
+    event_otw:     '🚚 <b>Event: Paket sedang diantarkan.</b> Dikirim otomatis saat resi berubah ke status OTW/Out for Delivery — cocok untuk "Paket lagi diantarkan kak, tunggu di rumah ya!"',
+    event_sampai:  '📬 <b>Event: Paket baru sampai (D+0).</b> Dikirim otomatis saat resi berubah ke SAMPAI — cocok untuk "Yeay paket sudah sampai kan kak? Gimana kemasannya?" sebelum FU D+1/D+7.',
+  };
+  document.getElementById('tipe-desc').innerHTML = descMap[tipe] || 'FU dikirim X hari <b>setelah paket diterima</b> — cocok untuk testimoni, repeat order.';
 }
 
 function openRuleModal() {
@@ -995,14 +1049,18 @@ async function generateTemplates() {
 async function saveRule() {
   const nama = document.getElementById('rule-nama').value.trim();
   const tipe = document.getElementById('rule-tipe').value;
-  const isSebelum  = tipe === 'sebelum_deliv';
-  const isReorder  = tipe === 'reorder';
+  const isSebelum    = tipe === 'sebelum_deliv';
+  const isReorder    = tipe === 'reorder';
+  const isEventOtw   = tipe === 'event_otw';
+  const isEventSampai = tipe === 'event_sampai';
+  const isEvent      = isEventOtw || isEventSampai;
   const hariSetelah = document.getElementById('rule-hari').value !== '' ? parseInt(document.getElementById('rule-hari').value) : null;
   const hariSebelum = document.getElementById('rule-hari-sebelum').value !== '' ? parseInt(document.getElementById('rule-hari-sebelum').value) : null;
   const hariReorder = document.getElementById('rule-hari-reorder').value !== '' ? parseInt(document.getElementById('rule-hari-reorder').value) : 5;
-  const hari = isSebelum ? hariSebelum : isReorder ? hariReorder : hariSetelah;
+  // Event tipes tidak butuh hari — jadwal selalu hari ini
+  const hari = isSebelum ? hariSebelum : isReorder ? hariReorder : isEvent ? 0 : hariSetelah;
 
-  if (!nama || hari === null || hari === undefined) {
+  if (!nama || (!isEvent && (hari === null || hari === undefined))) {
     document.getElementById('rule-err').textContent = 'Nama rule dan hari wajib diisi.';
     document.getElementById('rule-err').style.display = 'block'; return;
   }
@@ -1024,13 +1082,13 @@ async function saveRule() {
   const payload = {
     user_id: currentUser.id,
     nama, tipe,
-    hari_setelah_delivered: isSebelum || isReorder ? null : hari,
+    hari_setelah_delivered: (isSebelum || isReorder || isEvent) ? null : hari,
     hari_sebelum_deliv: isSebelum ? hari : null,
     buffer_reorder_hari: isReorder ? hari : null,
     product_id: document.getElementById('rule-produk').value || null,
     templates,
     aktif: true,
-    urutan: hari
+    urutan: isEvent ? -1 : hari  // event rules tampil duluan
   };
 
   try {
