@@ -102,9 +102,14 @@ export default async function handler(req, res) {
     }
 
     // 5. Existing schedules (cegah duplikat)
-    const existing = await sb('followup_schedule',
-      `user_id=eq.${user_id}&status=eq.pending&select=customer_id,rule_id`);
-    const existSet = new Set(existing.map(e => `${e.customer_id}__${e.rule_id}`));
+    // Cek pending by rule_id — cegah double insert dalam satu run
+    // Cek sent/skipped by rule_nama — cegah bikin ulang kalau rule dihapus lalu dibuat baru dengan nama sama
+    const [existPending, existDone] = await Promise.all([
+      sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending&select=customer_id,rule_id`),
+      sb('followup_schedule', `user_id=eq.${user_id}&status=in.(sent,skipped)&select=customer_id,rule_nama`)
+    ]);
+    const existSet     = new Set(existPending.map(e => `${e.customer_id}__${e.rule_id}`));
+    const existDoneSet = new Set(existDone.map(e => `${e.customer_id}__${e.rule_nama}`));
 
     const today = new Date().toISOString().slice(0, 10);
     const toInsert = [];
@@ -121,8 +126,9 @@ export default async function handler(req, res) {
         const cust  = custMap[phone];
         if (!cust) { skipReasons.no_cust++; continue; }
 
-        const key = `${cust.id}__${rule.id}`;
-        if (existSet.has(key)) { skipReasons.duplicate++; continue; }
+        const key     = `${cust.id}__${rule.id}`;
+        const keyDone = `${cust.id}__${rule.nama}`;
+        if (existSet.has(key) || existDoneSet.has(keyDone)) { skipReasons.duplicate++; continue; }
 
         // Cek produk — hanya skip kalau keduanya ada tapi tidak match
         const orderProd = order.product_id || cust.product_id || null;
