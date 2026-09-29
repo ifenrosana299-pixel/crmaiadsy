@@ -119,7 +119,7 @@ tbody tr:hover{background:rgba(59,130,246,.03)}
 <div id="sidebar"></div>
 
 <div class="main-content">
-  <div class="ph">
+  <div class="ph" style="flex-shrink:0">
     <div>
       <h1>✨ AI Insights</h1>
       <p>Percakapan yang lolos dari bot — lengkapi di Katalog Produk agar bot makin akurat</p>
@@ -131,6 +131,7 @@ tbody tr:hover{background:rgba(59,130,246,.03)}
     </div>
   </div>
 
+  <div style="flex:1;overflow-y:auto">
   <div class="stat-row" id="stat-row">
     <div class="sc purple"><div class="sc-icon purple">✨</div><div class="sc-body"><div class="sc-label">Total Eskalasi</div><div class="sc-num"><span class="skel"></span></div><div class="sc-sub">butuh perhatian</div></div></div>
     <div class="sc red"><div class="sc-icon red">⬆️</div><div class="sc-body"><div class="sc-label">Belum Ditangani</div><div class="sc-num"><span class="skel"></span></div><div class="sc-sub">status eskalasi</div></div></div>
@@ -215,6 +216,7 @@ tbody tr:hover{background:rgba(59,130,246,.03)}
       </div>
     </div>
   </div>
+  </div><!-- end scroll wrapper -->
 </div>
 
 <script src="js/app.js"></script>
