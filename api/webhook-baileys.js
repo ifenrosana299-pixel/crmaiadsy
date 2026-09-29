@@ -950,7 +950,7 @@ async function reverseGeocode(lat, lng) {
   }
 }
 
-/* ── SMART TIMING: pelajari jam response customer ─────────── */
+/* ── SMART TIMING + LABEL RESPONSIF ──────────────────────── */
 async function learnResponseTime(conversation, customerId) {
   // Hanya pelajari dari conversation yang sumber FU
   if (conversation.sumber !== 'fu') return;
@@ -960,7 +960,7 @@ async function learnResponseTime(conversation, customerId) {
   const wibHour = ((now.getUTCHours() + 7) % 24) + (now.getUTCMinutes() / 60);
 
   // Ambil data customer saat ini
-  const custs = await sbGet('customers', `?id=eq.${customerId}&select=response_hours,response_count,optimal_send_hour`);
+  const custs = await sbGet('customers', `?id=eq.${customerId}&select=response_hours,response_count,optimal_send_hour,fu_no_reply_count,fu_status`);
   if (!custs.length) return;
   const cust = custs[0];
 
@@ -981,11 +981,20 @@ async function learnResponseTime(conversation, customerId) {
     optimalHour = Math.round(optimalHour * 100) / 100; // 2 desimal
   }
 
-  await sbPatch('customers', `?id=eq.${customerId}`, {
+  // Customer balas → reset no-reply counter, aktifkan lagi kalau sempat di-label tidak_responsif
+  const shouldReactivate = cust.fu_status === 'tidak_responsif';
+  const updates = {
     response_hours:    responseHours,
     response_count:    count,
     optimal_send_hour: optimalHour,
-  }).catch(() => {});
+    fu_no_reply_count: 0,              // reset: customer sudah balas
+  };
+  if (shouldReactivate) {
+    updates.fu_status = 'aktif';       // aktifkan kembali
+    console.log(`[fu-label] Customer ${customerId} balas FU → reaktivasi dari tidak_responsif`);
+  }
+
+  await sbPatch('customers', `?id=eq.${customerId}`, updates).catch(() => {});
 }
 
 /* ── KIRIM WA via Baileys server ──────────────────────────── */
@@ -1629,6 +1638,34 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
       if (customer?.catatan) ctx += `\n- Catatan: ${customer.catatan}`;
       if (convState.repeat_order) ctx += `\n- Sudah melakukan repeat order ✅`;
       systemPrompt += ctx;
+    }
+
+    // ── Inject FU context kalau conversation ini dari follow-up otomatis ──
+    if (conversation.sumber === 'fu' || convState.fu_rule_nama) {
+      const fuNama  = convState.fu_rule_nama || 'follow-up otomatis';
+      const fuTipe  = convState.fu_tipe || 'setelah_deliv';
+      const fuHari  = convState.fu_hari != null ? convState.fu_hari : null;
+
+      const tipeLabel = fuTipe === 'sebelum_deliv'
+        ? `sebelum paket diterima${fuHari != null ? ` (H+${fuHari} dari order)` : ''}`
+        : fuTipe === 'reorder'
+        ? `reminder reorder (estimasi produk mau habis)`
+        : `setelah paket diterima${fuHari != null ? ` (D+${fuHari})` : ''}`;
+
+      const fuFokus = fuTipe === 'sebelum_deliv'
+        ? `Fokus: update status pengiriman, pastikan customer tahu paket sedang dalam perjalanan, bantu kalau ada kendala.`
+        : fuTipe === 'reorder'
+        ? `Fokus: tanya bagaimana pengalaman pakai produk, apakah stok mau habis, arahkan ke repeat order secara natural.`
+        : fuHari != null && fuHari <= 3
+        ? `Fokus: sambut customer yang baru terima paket, tanya apakah produk sudah dicoba, pastikan tidak ada masalah unboxing.`
+        : fuHari != null && fuHari <= 7
+        ? `Fokus: tanya perkembangan setelah pakai beberapa hari, minta feedback/testimoni kalau customer puas, bantu kalau ada kendala.`
+        : `Fokus: gali pengalaman panjang pemakaian, dorong testimoni & review, tawarkan repeat order kalau puas.`;
+
+      systemPrompt += `\n\nKONTEKS FOLLOW-UP AKTIF
+Customer ini sedang merespons pesan follow-up otomatis yang kami kirim: "${fuNama}" — ${tipeLabel}.
+${fuFokus}
+Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANGAN tanya ulang hal yang sudah ada di history chat.`;
     }
 
     if (conversation.ringkasan) {
