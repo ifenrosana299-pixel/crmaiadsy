@@ -106,6 +106,7 @@ body.light .pipe-prog-dot.upcoming{background:rgba(0,0,0,.12)}
           <option value="">Semua Tipe</option>
           <option value="sebelum_deliv">📦 Sebelum Diterima</option>
           <option value="setelah_deliv">✅ Setelah Diterima</option>
+          <option value="reorder">🔄 Reorder</option>
         </select>
         <div class="pipe-stat" id="pipe-stat">Memuat...</div>
       </div>
@@ -190,7 +191,7 @@ async function loadPipeline() {
       sbGet('followup_schedule',
         `user_id=eq.${currentUser.id}&status=eq.pending&select=*,customers(nama,wa_number,produk,product_id)&order=scheduled_date.asc`),
       sbGet('followup_rules',
-        `user_id=eq.${currentUser.id}&aktif=eq.true&order=urutan.asc&select=id,nama,tipe,hari_setelah_delivered,hari_sebelum_deliv,templates`)
+        `user_id=eq.${currentUser.id}&aktif=eq.true&order=urutan.asc&select=id,nama,tipe,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,templates`)
     ]);
     allSchedules = schedules;
     allRules = rules;
@@ -275,10 +276,13 @@ function renderPipeline() {
     const rule  = ruleMeta[ruleId] || {};
     const cards = byRule[ruleId] || [];
 
-    const isSebelum = rule.tipe === 'sebelum_deliv';
-    const hariNum   = isSebelum ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0) : (rule.hari_setelah_delivered ?? 0);
-    const hariLabel = isSebelum ? `H+${hariNum}` : `D+${hariNum}`;
-    const dotColor  = isSebelum ? '#f59e0b' : '#22c55e';
+    const isSebelum  = rule.tipe === 'sebelum_deliv';
+    const isReorder  = rule.tipe === 'reorder';
+    const hariNum    = isSebelum ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0)
+                     : isReorder ? (rule.buffer_reorder_hari ?? 5)
+                     : (rule.hari_setelah_delivered ?? 0);
+    const hariLabel  = isSebelum ? `H+${hariNum}` : isReorder ? `H-${hariNum} habis` : `D+${hariNum}`;
+    const dotColor   = isSebelum ? '#f59e0b' : isReorder ? '#a78bfa' : '#22c55e';
 
     totalPending += cards.length;
 

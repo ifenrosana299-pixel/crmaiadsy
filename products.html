@@ -431,6 +431,24 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
           <label>Cara Pakai</label>
           <textarea id="f-cara-pakai" rows="3" placeholder="2x sehari 1 kapsul, diminum setelah makan..."></textarea>
         </div>
+
+        <!-- Reorder Prediction -->
+        <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:10px">🔄 Estimasi Reorder (opsional)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Konsumsi per Box (hari)</label>
+              <input type="number" id="f-konsumsi-hari" placeholder="30" min="1" style="width:100%">
+              <div style="font-size:11px;color:#64748b;margin-top:4px">Berapa hari 1 box/unit habis dipakai</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Buffer Reorder (hari)</label>
+              <input type="number" id="f-buffer-reorder" placeholder="5" min="1" value="5" style="width:100%">
+              <div style="font-size:11px;color:#64748b;margin-top:4px">FU dikirim X hari sebelum habis</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:8px">Contoh: beli 2 box × 30 hari = 60 hari pakai → FU reorder dikirim di hari ke-55 (H-5)</div>
+        </div>
         <div class="form-group">
           <label>Foto Produk</label>
           <input type="hidden" id="f-gambar-url">
@@ -737,6 +755,7 @@ function renderGrid() {
       <div class="prod-body">
         ${keluhan.length ? `<div style="margin-bottom:10px;">${keluhan.slice(0,4).map(k=>`<span class="prod-tag">${esc(k)}</span>`).join('')}${keluhan.length>4?`<span class="prod-tag">+${keluhan.length-4}</span>`:''}</div>` : ''}
         <div class="prod-meta">Persona CS: <span>${esc(p.persona_cs_nama || 'Sari')}</span></div>
+        ${p.konsumsi_hari ? `<div class="prod-meta">Konsumsi: <span>${p.konsumsi_hari} hari/box</span> · Buffer reorder: <span>${p.buffer_reorder_hari || 5} hari</span></div>` : ''}
         ${Array.isArray(p.harga_bundling) && p.harga_bundling.length ? `
         <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
           ${p.harga_bundling.map(b => `<span style="font-size:11px;padding:3px 8px;border-radius:20px;border:1px solid ${b.prioritas ? 'rgba(251,191,36,.5)' : 'rgba(255,255,255,.1)'};background:${b.prioritas ? 'rgba(251,191,36,.08)' : 'rgba(255,255,255,.04)'};color:${b.prioritas ? '#fbbf24' : '#94a3b8'}">${b.prioritas ? '⭐ ' : ''}${b.qty} box = ${rp(b.harga)}</span>`).join('')}
@@ -818,6 +837,8 @@ function openAdd() {
   loadBundling([]);
   document.getElementById('f-aktif').value = 'true';
   document.getElementById('f-cara-pakai').value = '';
+  document.getElementById('f-konsumsi-hari').value = '';
+  document.getElementById('f-buffer-reorder').value = '5';
   document.getElementById('f-knowledge').value = '';
   document.getElementById('f-persona-nama').value = 'Sari';
   document.getElementById('f-persona-gaya').value = 'hangat, sabar, konsultatif';
@@ -841,6 +862,8 @@ async function openEdit(id) {
   document.getElementById('f-aktif').value = String(p.aktif);
   loadBundling(p.harga_bundling || []);
   document.getElementById('f-cara-pakai').value = p.cara_pakai || '';
+  document.getElementById('f-konsumsi-hari').value = p.konsumsi_hari || '';
+  document.getElementById('f-buffer-reorder').value = p.buffer_reorder_hari || 5;
   document.getElementById('f-knowledge').value = p.product_knowledge || '';
   document.getElementById('f-persona-nama').value = p.persona_cs_nama || 'Sari';
   document.getElementById('f-persona-gaya').value = p.persona_cs_gaya || 'hangat, sabar, konsultatif';
@@ -898,6 +921,8 @@ async function saveProduk() {
     harga,
     aktif:               document.getElementById('f-aktif').value === 'true',
     cara_pakai:          document.getElementById('f-cara-pakai').value.trim(),
+    konsumsi_hari:       parseInt(document.getElementById('f-konsumsi-hari').value) || null,
+    buffer_reorder_hari: parseInt(document.getElementById('f-buffer-reorder').value) || 5,
     gambar_url:          document.getElementById('f-gambar-url').value || null,
     testimoni_urls:      getTestiUrls(),
     product_knowledge:   document.getElementById('f-knowledge').value.trim(),

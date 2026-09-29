@@ -185,6 +185,21 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
             </div>
           </div>
+
+          <!-- Section: Reorder Otomatis -->
+          <div class="rule-section" id="sec-reorder">
+            <div class="rule-sec-hdr" onclick="toggleSection('reorder')">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="rule-dot" style="background:#a78bfa"></span>
+                <span class="rule-sec-title">Reorder Otomatis</span>
+                <span class="rule-sec-cnt" id="cnt-reorder">0</span>
+              </div>
+              <span class="rule-sec-arrow" id="arr-reorder">▾</span>
+            </div>
+            <div class="rule-sec-body" id="rules-list-reorder">
+              <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -214,6 +229,10 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             style="flex:1;padding:9px 12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
             📦 Sebelum Diterima (H-)
           </button>
+          <button type="button" id="tipe-reorder" onclick="setTipe('reorder')"
+            style="flex:1;padding:9px 12px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
+            🔄 Reorder (Habis Pakai)
+          </button>
         </div>
         <input type="hidden" id="rule-tipe" value="setelah_deliv">
         <div style="margin-top:6px;font-size:11px;color:var(--text-2)" id="tipe-desc">
@@ -234,6 +253,11 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
           <label class="form-label">Hari Setelah Order (H+) *</label>
           <input type="number" class="form-input" id="rule-hari-sebelum" placeholder="0" min="0">
           <div style="font-size:11px;color:var(--text-2);margin-top:4px">H+0 = hari yang sama saat order masuk · H+1 = besok · H+2 = lusa</div>
+        </div>
+        <div class="form-group" id="wrap-hari-reorder" style="display:none">
+          <label class="form-label">Buffer Sebelum Habis (hari) *</label>
+          <input type="number" class="form-input" id="rule-hari-reorder" placeholder="5" min="1" value="5">
+          <div style="font-size:11px;color:var(--text-2);margin-top:4px">FU dikirim X hari sebelum estimasi produk habis — dihitung dari qty × konsumsi per box (diset di Katalog Produk)</div>
         </div>
       </div>
       <div class="form-group">
@@ -701,8 +725,11 @@ async function loadRules() {
 
 function renderRuleCard(r) {
   const isSebelum = r.tipe === 'sebelum_deliv';
+  const isReorder = r.tipe === 'reorder';
   const hari = isSebelum
     ? `H+${r.hari_sebelum_deliv || r.hari_setelah_delivered}`
+    : isReorder
+    ? `H-${r.buffer_reorder_hari || 5} habis`
     : `D+${r.hari_setelah_delivered}`;
   const aktifDot = r.aktif
     ? '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>'
@@ -757,9 +784,13 @@ function toggleSection(key) {
 function renderRules() {
   const setelah = allRules.filter(r => !r.tipe || r.tipe === 'setelah_deliv');
   const sebelum = allRules.filter(r => r.tipe === 'sebelum_deliv');
+  const reorder = allRules.filter(r => r.tipe === 'reorder');
 
   document.getElementById('cnt-setelah').textContent = setelah.length;
   document.getElementById('cnt-sebelum').textContent = sebelum.length;
+
+  const cntReorder = document.getElementById('cnt-reorder');
+  if (cntReorder) cntReorder.textContent = reorder.length;
 
   const emptyHtml = `<div style="padding:6px 2px;font-size:12px;color:var(--text-2)">Belum ada rule</div>`;
 
@@ -767,6 +798,9 @@ function renderRules() {
     ? setelah.map(renderRuleCard).join('') : emptyHtml;
   document.getElementById('rules-list-sebelum').innerHTML = sebelum.length
     ? sebelum.map(renderRuleCard).join('') : emptyHtml;
+  const rlReorder = document.getElementById('rules-list-reorder');
+  if (rlReorder) rlReorder.innerHTML = reorder.length
+    ? reorder.map(renderRuleCard).join('') : emptyHtml;
 }
 
 async function loadRuleProdukOptions() {
@@ -785,15 +819,28 @@ let templateCount = 0;
 
 function setTipe(tipe) {
   document.getElementById('rule-tipe').value = tipe;
-  const isSebelum = tipe === 'sebelum_deliv';
-  document.getElementById('tipe-setelah').style.background = isSebelum ? 'transparent' : 'var(--primary)';
-  document.getElementById('tipe-setelah').style.color     = isSebelum ? 'var(--text-2)' : '#fff';
-  document.getElementById('tipe-sebelum').style.background = isSebelum ? 'var(--primary)' : 'transparent';
-  document.getElementById('tipe-sebelum').style.color      = isSebelum ? '#fff' : 'var(--text-2)';
-  document.getElementById('wrap-hari-setelah').style.display = isSebelum ? 'none' : '';
-  document.getElementById('wrap-hari-sebelum').style.display = isSebelum ? '' : 'none';
+  const isSebelum  = tipe === 'sebelum_deliv';
+  const isReorder  = tipe === 'reorder';
+  const isSetelah  = !isSebelum && !isReorder;
+
+  const btnSetelah = document.getElementById('tipe-setelah');
+  const btnSebelum = document.getElementById('tipe-sebelum');
+  const btnReorder = document.getElementById('tipe-reorder');
+  btnSetelah.style.background = isSetelah  ? 'var(--primary)' : 'transparent';
+  btnSetelah.style.color      = isSetelah  ? '#fff' : 'var(--text-2)';
+  btnSebelum.style.background = isSebelum  ? 'var(--primary)' : 'transparent';
+  btnSebelum.style.color      = isSebelum  ? '#fff' : 'var(--text-2)';
+  btnReorder.style.background = isReorder  ? 'var(--primary)' : 'transparent';
+  btnReorder.style.color      = isReorder  ? '#fff' : 'var(--text-2)';
+
+  document.getElementById('wrap-hari-setelah').style.display = isSetelah  ? '' : 'none';
+  document.getElementById('wrap-hari-sebelum').style.display = isSebelum  ? '' : 'none';
+  document.getElementById('wrap-hari-reorder').style.display = isReorder  ? '' : 'none';
+
   document.getElementById('tipe-desc').innerHTML = isSebelum
     ? 'FU dikirim X hari <b>setelah order dibuat</b> — cocok untuk update pengiriman, antisipasi pertanyaan customer.'
+    : isReorder
+    ? 'FU dikirim otomatis <b>X hari sebelum estimasi produk habis</b> berdasarkan qty × konsumsi/box — cocok untuk reminder reorder + promo.'
     : 'FU dikirim X hari <b>setelah paket diterima</b> — cocok untuk testimoni, repeat order.';
 }
 
@@ -821,6 +868,7 @@ function openEditRule(id) {
   document.getElementById('rule-nama').value = r.nama;
   document.getElementById('rule-hari').value = r.hari_setelah_delivered || '';
   document.getElementById('rule-hari-sebelum').value = r.hari_sebelum_deliv || r.hari_setelah_delivered || '';
+  document.getElementById('rule-hari-reorder').value = r.buffer_reorder_hari || 5;
   document.getElementById('rule-produk').value = r.product_id || '';
   document.getElementById('templates-list').innerHTML = '';
   templateCount = 0;
@@ -947,10 +995,12 @@ async function generateTemplates() {
 async function saveRule() {
   const nama = document.getElementById('rule-nama').value.trim();
   const tipe = document.getElementById('rule-tipe').value;
-  const isSebelum = tipe === 'sebelum_deliv';
+  const isSebelum  = tipe === 'sebelum_deliv';
+  const isReorder  = tipe === 'reorder';
   const hariSetelah = document.getElementById('rule-hari').value !== '' ? parseInt(document.getElementById('rule-hari').value) : null;
   const hariSebelum = document.getElementById('rule-hari-sebelum').value !== '' ? parseInt(document.getElementById('rule-hari-sebelum').value) : null;
-  const hari = isSebelum ? hariSebelum : hariSetelah;
+  const hariReorder = document.getElementById('rule-hari-reorder').value !== '' ? parseInt(document.getElementById('rule-hari-reorder').value) : 5;
+  const hari = isSebelum ? hariSebelum : isReorder ? hariReorder : hariSetelah;
 
   if (!nama || hari === null || hari === undefined) {
     document.getElementById('rule-err').textContent = 'Nama rule dan hari wajib diisi.';
@@ -974,8 +1024,9 @@ async function saveRule() {
   const payload = {
     user_id: currentUser.id,
     nama, tipe,
-    hari_setelah_delivered: isSebelum ? hari : hari,
+    hari_setelah_delivered: isSebelum || isReorder ? null : hari,
     hari_sebelum_deliv: isSebelum ? hari : null,
+    buffer_reorder_hari: isReorder ? hari : null,
     product_id: document.getElementById('rule-produk').value || null,
     templates,
     aktif: true,
