@@ -950,6 +950,66 @@ async function reverseGeocode(lat, lng) {
   }
 }
 
+/* ── CLOSING INSIGHTS: load pola objeksi + sinyal closing yang dipelajari ── */
+// Cache per userId agar tidak query DB di setiap pesan
+const _insightsCache = new Map(); // userId → { data, loadedAt }
+const INSIGHTS_TTL_MS = 60 * 60 * 1000; // refresh tiap 1 jam
+
+async function loadClosingInsights(userId) {
+  const cached = _insightsCache.get(userId);
+  if (cached && (Date.now() - cached.loadedAt) < INSIGHTS_TTL_MS) {
+    return cached.data;
+  }
+
+  // Ambil top insights dari DB: objeksi + closing signal, sort by frequency desc
+  const rows = await sbGet('closing_insights',
+    `?user_id=eq.${userId}&order=frequency.desc&limit=20`
+  ).catch(() => []);
+
+  if (!rows.length) {
+    _insightsCache.set(userId, { data: null, loadedAt: Date.now() });
+    return null;
+  }
+
+  const objections = rows.filter(r => r.type === 'objection');
+  const signals    = rows.filter(r => r.type === 'closing_signal');
+  const patterns   = rows.filter(r => r.type === 'success_pattern');
+
+  let ctx = '\n\nPOLA CLOSING DARI DATA NYATA (dipelajari dari percakapan sebelumnya):';
+
+  if (objections.length) {
+    ctx += '\n\n📌 Objeksi yang sering muncul + cara mengatasinya:';
+    for (const obj of objections.slice(0, 6)) {
+      ctx += `\n• [${obj.label}]`;
+      if (obj.example_trigger) ctx += ` — Customer biasanya bilang: "${obj.example_trigger.slice(0, 100)}"`;
+      if (obj.successful_response) ctx += `\n  → Respons efektif: "${obj.successful_response.slice(0, 200)}"`;
+      if (obj.why_it_works) ctx += `\n  → Kenapa efektif: ${obj.why_it_works.slice(0, 150)}`;
+    }
+  }
+
+  if (signals.length) {
+    ctx += '\n\n🎯 Sinyal customer mau closing — bertindak cepat:';
+    for (const sig of signals.slice(0, 4)) {
+      ctx += `\n• ${sig.label}`;
+      if (sig.example_trigger) ctx += ` (contoh: "${sig.example_trigger.slice(0, 80)}")`;
+      if (sig.successful_response) ctx += ` → ${sig.successful_response.slice(0, 150)}`;
+    }
+  }
+
+  if (patterns.length) {
+    ctx += '\n\n✅ Pola komunikasi yang terbukti berhasil:';
+    for (const pat of patterns.slice(0, 3)) {
+      ctx += `\n• ${pat.label}`;
+      if (pat.successful_response) ctx += `: ${pat.successful_response.slice(0, 150)}`;
+    }
+  }
+
+  ctx += '\n\nGunakan pola-pola di atas secara natural saat situasinya sesuai. JANGAN hafalkan kata per kata — sesuaikan dengan konteks percakapan.';
+
+  _insightsCache.set(userId, { data: ctx, loadedAt: Date.now() });
+  return ctx;
+}
+
 /* ── SMART TIMING + LABEL RESPONSIF ──────────────────────── */
 async function learnResponseTime(conversation, customerId) {
   // Hanya pelajari dari conversation yang sumber FU
@@ -1670,6 +1730,12 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
 
     if (conversation.ringkasan) {
       systemPrompt += `\n\nKONTEKS PERCAKAPAN SEBELUMNYA (ringkasan otomatis)\n${conversation.ringkasan}\n\nLanjutkan percakapan dari konteks ini. Jangan ulangi salam dari awal.`;
+    }
+
+    // ── Inject closing insights (pola objeksi + sinyal closing yang dipelajari) ──
+    {
+      const closingCtx = await loadClosingInsights(userId).catch(() => null);
+      if (closingCtx) systemPrompt += closingCtx;
     }
 
     // ── Ambil pesan terakhir ──────────────────────────────────
