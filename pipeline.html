@@ -66,6 +66,13 @@ body.light .pipe-card{background:#fff}
 .pipe-card-date.upcoming{background:rgba(255,255,255,.07);color:var(--text-2)}
 body.light .pipe-card-date.upcoming{background:rgba(0,0,0,.05)}
 .pipe-card-foot{display:flex;gap:6px}
+.pipe-prog-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .2s}
+.pipe-prog-dot.done{background:#22c55e}
+.pipe-prog-dot.today{background:#3b82f6}
+.pipe-prog-dot.current{background:#f59e0b}
+.pipe-prog-dot.overdue{background:#ef4444}
+.pipe-prog-dot.upcoming{background:rgba(255,255,255,.15)}
+body.light .pipe-prog-dot.upcoming{background:rgba(0,0,0,.12)}
 
 /* ── Top bar ── */
 .pipe-topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -201,16 +208,37 @@ function renderPipeline() {
   const extraRuleIds = [...new Set(allSchedules.map(s => s.rule_id))].filter(id => !ruleOrder.includes(id));
   const allRuleIds = [...ruleOrder, ...extraRuleIds];
 
-  // Group schedules by rule_id
-  const byRule = {};
+  // Build rule index map (posisi urutan dari allRules)
+  const ruleIdxMap = {};
+  allRules.forEach((r, i) => { ruleIdxMap[r.id] = i; });
+
+  // Group pending per customer_id dulu
+  const custPending = {};
   allSchedules.forEach(s => {
     const cust = s.customers;
     if (search) {
       const hay = `${cust?.nama} ${cust?.wa_number} ${cust?.produk}`.toLowerCase();
       if (!hay.includes(search)) return;
     }
-    if (!byRule[s.rule_id]) byRule[s.rule_id] = [];
-    byRule[s.rule_id].push(s);
+    if (!custPending[s.customer_id]) custPending[s.customer_id] = [];
+    custPending[s.customer_id].push(s);
+  });
+
+  // Untuk tiap customer, ambil hanya schedule yang rule-nya paling awal (current stage)
+  // → customer hanya muncul di 1 kolom, bukan semua kolom sekaligus
+  const byRule = {};
+  Object.values(custPending).forEach(schedules => {
+    schedules.sort((a, b) => {
+      const ia = ruleIdxMap[a.rule_id] ?? 999;
+      const ib = ruleIdxMap[b.rule_id] ?? 999;
+      if (ia !== ib) return ia - ib;
+      return (a.scheduled_date || '').localeCompare(b.scheduled_date || '');
+    });
+    const current = schedules[0]; // rule pending paling awal
+    if (!byRule[current.rule_id]) byRule[current.rule_id] = [];
+    // Simpan juga semua pending schedules customer untuk progress dots
+    current._allPending = schedules;
+    byRule[current.rule_id].push(current);
   });
 
   // Rule meta map
@@ -265,10 +293,26 @@ function renderPipeline() {
 
       const namaCust = nama.replace(/'/g,"\\'");
 
+      // Progress dots: tunjukkan posisi customer di funnel
+      const currentIdx   = ruleIdxMap[s.rule_id] ?? 0;
+      const pendingRules = new Set((s._allPending || []).map(p => p.rule_id));
+      const progressDots = allRules.map((r, i) => {
+        let dotCls, dotTitle;
+        if (i < currentIdx) {
+          dotCls = 'done'; dotTitle = r.nama + ' ✓';
+        } else if (r.id === s.rule_id) {
+          dotCls = isToday ? 'today' : isOverdue ? 'overdue' : 'current'; dotTitle = r.nama + ' (sekarang)';
+        } else {
+          dotCls = 'upcoming'; dotTitle = r.nama;
+        }
+        return `<div class="pipe-prog-dot ${dotCls}" title="${dotTitle}"></div>`;
+      }).join('');
+
       return `
         <div class="pipe-card">
           <div class="pipe-card-name" title="${nama}">${nama}</div>
           <div class="pipe-card-sub" title="${waFmt}${prod?' · '+prod:''}">${waFmt}${prod?' · '+prod:''}</div>
+          <div style="display:flex;align-items:center;gap:4px;margin:6px 0 2px">${progressDots}</div>
           <div class="pipe-card-date ${dateCls}">${dateIcon} ${tglLabel}${isToday?' · Hari ini':isOverdue?' · Terlambat':''}</div>
           <div class="pipe-card-foot">
             <button class="btn btn-primary btn-sm" style="flex:1" onclick="openSendModal('${s.id}','${s.customer_id}','${namaCust}','${wa}','${s.rule_id}')">📤 Kirim</button>
