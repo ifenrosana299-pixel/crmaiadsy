@@ -165,6 +165,7 @@ body.light .grup-item-nama{color:#0f172a}
       <a href="#" class="active" onclick="showSection('account',this)">👤 Akun</a>
       <a href="#" onclick="showSection('wa',this)">📱 Connect WhatsApp</a>
       <a href="#" onclick="showSection('rekening',this)">💳 Rekening Transfer</a>
+      <a href="#" onclick="showSection('notif',this)">🔔 Notifikasi Internal</a>
       <a href="#" onclick="showSection('ai',this)">🤖 AI Key</a>
       <a href="#" onclick="showSection('group',this)">💬 Grup WA Recap</a>
     </div>
@@ -205,6 +206,31 @@ body.light .grup-item-nama{color:#0f172a}
             <div style="color:#64748b;font-size:13px">Memuat QR code...</div>
           </div>
           <button class="btn-secondary" style="margin-top:16px" onclick="cancelQR()">Batal</button>
+        </div>
+      </div>
+
+      <!-- ── NOTIFIKASI INTERNAL ── -->
+      <div class="settings-section" id="sec-notif">
+        <div class="section-title">Notifikasi Internal Tim</div>
+        <div class="section-desc">Nomor WA internal yang akan dikirim notifikasi otomatis saat resi terdeteksi <strong>BERMASALAH</strong> (gagal kirim, tidak ada orang, alamat tidak dikenal, dll) — agar tim bisa segera hubungi customer sebelum paket jadi RETUR.</div>
+        <div class="form-group">
+          <label>Nomor WA Internal (format: 628xxx)</label>
+          <input type="text" id="wa-internal-input" placeholder="Contoh: 6281234567890" style="font-size:14px;letter-spacing:.3px">
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px">Nomor ini akan menerima pesan otomatis dari bot saat resi terdeteksi BERMASALAH atau RETUR. Bisa nomor grup WA juga.</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px">Contoh pesan yang akan dikirim:</div>
+          <div style="font-size:12px;color:var(--text-3);line-height:1.7;white-space:pre-wrap">⚠️ BERMASALAH / Gagal Kirim
+
+📦 Resi    : JNE123456789
+🚚 Ekspedisi : JNE
+👤 Customer  : Budi Santoso
+📍 Status   : Tidak ada orang di tempat (Jakarta Selatan)
+
+Segera hubungi customer untuk koordinasi pengiriman ulang sebelum paket dikembalikan ke pengirim.</div>
+        </div>
+        <div class="save-bar">
+          <button class="btn-primary" onclick="saveNotifWA()">Simpan</button>
         </div>
       </div>
 
@@ -328,10 +354,11 @@ function showSection(name, el) {
   document.getElementById('sec-' + name).classList.add('active');
   el.classList.add('active');
   event.preventDefault();
-  if (name === 'wa') loadWAStatus();
+  if (name === 'wa')     loadWAStatus();
   if (name === 'rekening') loadRekening();
-  if (name === 'ai') loadAnthropicKey();
-  if (name === 'group') loadGroupJid();
+  if (name === 'notif')  loadNotifWA();
+  if (name === 'ai')     loadAnthropicKey();
+  if (name === 'group')  loadGroupJid();
 }
 
 function saveAccount() {
@@ -533,6 +560,28 @@ async function hapusRekening() {
   if (!confirm('Hapus info rekening?')) return;
   document.getElementById('rek-info').value = '';
   await saveRekening();
+}
+
+async function loadNotifWA() {
+  const userId = getUser()?.id;
+  try {
+    const data = await sbGet('users', `id=eq.${userId}&select=wa_internal_notif&limit=1`);
+    document.getElementById('wa-internal-input').value = data[0]?.wa_internal_notif || '';
+  } catch(e) { console.error(e); }
+}
+
+async function saveNotifWA() {
+  const userId = getUser()?.id;
+  const wa = document.getElementById('wa-internal-input').value.trim().replace(/\D/g, '');
+  if (wa && !/^62/.test(wa)) { toast('Format nomor harus diawali 62 (contoh: 6281234567890)', 'error'); return; }
+  try {
+    await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save-settings', user_id: userId, wa_internal_notif: wa || null })
+    });
+    toast(wa ? `Nomor notifikasi disimpan: ${wa}` : 'Notifikasi internal dinonaktifkan', 'success');
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function loadRekening() {
