@@ -159,8 +159,9 @@ export default async function handler(req, res) {
   if (secret !== CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
   if (req.method !== 'POST') return res.status(405).end();
 
-  const today = new Date().toISOString().slice(0, 10);
-  const results = { sent: 0, failed: 0, skipped: 0, skipped_timing: 0, details: [] };
+  const today     = new Date().toISOString().slice(0, 10);
+  const forceMode = req.query.force === 'true' || req.body?.force === true;
+  const results   = { sent: 0, failed: 0, skipped: 0, skipped_timing: 0, details: [], force: forceMode };
 
   try {
     const schedules = await sb('followup_schedule',
@@ -190,8 +191,8 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // Smart timing + spread: skip kalau belum waktunya
-      if (!shouldSendNow(customer)) {
+      // Smart timing + spread: skip kalau belum waktunya (bypass kalau force mode)
+      if (!forceMode && !shouldSendNow(customer)) {
         results.skipped_timing++;
         continue;
       }
