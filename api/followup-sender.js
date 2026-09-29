@@ -1,6 +1,10 @@
-// api/followup-sender.js — cron job: kirim FU otomatis setiap pagi
-// Setup cron: POST /api/followup-sender tiap hari jam 09:00 WIB (02:00 UTC)
+// api/followup-sender.js — cron job: kirim FU otomatis tiap jam
+// Setup cron VPS: tiap jam → curl POST /api/followup-sender
 // Header: x-cron-secret: adsysukses2026
+//
+// Smart timing: tiap customer punya optimal_send_hour (jam WIB).
+// Default jam 9 WIB. Belajar dari response time customer → update jam kirim.
+// Minimal 2x balas baru aktif smart timing.
 
 const SB_URL    = process.env.SUPABASE_URL;
 const SB_KEY    = process.env.SUPABASE_SERVICE_KEY;
@@ -82,6 +86,26 @@ async function generatePesan(rule, customer, order, apiKey) {
   return { text: msg.content[0].text.trim(), image_url: null };
 }
 
+const DEFAULT_SEND_HOUR = 9; // jam 9 WIB default
+const MIN_RESPONSES     = 2; // minimal balas sebelum pakai smart timing
+const SEND_WINDOW_MIN   = 30; // toleransi ±30 menit dari optimal_send_hour
+
+function nowWIBHour() {
+  // UTC+7
+  const now = new Date();
+  return ((now.getUTCHours() + 7) % 24) + (now.getUTCMinutes() / 60);
+}
+
+function shouldSendNow(customer) {
+  const currentHour = nowWIBHour();
+  const targetHour  = (customer.response_count >= MIN_RESPONSES && customer.optimal_send_hour != null)
+    ? customer.optimal_send_hour
+    : DEFAULT_SEND_HOUR;
+  // Kirim kalau jam sekarang dalam window ±30 menit dari target
+  const diff = Math.abs(currentHour - targetHour);
+  return diff <= (SEND_WINDOW_MIN / 60);
+}
+
 export default async function handler(req, res) {
   // Auth check
   const secret = req.headers['x-cron-secret'];
@@ -89,12 +113,12 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const today = new Date().toISOString().slice(0, 10);
-  const results = { sent: 0, failed: 0, skipped: 0, details: [] };
+  const results = { sent: 0, failed: 0, skipped: 0, skipped_timing: 0, details: [] };
 
   try {
-    // Ambil semua jadwal hari ini yang pending
+    // Ambil semua jadwal hari ini yang pending + data smart timing customer
     const schedules = await sb('followup_schedule',
-      `scheduled_date=lte.${today}&status=eq.pending&select=*,customers(nama,wa_number,produk,product_id),followup_rules(templates,hari_setelah_delivered,hari_sebelum_deliv,tipe)`);
+      `scheduled_date=lte.${today}&status=eq.pending&select=*,customers(nama,wa_number,produk,product_id,optimal_send_hour,response_count),followup_rules(templates,hari_setelah_delivered,hari_sebelum_deliv,tipe)`);
 
     if (!schedules.length) {
       return res.json({ ...results, message: 'Tidak ada jadwal hari ini' });
@@ -107,6 +131,12 @@ export default async function handler(req, res) {
       if (!customer?.wa_number) {
         await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
         results.skipped++;
+        continue;
+      }
+
+      // Smart timing: skip kalau belum waktunya kirim untuk customer ini
+      if (!shouldSendNow(customer)) {
+        results.skipped_timing++;
         continue;
       }
 

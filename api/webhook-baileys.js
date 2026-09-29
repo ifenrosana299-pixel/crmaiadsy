@@ -950,6 +950,44 @@ async function reverseGeocode(lat, lng) {
   }
 }
 
+/* ── SMART TIMING: pelajari jam response customer ─────────── */
+async function learnResponseTime(conversation, customerId) {
+  // Hanya pelajari dari conversation yang sumber FU
+  if (conversation.sumber !== 'fu') return;
+
+  // Jam sekarang dalam WIB (float, e.g. 11.83 = 11:50)
+  const now = new Date();
+  const wibHour = ((now.getUTCHours() + 7) % 24) + (now.getUTCMinutes() / 60);
+
+  // Ambil data customer saat ini
+  const custs = await sbGet('customers', `?id=eq.${customerId}&select=response_hours,response_count,optimal_send_hour`);
+  if (!custs.length) return;
+  const cust = custs[0];
+
+  const responseHours = Array.isArray(cust.response_hours) ? cust.response_hours : [];
+  responseHours.push(wibHour);
+
+  // Simpan max 20 data terakhir
+  if (responseHours.length > 20) responseHours.splice(0, responseHours.length - 20);
+
+  const count = (cust.response_count || 0) + 1;
+
+  // Hitung optimal jam kirim = avg response - 10 menit
+  // Baru aktif kalau sudah minimal 2x balas
+  let optimalHour = cust.optimal_send_hour;
+  if (count >= 2) {
+    const avg = responseHours.reduce((a, b) => a + b, 0) / responseHours.length;
+    optimalHour = Math.max(0, avg - (10 / 60)); // 10 menit sebelum rata-rata balas
+    optimalHour = Math.round(optimalHour * 100) / 100; // 2 desimal
+  }
+
+  await sbPatch('customers', `?id=eq.${customerId}`, {
+    response_hours:    responseHours,
+    response_count:    count,
+    optimal_send_hour: optimalHour,
+  }).catch(() => {});
+}
+
 /* ── KIRIM WA via Baileys server ──────────────────────────── */
 async function sendWA(sessionId, waNumber, message, isOutbound = false, imageUrl = null, caption = null) {
   if (!BAILEYS_URL) throw new Error('BAILEYS_URL belum diset');
@@ -1424,6 +1462,11 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     await sbPatch('conversations', `?id=eq.${conversation.id}`, {
       last_msg_at: new Date().toISOString(),
     }).catch(() => {});
+
+    // ── Smart timing: pelajari jam response customer ──
+    // Kalau conv sumber FU → catat jam customer balas → update optimal_send_hour
+    learnResponseTime(conversation, customerId).catch(() => {});
+
 
     // ── Debounce: kalau customer kirim 2+ pesan cepat, proses hanya yang terakhir ──
     // 2500ms cukup untuk menangkap ketikan cepat berturut-turut
