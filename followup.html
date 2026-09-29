@@ -692,9 +692,11 @@ function renderRuleCard(r) {
     ? '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>'
     : '<span style="width:6px;height:6px;border-radius:50%;background:#94a3b8;display:inline-block;flex-shrink:0"></span>';
   const cardId = 'rc-' + r.id.slice(0,8);
-  const tmplPreview = r.templates?.slice(0,1).map(t =>
-    `<div class="rule-card-tmpl">"${t.slice(0,120)}${t.length>120?'...':''}"</div>`
-  ).join('') || '';
+  const tmplPreview = r.templates?.slice(0,1).map(t => {
+    const ttext = (typeof t === 'object' && t) ? (t.text || '') : (t || '');
+    const timg  = (typeof t === 'object' && t) ? t.image_url : null;
+    return `<div class="rule-card-tmpl">${timg ? '📷 ' : ''}"${ttext.slice(0,120)}${ttext.length>120?'...':''}"</div>`;
+  }).join('') || '';
   const extraTmpl = (r.templates?.length||0) > 1
     ? `<div style="font-size:11px;color:var(--text-2);margin-top:4px;padding-left:4px">+${r.templates.length-1} variasi lainnya</div>` : '';
 
@@ -821,14 +823,77 @@ function addTemplate(val = '') {
   const el = document.getElementById('templates-list');
   const div = document.createElement('div');
   div.id = `tmpl-wrap-${idx}`;
+  // val bisa string (lama) atau object { text, image_url }
+  const textVal    = (typeof val === 'object' && val !== null) ? (val.text || '') : (val || '');
+  const imageUrl   = (typeof val === 'object' && val !== null) ? (val.image_url || '') : '';
+  const thumbHtml  = imageUrl
+    ? `<img src="${imageUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:7px;border:1px solid rgba(255,255,255,.1);cursor:pointer" onclick="document.getElementById('tmpl-img-file-${idx}').click()" title="Ganti gambar">`
+    : '📷';
   div.innerHTML = `
     <div style="display:flex;gap:8px;align-items:flex-start">
       <div style="min-width:22px;text-align:center;padding-top:10px;color:var(--text3);font-size:12px">${idx}</div>
-      <textarea class="form-textarea tmpl-input" id="tmpl-${idx}" placeholder="Ketik pesan variasi ${idx}..." rows="3">${val}</textarea>
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <textarea class="form-textarea tmpl-input" id="tmpl-${idx}" placeholder="Ketik pesan variasi ${idx}..." rows="3">${textVal}</textarea>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="tmpl-img-thumb-${idx}" onclick="document.getElementById('tmpl-img-file-${idx}').click()"
+            style="width:56px;height:56px;border-radius:7px;border:1.5px dashed rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;flex-shrink:0;overflow:hidden;background:rgba(255,255,255,.03)"
+            title="Upload gambar (opsional)">${thumbHtml}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-2)" id="tmpl-img-name-${idx}">${imageUrl ? imageUrl.split('/').pop().slice(0,35) : 'Gambar opsional • maks 5MB'}</div>
+            ${imageUrl ? `<button type="button" class="btn btn-ghost btn-xs" style="margin-top:4px;color:var(--red);font-size:11px" onclick="removeTmplImg(${idx})">✕ Hapus gambar</button>` : ''}
+          </div>
+        </div>
+        <input type="file" id="tmpl-img-file-${idx}" accept="image/*" style="display:none" onchange="handleTmplPhoto(this, ${idx})">
+        <input type="hidden" id="tmpl-img-url-${idx}" value="${imageUrl}">
+      </div>
       <button class="btn btn-ghost btn-xs" style="margin-top:8px;color:var(--red)" onclick="removeTmpl(${idx})">✕</button>
     </div>`;
   el.appendChild(div);
   lastTemplateIdx = idx;
+}
+
+async function handleTmplPhoto(input, idx) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Foto maksimal 5MB', 'error'); input.value = ''; return; }
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const path = `${currentUser.id}/fu_tmpl_${Date.now()}.${ext}`;
+  toast('Mengupload gambar...');
+  try {
+    const sbUrl = window.__SB_URL;
+    const sbKey = window.__SB_KEY;
+    const res = await fetch(`${sbUrl}/storage/v1/object/followup-media/${path}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${sbKey}`, 'Content-Type': file.type },
+      body: file,
+    });
+    if (!res.ok) throw new Error('Upload gagal: ' + await res.text());
+    const url = `${sbUrl}/storage/v1/object/public/followup-media/${path}`;
+    document.getElementById(`tmpl-img-url-${idx}`).value = url;
+    document.getElementById(`tmpl-img-name-${idx}`).textContent = file.name.slice(0, 35);
+    document.getElementById(`tmpl-img-thumb-${idx}`).innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:7px;cursor:pointer" onclick="document.getElementById('tmpl-img-file-${idx}').click()" title="Ganti gambar">`;
+    // Tambah tombol hapus kalau belum ada
+    const nameEl = document.getElementById(`tmpl-img-name-${idx}`);
+    if (nameEl && !nameEl.nextElementSibling) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-ghost btn-xs';
+      btn.style.cssText = 'margin-top:4px;color:var(--red);font-size:11px';
+      btn.textContent = '✕ Hapus gambar';
+      btn.onclick = () => removeTmplImg(idx);
+      nameEl.parentNode.insertBefore(btn, nameEl.nextSibling);
+    }
+    toast('Gambar berhasil diupload!', 'success');
+  } catch(e) { toast('Gagal: ' + e.message, 'error'); input.value = ''; }
+}
+
+function removeTmplImg(idx) {
+  document.getElementById(`tmpl-img-url-${idx}`).value = '';
+  document.getElementById(`tmpl-img-file-${idx}`).value = '';
+  document.getElementById(`tmpl-img-name-${idx}`).textContent = 'Gambar opsional • maks 5MB';
+  document.getElementById(`tmpl-img-thumb-${idx}`).innerHTML = '📷';
+  const nameEl = document.getElementById(`tmpl-img-name-${idx}`);
+  if (nameEl?.nextElementSibling) nameEl.nextElementSibling.remove();
 }
 
 function removeTmpl(idx) {
@@ -876,8 +941,12 @@ async function saveRule() {
     document.getElementById('rule-err').style.display = 'block'; return;
   }
 
-  const templates = [...document.querySelectorAll('.tmpl-input')]
-    .map(el => el.value.trim()).filter(Boolean);
+  const templates = [...document.querySelectorAll('[id^="tmpl-wrap-"]')]
+    .map(wrap => {
+      const text      = wrap.querySelector('.tmpl-input')?.value.trim() || '';
+      const image_url = wrap.querySelector('[id^="tmpl-img-url-"]')?.value.trim() || null;
+      return text ? { text, image_url: image_url || null } : null;
+    }).filter(Boolean);
   if (!templates.length) {
     document.getElementById('rule-err').textContent = 'Minimal satu template pesan.';
     document.getElementById('rule-err').style.display = 'block'; return;

@@ -117,6 +117,10 @@ body.light .pipe-card-date.upcoming{background:rgba(0,0,0,.05)}
       <button class="modal-close" onclick="closeSendModal()">✕</button>
     </div>
     <div class="modal-body">
+      <div id="send-img-preview" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-2);margin-bottom:6px">Gambar template:</div>
+        <img id="send-img-thumb" src="" style="max-height:120px;border-radius:8px;border:1px solid rgba(255,255,255,.1);object-fit:cover">
+      </div>
       <div class="form-group">
         <label class="form-label">Pesan Follow-up</label>
         <textarea class="form-textarea" id="send-pesan" rows="5" placeholder="Ketik pesan atau biarkan AI generate..."></textarea>
@@ -124,6 +128,7 @@ body.light .pipe-card-date.upcoming{background:rgba(0,0,0,.05)}
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn btn-ghost btn-sm" onclick="generatePesanAI()">🤖 Generate AI</button>
       </div>
+      <input type="hidden" id="send-image-url" value="">
       <div id="send-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
     </div>
     <div class="modal-footer">
@@ -321,6 +326,8 @@ async function openSendModal(fuId, custId, nama, waNum, ruleName) {
   document.getElementById('send-sub').textContent   = `${waNum} · ${ruleName}`;
   document.getElementById('send-pesan').value       = '';
   document.getElementById('send-err').style.display = 'none';
+  document.getElementById('send-image-url').value   = '';
+  document.getElementById('send-img-preview').style.display = 'none';
 
   await autoLoadTemplate(custId, ruleName);
   document.getElementById('send-modal').classList.add('show');
@@ -342,12 +349,15 @@ async function autoLoadTemplate(custId, ruleName) {
       ).catch(() => []);
       order = orders[0] || {};
     }
-    const pesan = templates[Math.floor(Math.random() * templates.length)];
-    const rule  = rules[0] || {};
+    const tmpl = templates[Math.floor(Math.random() * templates.length)];
+    const rule = rules[0] || {};
     const hariVal = rule.tipe === 'sebelum_deliv'
       ? (rule.hari_sebelum_deliv || rule.hari_setelah_delivered || '')
       : (rule.hari_setelah_delivered || '');
-    const filled = pesan
+    // backward compat: template lama bisa string biasa
+    const rawText   = (typeof tmpl === 'object' && tmpl) ? (tmpl.text || '') : (tmpl || '');
+    const imageUrl  = (typeof tmpl === 'object' && tmpl) ? (tmpl.image_url || '') : '';
+    const filled = rawText
       .replace(/{nama}/g,        cust.nama        || 'Kak')
       .replace(/{produk}/g,      order.produk     || cust.produk || 'produk')
       .replace(/{hari}/g,        hariVal)
@@ -356,6 +366,12 @@ async function autoLoadTemplate(custId, ruleName) {
       .replace(/{status_resi}/g, order.status_resi || '')
       .replace(/{alamat}/g,      order.alamat      || '');
     document.getElementById('send-pesan').value = filled;
+    // Tampil preview gambar jika ada
+    if (imageUrl) {
+      document.getElementById('send-image-url').value = imageUrl;
+      document.getElementById('send-img-thumb').src = imageUrl;
+      document.getElementById('send-img-preview').style.display = '';
+    }
   } catch(e) { console.warn('[autoLoadTemplate]', e); }
 }
 
@@ -391,11 +407,17 @@ async function doSendFU() {
       if (prods[0]?.wa_session_id) sessionId = prods[0].wa_session_id;
     }
 
-    // Kirim WA
+    // Kirim WA (dengan gambar jika ada)
+    const imgUrl = document.getElementById('send-image-url').value.trim();
     const r = await fetch(`/api/baileys-proxy?path=/send&session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wa_number: sendWaNum, message: pesan })
+      body: JSON.stringify({
+        wa_number: sendWaNum,
+        message: imgUrl ? undefined : pesan,
+        image_url: imgUrl || undefined,
+        caption: imgUrl ? (pesan || undefined) : undefined,
+      })
     });
     const d = await r.json();
     if (!d.success && !d.ok) throw new Error(d.error || 'Gagal kirim WA');
