@@ -70,14 +70,14 @@ async function rephraseWithAI(text, apiKey) {
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 200,
+      system: 'Kamu adalah asisten yang menulis ulang pesan WhatsApp. Tugasmu hanya menulis ulang pesan yang diberikan dengan kalimat yang sedikit berbeda tapi makna dan informasinya tetap sama persis. Jangan tambah atau kurangi informasi apapun. Jangan ubah nama, nomor, resi, atau data spesifik. Balas HANYA dengan teks pesan barunya saja, tanpa penjelasan, tanpa tanda kutip.',
       messages: [{
         role: 'user',
-        content: `Tulis ulang pesan WA berikut dengan gaya bahasa yang sedikit berbeda tapi isi dan informasinya tetap sama persis. Jangan ubah nama, angka, resi, atau info spesifik apapun. Tetap informal dan ramah. Balas HANYA teks pesannya saja tanpa penjelasan.\n\nPesan: ${text}`
+        content: `Tulis ulang pesan WA ini:\n\n${text}`
       }]
     });
     return msg.content[0].text.trim();
   } catch(e) {
-    // Kalau AI gagal, pakai pesan asli
     return text;
   }
 }
