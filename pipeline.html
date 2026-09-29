@@ -99,9 +99,14 @@ body.light .pipe-prog-dot.upcoming{background:rgba(0,0,0,.12)}
     </div>
 
     <div class="page-body">
-      <!-- Top bar: search + stats -->
+      <!-- Top bar: search + filter + stats -->
       <div class="pipe-topbar">
-        <input type="text" class="search-input" id="pipe-search" placeholder="🔍 Cari nama / produk..." oninput="renderPipeline()" style="max-width:240px">
+        <input type="text" class="search-input" id="pipe-search" placeholder="🔍 Cari nama / produk..." oninput="renderPipeline()" style="max-width:220px">
+        <select class="form-select" id="pipe-tipe-filter" onchange="renderPipeline()" style="width:auto;min-width:160px;font-size:13px">
+          <option value="">Semua Tipe</option>
+          <option value="sebelum_deliv">📦 Sebelum Diterima</option>
+          <option value="setelah_deliv">✅ Setelah Diterima</option>
+        </select>
         <div class="pipe-stat" id="pipe-stat">Memuat...</div>
       </div>
 
@@ -199,22 +204,34 @@ async function loadPipeline() {
 function renderPipeline() {
   const today    = new Date().toISOString().slice(0, 10);
   const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })();
-  const search   = document.getElementById('pipe-search').value.toLowerCase();
+  const search     = document.getElementById('pipe-search').value.toLowerCase();
+  const tipeFilter = document.getElementById('pipe-tipe-filter').value;
 
-  // Build columns: one per rule, in rule order
-  // Include rules even if no pending schedules (empty column)
-  const ruleOrder = allRules.map(r => r.id);
-  // Also catch rules that appear in schedules but not in allRules
-  const extraRuleIds = [...new Set(allSchedules.map(s => s.rule_id))].filter(id => !ruleOrder.includes(id));
-  const allRuleIds = [...ruleOrder, ...extraRuleIds];
+  // Rule meta map — dibangun duluan supaya bisa dipakai untuk filter tipe
+  const ruleMeta = {};
+  allRules.forEach(r => { ruleMeta[r.id] = r; });
+  allSchedules.forEach(s => {
+    if (!ruleMeta[s.rule_id]) ruleMeta[s.rule_id] = { id: s.rule_id, nama: s.rule_nama || s.rule_id, templates: [] };
+  });
 
   // Build rule index map (posisi urutan dari allRules)
   const ruleIdxMap = {};
   allRules.forEach((r, i) => { ruleIdxMap[r.id] = i; });
 
+  // Build columns: one per rule, in rule order — filter by tipe kalau dipilih
+  const ruleOrder = allRules.filter(r => !tipeFilter || r.tipe === tipeFilter).map(r => r.id);
+  // Also catch rules that appear in schedules but not in allRules (filter tipe juga)
+  const extraRuleIds = [...new Set(allSchedules.map(s => s.rule_id))]
+    .filter(id => !ruleOrder.includes(id))
+    .filter(id => !tipeFilter || (ruleMeta[id]?.tipe === tipeFilter));
+  const allRuleIds = [...ruleOrder, ...extraRuleIds];
+
   // Group pending per customer_id dulu
   const custPending = {};
   allSchedules.forEach(s => {
+    // Filter tipe rule
+    const ruleObj = ruleMeta[s.rule_id] || {};
+    if (tipeFilter && ruleObj.tipe !== tipeFilter) return;
     const cust = s.customers;
     if (search) {
       const hay = `${cust?.nama} ${cust?.wa_number} ${cust?.produk}`.toLowerCase();
@@ -239,14 +256,6 @@ function renderPipeline() {
     // Simpan juga semua pending schedules customer untuk progress dots
     current._allPending = schedules;
     byRule[current.rule_id].push(current);
-  });
-
-  // Rule meta map
-  const ruleMeta = {};
-  allRules.forEach(r => { ruleMeta[r.id] = r; });
-  // Fill rule_nama from schedules for extra rule ids
-  allSchedules.forEach(s => {
-    if (!ruleMeta[s.rule_id]) ruleMeta[s.rule_id] = { id: s.rule_id, nama: s.rule_nama || s.rule_id, templates: [] };
   });
 
   const board = document.getElementById('pipe-board');
