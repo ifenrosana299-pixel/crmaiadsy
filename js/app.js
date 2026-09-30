@@ -326,6 +326,39 @@ function renderSidebar(activePage) {
     el.innerHTML = html;
     // Load prod-switcher setelah sidebar ter-render
     if (typeof window.__loadProdSwitcher === 'function') window.__loadProdSwitcher();
+    // Load badge counts setelah sidebar ter-render
+    setTimeout(loadSidebarBadges, 300);
   }
   return html;
+}
+
+/* ── loadSidebarBadges: isi badge angka di sidebar dari semua halaman ── */
+async function loadSidebarBadges() {
+  const user = getUser();
+  if (!user) return;
+
+  // Tunggu config siap
+  if (!window.__SB_URL) await initConfig();
+  if (!window.__SB_URL) return;
+
+  const userId = user.id;
+  const today  = new Date().toISOString().slice(0, 10);
+  const prodId = window.__activeProductFilter;
+  const prodQ  = prodId ? `&or=(product_id.eq.${prodId},product_id.is.null)` : '';
+
+  try {
+    const [convs, fuToday] = await Promise.all([
+      _sbGet('conversations', `?user_id=eq.${userId}&status=eq.baru&select=id`).catch(() => []),
+      _sbGet('followup_schedule', `?user_id=eq.${userId}&scheduled_date=eq.${today}&status=eq.pending${prodQ}&select=id`).catch(() => []),
+    ]);
+
+    const unread = convs.length;
+    const fuCount = fuToday.length;
+
+    const unreadBadge   = document.getElementById('unread-badge');
+    const pipelineBadge = document.getElementById('pipeline-badge');
+
+    if (unreadBadge) { unreadBadge.textContent = unread; unreadBadge.style.display = unread ? '' : 'none'; }
+    if (pipelineBadge) { pipelineBadge.textContent = fuCount; pipelineBadge.style.display = fuCount ? '' : 'none'; }
+  } catch(e) {}
 }
