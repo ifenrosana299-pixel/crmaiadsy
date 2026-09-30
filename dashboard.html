@@ -781,7 +781,7 @@ window.addEventListener('productSwitch', () => {
 async function renderInbox() {
   const userId = getUser()?.id;
   // Sertakan product_id customer agar bisa filter conversation lama yang belum punya product_id
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=updated_at.${sortOrder}.nullslast&select=*,customers(product_id)`);
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=last_msg_at.${sortOrder}.nullslast&select=*,customers(product_id)`);
   allConvs = convs;
 
   const _prodFilter = window.__activeProductFilter;
