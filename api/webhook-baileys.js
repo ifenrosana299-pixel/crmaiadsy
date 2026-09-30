@@ -134,6 +134,11 @@ async function findOrCreateConversation(userId, customerId, sumber, productId) {
     existing = await sbGet('conversations',
       `?user_id=eq.${userId}&customer_id=eq.${customerId}&product_id=is.null&order=created_at.desc&limit=1`
     ).catch(() => []);
+    // Kalau ketemu dan kita tahu produknya → update product_id supaya tidak campur di inbox
+    if (existing.length && productId) {
+      await sbPatch('conversations', `?id=eq.${existing[0].id}`, { product_id: productId }).catch(() => {});
+      existing[0].product_id = productId;
+    }
   }
 
   if (existing.length) {
@@ -1417,6 +1422,13 @@ module.exports = async function handler(req, res) {
     if (reply_jid && reply_jid !== customer.reply_jid) {
       await sbPatch('customers', `?id=eq.${customer.id}`, { reply_jid }).catch(() => {});
       customer.reply_jid = reply_jid;
+    }
+
+    // Tag product_id ke customer kalau belum ada — pakai produk dari session WA yang masuk
+    if (product?.id && !customer.product_id) {
+      await sbPatch('customers', `?id=eq.${customer.id}`, { product_id: product.id }).catch(() => {});
+      customer.product_id = product.id;
+      console.log(`[customer] Auto-tag product_id "${product.nama}" ke customer ${customer.id}`);
     }
 
     const conversation = await findOrCreateConversation(userId, customer.id, sumberFinal, product?.id);
