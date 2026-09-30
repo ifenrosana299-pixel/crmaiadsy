@@ -780,6 +780,7 @@ async function loadStats() {
 
 /* ── RENDER INBOX ── */
 window.addEventListener('productSwitch', () => {
+  loadSidebarBadges().catch(()=>{});
   renderInbox();
   loadStats().catch(()=>{});
 });

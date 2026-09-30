@@ -158,9 +158,16 @@ async function init() {
   renderSidebar('broadcast');
   checkBotStatus();
   userId = user.id;
-  allCustomers = await sbGet('customers', `user_id=eq.${userId}&select=id,nama,wa_number,status`);
+  await loadCustomers();
   updatePreview();
   await loadHistory();
+  window.addEventListener('productSwitch', () => { loadCustomers().then(updatePreview); });
+}
+
+async function loadCustomers() {
+  const prodId = window.__activeProductFilter;
+  const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+  allCustomers = await sbGet('customers', `user_id=eq.${userId}${prodQ}&select=id,nama,wa_number,status,product_id`);
 }
 
 function getTargetCustomers() {

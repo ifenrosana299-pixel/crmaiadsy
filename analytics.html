@@ -417,13 +417,14 @@ async function init() {
   document.getElementById('header-sub').textContent = `${fmt(rangeStart)} — ${fmt(rangeEnd)}`;
 
   const prodFilter = window.__activeProductFilter || null;
-  const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
+  const prodQ    = prodFilter ? `&or=(product_id.eq.${prodFilter},product_id.is.null)` : '';
+  const custProdQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
 
   // FU schedules dalam range
   const [schedules, schedulesAll, customers] = await Promise.all([
     sbGet('followup_schedule', `user_id=eq.${userId}${prodQ}&scheduled_date=gte.${sinceISO.slice(0,10)}&scheduled_date=lte.${rangeEnd.toISOString().slice(0,10)}&select=id,status,customer_id,scheduled_date,sent_at`),
     sbGet('followup_schedule', `user_id=eq.${userId}${prodQ}&select=id,status,sent_at,created_at`),
-    sbGet('customers', `user_id=eq.${userId}&select=id,status,last_fu_at`),
+    sbGet('customers', `user_id=eq.${userId}${custProdQ}&select=id,status,last_fu_at`),
   ]);
 
   const fuSent       = schedules.filter(s => s.status === 'sent').length;
