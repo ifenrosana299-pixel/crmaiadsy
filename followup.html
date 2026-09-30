@@ -418,7 +418,7 @@ async function loadSchedules() {
   try {
     // Fetch SEMUA schedule (pending + sent) supaya bisa tampil journey lengkap per customer
     const prodId = window.__activeProductFilter;
-    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+    const prodQ  = prodId ? `&or=(product_id.eq.${prodId},product_id.is.null)` : '';
     const rows = await sbGet('followup_schedule',
       `user_id=eq.${currentUser.id}${prodQ}&order=scheduled_date.asc&select=*,customers(nama,wa_number,produk,status,fu_status,fu_no_reply_count,fu_sent_count)`);
     allSchedules = rows;
@@ -909,8 +909,11 @@ async function loadRuleProdukOptions() {
     const prods = await sbGet('products', `user_id=eq.${currentUser.id}&aktif=eq.true&select=id,nama`);
     const sel = document.getElementById('rule-produk');
     if (sel) {
+      const prev = sel.value; // simpan nilai yang sudah di-set sebelumnya
       sel.innerHTML = '<option value="">Semua Produk</option>' +
         prods.map(p => `<option value="${p.id}">${p.nama}</option>`).join('');
+      // Kembalikan nilai: pakai prev kalau ada, fallback ke produk aktif
+      sel.value = prev || window.__activeProductFilter || '';
     }
   } catch {}
 }
@@ -953,7 +956,8 @@ function openRuleModal() {
   document.getElementById('rule-nama').value = '';
   document.getElementById('rule-hari').value = '';
   document.getElementById('rule-hari-sebelum').value = '';
-  document.getElementById('rule-produk').value = '';
+  // Auto-set ke produk yang sedang aktif di switcher
+  document.getElementById('rule-produk').value = window.__activeProductFilter || '';
   document.getElementById('templates-list').innerHTML = '';
   templateCount = 0;
   addTemplate();
