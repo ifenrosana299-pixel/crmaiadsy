@@ -1,5 +1,12 @@
 /* ── AI CRM Adsy · Shared Utilities ── */
 
+/* ── Inject shared CSS untuk sidebar badge ── */
+(function() {
+  const s = document.createElement('style');
+  s.textContent = `.sb-item .sbadge{margin-left:auto;min-width:18px;height:18px;background:#ef4444;border-radius:9px;font-size:9px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}`;
+  document.head.appendChild(s);
+})();
+
 /* ── initConfig: wajib dipanggil PERTAMA sebelum fetch Supabase ── */
 async function initConfig() {
   if (window.__SB_URL && window.__SB_KEY) return; // sudah di-load
@@ -280,7 +287,13 @@ function renderSidebar(activePage) {
 
   const navHtml = nav.map(([key, href, label]) => {
     const active = key === activePage ? ' active' : '';
-    return `<a class="sb-item${active}" href="${href}"><span class="si">${SVG[key]}</span> ${label}</a>`;
+    // Badge untuk Percakapan (unread) dan Pipeline FU (pending hari ini)
+    const badgeHtml = key === 'dashboard'
+      ? `<span class="sbadge" id="unread-badge" style="display:none">0</span>`
+      : key === 'pipeline'
+      ? `<span class="sbadge" id="pipeline-badge" style="display:none;background:#f59e0b">0</span>`
+      : '';
+    return `<a class="sb-item${active}" href="${href}"><span class="si">${SVG[key]}</span> ${label}${badgeHtml}</a>`;
   }).join('\n    ');
 
   const html = `
