@@ -252,7 +252,9 @@ async function init() {
   uid = user.id;
   showSkel();
 
-  const customers = await sbGet('customers', `user_id=eq.${uid}&order=created_at.desc&select=id,wa_number,nama,produk,status,last_fu_at,tgl_delivered,created_at`);
+  const prodId = window.__activeProductFilter;
+  const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+  const customers = await sbGet('customers', `user_id=eq.${uid}${prodQ}&order=created_at.desc&select=id,wa_number,nama,produk,product_id,status,last_fu_at,tgl_delivered,created_at`);
 
   allCustomers = customers;
 
@@ -311,6 +313,7 @@ function onSearch(v) { q = v.toLowerCase().trim(); page = 1; renderTable(); }
 function getFiltered() {
   const prodFilter = window.__activeProductFilter || null;
   let list = allCustomers;
+  if (prodFilter) list = list.filter(c => c.product_id === prodFilter);
   if (currentTab === 'fu_aktif')     list = list.filter(c => c.status === 'fu_aktif');
   if (currentTab === 'repeat_order') list = list.filter(c => c.status === 'repeat_order');
   if (q) list = list.filter(c => (c.nama||'').toLowerCase().includes(q) || (c.wa_number||'').includes(q) || (c.produk||'').toLowerCase().includes(q));
@@ -407,7 +410,7 @@ function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 
 checkBotStatus();
 window.addEventListener('load', init);
-window.addEventListener('productSwitch', () => { page = 1; renderTable(); });
+window.addEventListener('productSwitch', () => { page = 1; init(); });
 </script>
 </body>
 </html>

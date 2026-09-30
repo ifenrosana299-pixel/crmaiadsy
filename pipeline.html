@@ -183,17 +183,20 @@ async function init() {
   if (!currentUser) return;
   renderSidebar('pipeline');
   await loadPipeline();
+  window.addEventListener('productSwitch', () => loadPipeline());
 }
 
 async function loadPipeline() {
   const btn = document.getElementById('btn-refresh');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
+    const prodId = window.__activeProductFilter;
+    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
     const [schedules, rules] = await Promise.all([
       sbGet('followup_schedule',
-        `user_id=eq.${currentUser.id}&status=eq.pending&select=*,customers(nama,wa_number,produk,product_id)&order=scheduled_date.asc`),
+        `user_id=eq.${currentUser.id}&status=eq.pending${prodQ}&select=*,customers(nama,wa_number,produk,product_id)&order=scheduled_date.asc`),
       sbGet('followup_rules',
-        `user_id=eq.${currentUser.id}&aktif=eq.true&order=urutan.asc&select=id,nama,tipe,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,templates`)
+        `user_id=eq.${currentUser.id}&aktif=eq.true${prodQ}&order=urutan.asc&select=id,nama,tipe,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,templates`)
     ]);
     allSchedules = schedules;
     allRules = rules;

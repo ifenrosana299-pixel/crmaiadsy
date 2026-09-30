@@ -410,14 +410,17 @@ async function init() {
   if (!currentUser) return;
   renderSidebar('followup');
   await Promise.all([loadSchedules(), loadRules()]);
+  window.addEventListener('productSwitch', () => loadSchedules());
 }
 
 // ---- SCHEDULES ----
 async function loadSchedules() {
   try {
     // Fetch SEMUA schedule (pending + sent) supaya bisa tampil journey lengkap per customer
+    const prodId = window.__activeProductFilter;
+    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
     const rows = await sbGet('followup_schedule',
-      `user_id=eq.${currentUser.id}&order=scheduled_date.asc&select=*,customers(nama,wa_number,produk,status,fu_status,fu_no_reply_count,fu_sent_count)`);
+      `user_id=eq.${currentUser.id}${prodQ}&order=scheduled_date.asc&select=*,customers(nama,wa_number,produk,status,fu_status,fu_no_reply_count,fu_sent_count)`);
     allSchedules = rows;
     loadRuleFilter();
     renderSchedule();
