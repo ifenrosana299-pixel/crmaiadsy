@@ -760,10 +760,10 @@ setInterval(updateDatetime, 60000);
 /* ── LOAD STATS ── */
 async function loadStats() {
   const userId = getUser()?.id;
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}`);
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&select=*,customers(product_id)`);
 
   const prodFilter = window.__activeProductFilter;
-  if (prodFilter) convs = convs.filter(c => !c.product_id || c.product_id === prodFilter);
+  if (prodFilter) convs = convs.filter(c => c.product_id === prodFilter || (!c.product_id && c.customers?.product_id === prodFilter));
 
   const open    = convs.filter(c => c.status !== 'selesai').length;
   const esc     = convs.filter(c => c.status === 'eskalasi').length;
@@ -816,12 +816,19 @@ window.addEventListener('productSwitch', () => {
 
 async function renderInbox() {
   const userId = getUser()?.id;
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=updated_at.${sortOrder}.nullslast`);
+  // Sertakan product_id customer agar bisa filter conversation lama yang belum punya product_id
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=updated_at.${sortOrder}.nullslast&select=*,customers(product_id)`);
   allConvs = convs;
 
   const _prodFilter = window.__activeProductFilter;
-  // Tampilkan konversasi tanpa product_id tetap muncul meski ada filter produk
-  if (_prodFilter) convs = convs.filter(c => !c.product_id || c.product_id === _prodFilter);
+  if (_prodFilter) {
+    convs = convs.filter(c => {
+      // Kalau conversation sudah punya product_id → filter ketat
+      if (c.product_id) return c.product_id === _prodFilter;
+      // Conversation lama tanpa product_id → cek dari customer-nya
+      return c.customers?.product_id === _prodFilter;
+    });
+  }
 
   if (tabFilter === 'eskalasi') convs = convs.filter(c => c.status === 'eskalasi');
   else if (tabFilter === 'live') convs = convs.filter(c => c.status === 'baru' || c.status === 'diproses' || c.status === 'aktif');
