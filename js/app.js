@@ -199,8 +199,28 @@ async function checkBotStatus() {
   const sbBot = document.getElementById('sb-bot-status');
   const user = getUser();
   if (!sbBot || !user) return;
+
+  // Pakai session_id dari produk aktif (bukan user.id)
+  // Tunggu prod-switcher load dulu, max 3 detik
+  let waited = 0;
+  while (!window.__userProducts && waited < 3000) {
+    await new Promise(r => setTimeout(r, 200));
+    waited += 200;
+  }
+
+  const prodId = window.__activeProductFilter;
+  const prods  = window.__userProducts || [];
+  const prod   = prodId ? prods.find(p => p.id === prodId) : prods[0];
+  const sessionId = prod?.wa_session_id;
+
+  if (!sessionId) {
+    sbBot.innerHTML = '⚠️ WA belum terhubung';
+    sbBot.style.color = '#f59e0b';
+    return;
+  }
+
   try {
-    const res = await fetch('/api/baileys-proxy?path=' + encodeURIComponent('/session/status/' + user.id));
+    const res = await fetch('/api/baileys-proxy?path=' + encodeURIComponent('/session/status/' + sessionId));
     const s = await res.json();
     if (s.status === 'connected') {
       sbBot.innerHTML = '<div class="bot-dot"></div> Bot online';
@@ -214,6 +234,9 @@ async function checkBotStatus() {
     sbBot.style.color = '#f59e0b';
   }
 }
+
+// Re-cek status bot saat user ganti produk
+window.addEventListener('productSwitch', () => checkBotStatus());
 
 /* ── Auth object (compatibility shim untuk halaman yang pakai Auth.xxx) ── */
 const Auth = {

@@ -63,15 +63,11 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
     return allUserProducts.find(p => p.id === activeProductFilter) || null;
   }
 
-  // Status label & warna berdasarkan koneksi WA + Gmail
-  // wa_session_id ada = WA pernah di-connect (lebih reliable dari wa_status yang tidak realtime)
+  // Status label & warna berdasarkan koneksi WA saja (CRM tidak pakai Gmail)
   function getProdStatus(p) {
-    const waOk    = !!(p.wa_session_id);
-    const gmailOk = !!(p.gmail_email);
-    if (waOk && gmailOk)   return { label: '● Agent aktif',           color: '#22c55e' };
-    if (!waOk && !gmailOk) return { label: '● Non aktif',             color: '#64748b' };
-    if (!waOk)             return { label: '● WA belum terhubung',    color: '#f59e0b' };
-                           return { label: '● Gmail belum terhubung', color: '#f59e0b' };
+    const waOk = !!(p.wa_session_id);
+    if (waOk) return { label: '● WA terhubung', color: '#22c55e' };
+    return { label: '● WA belum terhubung', color: '#64748b' };
   }
 
   // ── Inject div setelah #sb-bot-status ────────────────────
@@ -239,7 +235,7 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
     // Fetch fresh di background
     try {
       let r = await fetch(
-        `${window.__SB_URL}/rest/v1/products?user_id=eq.${userId}&aktif=eq.true&order=created_at.asc&select=id,nama,wa_status,wa_session_id`,
+        `${window.__SB_URL}/rest/v1/products?user_id=eq.${userId}&aktif=eq.true&order=created_at.asc&select=id,nama,wa_status,wa_session_id,aktif`,
         { headers: { apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY } }
       );
       if (r.ok) {
