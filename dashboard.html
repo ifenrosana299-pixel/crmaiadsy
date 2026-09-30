@@ -768,8 +768,14 @@ async function loadStats() {
 
   const badge = document.getElementById('unread-badge');
   const unread = convs.filter(c=>c.status==='baru').length;
-  badge.textContent = unread;
-  badge.style.display = unread ? '' : 'none';
+  if (badge) { badge.textContent = unread; badge.style.display = unread ? '' : 'none'; }
+
+  // Badge Pipeline FU — tampilkan jumlah FU pending hari ini
+  const pipelineBadge = document.getElementById('pipeline-badge');
+  if (pipelineBadge) {
+    pipelineBadge.textContent = fuToday;
+    pipelineBadge.style.display = fuToday ? '' : 'none';
+  }
 }
 
 /* ── RENDER INBOX ── */
