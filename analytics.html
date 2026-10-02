@@ -133,6 +133,18 @@ body.light .drp-dropdown{box-shadow:0 8px 32px rgba(0,0,0,.12)}
 .chart-total{font-size:13px;color:var(--text3)}
 .chart-total span{color:#22c55e;font-weight:700}
 
+/* ── CLOSING OPTIMIZER ── */
+.co-cr-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;color:#22c55e}
+.co-section{margin-top:14px}
+.co-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px}
+.co-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text2);margin-bottom:6px;line-height:1.5}
+.co-item.bad{border-color:rgba(239,68,68,.2);background:rgba(239,68,68,.04)}
+.co-item.tip{border-color:rgba(99,102,241,.2);background:rgba(99,102,241,.04)}
+.co-meta{font-size:11px;color:var(--text3);margin-top:10px}
+.co-spinner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:100px;color:var(--text3);font-size:13px}
+.co-spinner svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* ── INSIGHTS CARD ── */
 .resolusi-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;margin-bottom:16px}
 .resolusi-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -227,6 +239,17 @@ body.light .btn-sm:hover{border-color:#22c55e;color:#16a34a}
       </div>
       <div id="objeksi-body" style="display:flex;gap:24px;align-items:center;min-height:120px">
         <div style="color:var(--text3);font-size:12px">Memuat data...</div>
+      </div>
+    </div>
+
+    <!-- AI Closing Optimizer -->
+    <div class="chart-card" id="closing-optimizer-card">
+      <div class="chart-hdr">
+        <h3>🧠 AI Closing Optimizer</h3>
+        <button class="btn-sm" id="analyze-btn" onclick="runClosingAnalysis()">Analisis Sekarang</button>
+      </div>
+      <div id="closing-optimizer-body" style="min-height:80px">
+        <div style="color:var(--text3);font-size:12px">Klik "Analisis Sekarang" — AI akan pelajari semua percakapan, cari pola closing berhasil vs gagal, dan update cara bot closing secara otomatis.</div>
       </div>
     </div>
 
@@ -591,6 +614,79 @@ async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
     });
   } catch(e) {
     document.getElementById('objeksi-body').innerHTML = `<div style="color:#f87171;font-size:12px">Gagal memuat data objeksi</div>`;
+  }
+}
+
+async function runClosingAnalysis() {
+  const btn  = document.getElementById('analyze-btn');
+  const body = document.getElementById('closing-optimizer-body');
+  const prodId = document.getElementById('prod-filter')?.value || '';
+  if (!prodId) {
+    body.innerHTML = `<div style="color:#f87171;font-size:13px">Pilih produk dulu ya kak sebelum analisis 🙏</div>`;
+    return;
+  }
+  btn.disabled = true; btn.textContent = '⏳ Menganalisis...';
+  body.innerHTML = `<div class="co-spinner">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    <span>AI sedang baca semua percakapan dan cari pola closing...</span>
+  </div>`;
+
+  try {
+    const r = await fetch('/api/ai-suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'analyze-closing', userId, productId: prodId }),
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || 'Gagal analisis');
+
+    const ci = data.insights;
+    const crColor = ci.cr_saat_ini >= 30 ? '#22c55e' : ci.cr_saat_ini >= 15 ? '#f59e0b' : '#ef4444';
+
+    let html = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <span class="co-cr-badge" style="background:${crColor}22;border-color:${crColor}44;color:${crColor}">CR Sekarang: ${ci.cr_saat_ini || 0}%</span>
+      ${ci.target_cr ? `<span style="font-size:12px;color:var(--text3)">→ Target: <b style="color:var(--text)">${ci.target_cr}%</b></span>` : ''}
+      <span style="font-size:11px;color:var(--text3)">(${data.total} percakapan · ${data.closed} closing)</span>
+    </div>`;
+
+    if (ci.ringkasan) html += `<div style="font-size:13px;color:var(--text2);margin:10px 0;padding:10px 12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--accent)">${ci.ringkasan}</div>`;
+
+    if (Array.isArray(ci.taktik_berhasil) && ci.taktik_berhasil.length) {
+      html += `<div class="co-section"><div class="co-section-title">✅ Taktik yang Terbukti Berhasil</div>`;
+      ci.taktik_berhasil.forEach(t => html += `<div class="co-item">✓ ${t}</div>`);
+      html += `</div>`;
+    }
+    if (Array.isArray(ci.kesalahan_umum) && ci.kesalahan_umum.length) {
+      html += `<div class="co-section"><div class="co-section-title">⛔ Kesalahan yang Harus Dihindari</div>`;
+      ci.kesalahan_umum.forEach(k => html += `<div class="co-item bad">✕ ${k}</div>`);
+      html += `</div>`;
+    }
+    if (Array.isArray(ci.tips_baru) && ci.tips_baru.length) {
+      html += `<div class="co-section"><div class="co-section-title">💡 Tips Closing Custom (dari data nyata)</div>`;
+      ci.tips_baru.forEach(t => html += `<div class="co-item tip">
+        <div style="font-weight:600;color:var(--text);margin-bottom:3px">${t.situasi}</div>
+        <div style="color:var(--text2)">${t.cara}</div>
+        ${t.contoh ? `<div style="margin-top:4px;font-style:italic;color:var(--text3);font-size:12px">"${t.contoh}"</div>` : ''}
+      </div>`);
+      html += `</div>`;
+    }
+    if (Array.isArray(ci.skrip_objeksi_custom) && ci.skrip_objeksi_custom.length) {
+      html += `<div class="co-section"><div class="co-section-title">💬 Skrip Objeksi dari Data Nyata</div>`;
+      ci.skrip_objeksi_custom.forEach(s => html += `<div class="co-item tip">
+        <div style="color:var(--text3);font-size:11px;margin-bottom:4px">Customer: "${s.objeksi}"</div>
+        <div style="color:var(--text2)">${s.counter}</div>
+      </div>`);
+      html += `</div>`;
+    }
+
+    const analyzedAt = new Date(ci.analyzed_at).toLocaleString('id-ID');
+    html += `<div class="co-meta">🧠 Insights sudah aktif — bot akan pakai pelajaran ini otomatis di percakapan berikutnya · Dianalisis: ${analyzedAt}</div>`;
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div style="color:#f87171;font-size:13px">Gagal analisis: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Analisis Sekarang';
   }
 }
 
