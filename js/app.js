@@ -305,7 +305,7 @@ function renderSidebar(activePage) {
     <div class="sb-subtitle">Follow-up Engine</div>
   </div>
 </div>
-<div class="bot-online" id="sb-bot-status"><div class="bot-dot"></div> Bot online</div>
+<div class="bot-online" id="sb-bot-status" style="color:#64748b">⏳ Mengecek...</div>
 <div class="sb-nav">
     ${navHtml}
     <div class="sb-divider"></div>
@@ -326,8 +326,9 @@ function renderSidebar(activePage) {
     el.innerHTML = html;
     // Load prod-switcher setelah sidebar ter-render
     if (typeof window.__loadProdSwitcher === 'function') window.__loadProdSwitcher();
-    // Load badge counts setelah sidebar ter-render
+    // Load badge counts + bot status setelah sidebar ter-render
     setTimeout(loadSidebarBadges, 300);
+    setTimeout(checkBotStatus, 500);
   }
   return html;
 }
