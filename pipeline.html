@@ -191,7 +191,7 @@ async function loadPipeline() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const prodId = window.__activeProductFilter;
-    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+    const prodQ  = prodId ? `&or=(product_id.eq.${prodId},product_id.is.null)` : '';
     const [schedules, rules] = await Promise.all([
       sbGet('followup_schedule',
         `user_id=eq.${currentUser.id}&status=eq.pending${prodQ}&select=*,customers(nama,wa_number,produk,product_id)&order=scheduled_date.asc`),

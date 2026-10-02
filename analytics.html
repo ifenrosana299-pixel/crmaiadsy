@@ -219,6 +219,17 @@ body.light .btn-sm:hover{border-color:#22c55e;color:#16a34a}
       <canvas id="bar-chart" height="80"></canvas>
     </div>
 
+    <!-- Objeksi Closing -->
+    <div class="chart-card" id="objeksi-card">
+      <div class="chart-hdr">
+        <h3>🚫 Alasan Customer Tidak Jadi Beli</h3>
+        <div class="chart-total">total <span id="objeksi-total">—</span> objeksi</div>
+      </div>
+      <div id="objeksi-body" style="display:flex;gap:24px;align-items:center;min-height:120px">
+        <div style="color:var(--text3);font-size:12px">Memuat data...</div>
+      </div>
+    </div>
+
     <!-- AI Insights -->
     <div class="resolusi-card">
       <div class="resolusi-hdr">
@@ -523,6 +534,64 @@ async function init() {
   });
 
   document.getElementById('resolusi-badge').textContent = `✓ ${fuSent} FU terkirim`;
+
+  // Objeksi closing
+  loadObjeksi(userId, prodFilter, sinceISO.slice(0,10), rangeEnd.toISOString().slice(0,10));
+}
+
+let objeksiChart = null;
+async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
+  try {
+    const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
+    const rows = await sbGet('closing_objections', `user_id=eq.${userId}${prodQ}&created_at=gte.${dateFrom}&created_at=lte.${dateTo}T23:59:59&select=tipe`);
+
+    const labels = { harga: 'Harga Mahal', marketplace: 'Mau ke Marketplace', nanti: 'Pikir-pikir / Nanti', cancel: 'Batal / Tidak Jadi' };
+    const colors = { harga: '#f87171', marketplace: '#fb923c', nanti: '#facc15', cancel: '#94a3b8' };
+    const counts = { harga: 0, marketplace: 0, nanti: 0, cancel: 0 };
+    rows.forEach(r => { if (counts[r.tipe] !== undefined) counts[r.tipe]++; });
+
+    const total = rows.length;
+    document.getElementById('objeksi-total').textContent = total;
+
+    if (total === 0) {
+      document.getElementById('objeksi-body').innerHTML = `<div style="color:var(--text3);font-size:12px">Belum ada objeksi tercatat dalam periode ini 🎉</div>`;
+      return;
+    }
+
+    const isDark = !document.body.classList.contains('light');
+    const entries = Object.entries(counts).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+
+    document.getElementById('objeksi-body').innerHTML = `
+      <canvas id="objeksi-chart" width="140" height="140" style="flex-shrink:0"></canvas>
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        ${entries.map(([tipe, cnt]) => `
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${colors[tipe]};flex-shrink:0"></div>
+            <div style="flex:1;font-size:13px;color:var(--text2)">${labels[tipe]}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${cnt}</div>
+            <div style="font-size:11px;color:var(--text3);width:36px;text-align:right">${Math.round(cnt/total*100)}%</div>
+            <div style="width:80px;height:6px;border-radius:3px;background:var(--bg3)">
+              <div style="height:100%;border-radius:3px;background:${colors[tipe]};width:${Math.round(cnt/total*100)}%"></div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+    if (objeksiChart) objeksiChart.destroy();
+    objeksiChart = new Chart(document.getElementById('objeksi-chart'), {
+      type: 'doughnut',
+      data: {
+        labels: entries.map(([t]) => labels[t]),
+        datasets: [{ data: entries.map(([,v]) => v), backgroundColor: entries.map(([t]) => colors[t]), borderWidth: 0, hoverOffset: 4 }]
+      },
+      options: {
+        cutout: '70%',
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} (${Math.round(ctx.raw/total*100)}%)` } } },
+        animation: false,
+      }
+    });
+  } catch(e) {
+    document.getElementById('objeksi-body').innerHTML = `<div style="color:#f87171;font-size:12px">Gagal memuat data objeksi</div>`;
+  }
 }
 
 async function generateInsights() {
