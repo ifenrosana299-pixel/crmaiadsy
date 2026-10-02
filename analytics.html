@@ -613,7 +613,8 @@ async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
         datasets: [{ data: entries.map(([,v]) => v), backgroundColor: entries.map(([t]) => colors[t]), borderWidth: 0, hoverOffset: 4 }]
       },
       options: {
-        cutout: '70%',
+        responsive: false,
+        cutout: '65%',
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} (${Math.round(ctx.raw/total*100)}%)` } } },
         animation: false,
       }
