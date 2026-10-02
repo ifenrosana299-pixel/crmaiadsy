@@ -405,28 +405,20 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
           <textarea id="f-cara-pakai" rows="3" placeholder="2x sehari 1 kapsul, diminum setelah makan..."></textarea>
         </div>
 
-        <div class="form-group">
-          <label>Pesan Promo / Closing <small style="color:#64748b;font-weight:400">(dipakai AI saat customer keberatan harga)</small></label>
-          <textarea id="f-diskon-info" rows="2" placeholder="Contoh: Order 2 box gratis ongkir. Stok terbatas, promo hari ini saja."></textarea>
-          <div style="font-size:11px;color:#64748b;margin-top:4px">Kalimat yang dipakai bot untuk meyakinkan customer yang ragu.</div>
-        </div>
-
-        <!-- Diskon Repeat Order -->
+        <!-- Diskon Repeat Order per Qty -->
         <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;margin-bottom:14px">
-          <div style="font-size:12px;font-weight:700;color:#22c55e;margin-bottom:10px">🔄 Diskon Repeat Order</div>
-          <div style="font-size:11px;color:#64748b;margin-bottom:10px">Diskon khusus untuk customer yang beli lagi. Bot akan hitung dan tampilkan breakdown harga otomatis.</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="form-group" style="margin-bottom:0">
-              <label>Diskon Produk (%)</label>
-              <input type="number" id="f-diskon-repeat-produk" placeholder="0" min="0" max="100" style="width:100%">
-              <div style="font-size:11px;color:#64748b;margin-top:4px">Contoh: 10 → diskon 10% dari harga produk</div>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label>Diskon Ongkir (%)</label>
-              <input type="number" id="f-diskon-repeat-ongkir" placeholder="0" min="0" max="100" style="width:100%">
-              <div style="font-size:11px;color:#64748b;margin-top:4px">Contoh: 30 → diskon 30% dari ongkir</div>
-            </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:700;color:#22c55e">🔄 Diskon Repeat Order</div>
+            <button type="button" onclick="tambahDiskonRule()" style="font-size:11px;padding:4px 10px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:#22c55e;border-radius:6px;cursor:pointer">+ Tambah</button>
           </div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:10px">Diskon khusus per jumlah beli. Bot hitung otomatis dan tampilkan harga coret + hemat vs order pertama.</div>
+          <div style="display:grid;grid-template-columns:60px 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px">
+            <div style="font-size:10px;color:#475569;font-weight:600">QTY</div>
+            <div style="font-size:10px;color:#475569;font-weight:600">DISKON PRODUK</div>
+            <div style="font-size:10px;color:#475569;font-weight:600">DISKON ONGKIR</div>
+            <div></div>
+          </div>
+          <div id="diskon-rules-rows" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
 
         <!-- Reorder Prediction -->
@@ -823,6 +815,55 @@ function loadBundling(data) {
   if (Array.isArray(data)) data.forEach(p => tambahPaket(p.qty, p.harga, !!p.prioritas));
 }
 
+/* ── Diskon Repeat Rules ── */
+function tambahDiskonRule(qty = '', produkNilai = '', produkTipe = 'persen', ongkirNilai = '', ongkirTipe = 'persen') {
+  const container = document.getElementById('diskon-rules-rows');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:grid;grid-template-columns:60px 1fr 1fr auto;gap:6px;align-items:center';
+  div.innerHTML = `
+    <input type="number" min="1" placeholder="Qty" value="${qty}"
+      style="padding:6px 8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#e2e8f0;border-radius:6px;font-size:12px;width:100%">
+    <div style="display:flex;gap:4px">
+      <input type="number" min="0" placeholder="0" value="${produkNilai}"
+        style="flex:1;padding:6px 8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#e2e8f0;border-radius:6px;font-size:12px">
+      <select style="padding:6px 4px;border:1px solid rgba(255,255,255,.1);background:#1e293b;color:#94a3b8;border-radius:6px;font-size:11px">
+        <option value="persen" ${produkTipe==='persen'?'selected':''}>%</option>
+        <option value="rupiah" ${produkTipe==='rupiah'?'selected':''}>Rp</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:4px">
+      <input type="number" min="0" placeholder="0" value="${ongkirNilai}"
+        style="flex:1;padding:6px 8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#e2e8f0;border-radius:6px;font-size:12px">
+      <select style="padding:6px 4px;border:1px solid rgba(255,255,255,.1);background:#1e293b;color:#94a3b8;border-radius:6px;font-size:11px">
+        <option value="persen" ${ongkirTipe==='persen'?'selected':''}>%</option>
+        <option value="rupiah" ${ongkirTipe==='rupiah'?'selected':''}>Rp</option>
+      </select>
+    </div>
+    <button type="button" onclick="this.closest('div[style]').remove()"
+      style="padding:5px 8px;border:1px solid rgba(248,113,113,.2);background:none;color:#f87171;border-radius:6px;font-size:12px;cursor:pointer">×</button>`;
+  container.appendChild(div);
+}
+
+function getDiskonRulesData() {
+  const result = [];
+  document.querySelectorAll('#diskon-rules-rows > div').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const selects = row.querySelectorAll('select');
+    const qty = parseInt(inputs[0].value);
+    const produkNilai = parseFloat(inputs[1].value) || 0;
+    const produkTipe = selects[0].value;
+    const ongkirNilai = parseFloat(inputs[2].value) || 0;
+    const ongkirTipe = selects[1].value;
+    if (qty > 0) result.push({ qty, produk_nilai: produkNilai, produk_tipe: produkTipe, ongkir_nilai: ongkirNilai, ongkir_tipe: ongkirTipe });
+  });
+  return result.sort((a, b) => a.qty - b.qty);
+}
+
+function loadDiskonRules(data) {
+  document.getElementById('diskon-rules-rows').innerHTML = '';
+  if (Array.isArray(data)) data.forEach(r => tambahDiskonRule(r.qty, r.produk_nilai, r.produk_tipe, r.ongkir_nilai, r.ongkir_tipe));
+}
+
 /* ── Modal Produk ── */
 function openAdd() {
   editId = null;
@@ -833,9 +874,7 @@ function openAdd() {
   loadBundling([]);
   document.getElementById('f-aktif').value = 'true';
   document.getElementById('f-cara-pakai').value = '';
-  document.getElementById('f-diskon-info').value = '';
-  document.getElementById('f-diskon-repeat-produk').value = '';
-  document.getElementById('f-diskon-repeat-ongkir').value = '';
+  loadDiskonRules([]);
   document.getElementById('f-konsumsi-hari').value = '';
   document.getElementById('f-buffer-reorder').value = '5';
   document.getElementById('f-knowledge').value = '';
@@ -861,9 +900,7 @@ async function openEdit(id) {
   document.getElementById('f-aktif').value = String(p.aktif);
   loadBundling(p.harga_bundling || []);
   document.getElementById('f-cara-pakai').value = p.cara_pakai || '';
-  document.getElementById('f-diskon-info').value = p.diskon_info || '';
-  document.getElementById('f-diskon-repeat-produk').value = p.diskon_repeat_produk || '';
-  document.getElementById('f-diskon-repeat-ongkir').value = p.diskon_repeat_ongkir || '';
+  loadDiskonRules(p.diskon_repeat_rules || []);
   document.getElementById('f-konsumsi-hari').value = p.konsumsi_hari || '';
   document.getElementById('f-buffer-reorder').value = p.buffer_reorder_hari || 5;
   document.getElementById('f-knowledge').value = p.product_knowledge || '';
@@ -923,9 +960,7 @@ async function saveProduk() {
     harga,
     aktif:               document.getElementById('f-aktif').value === 'true',
     cara_pakai:          document.getElementById('f-cara-pakai').value.trim(),
-    diskon_info:              document.getElementById('f-diskon-info').value.trim() || null,
-    diskon_repeat_produk:     parseInt(document.getElementById('f-diskon-repeat-produk').value) || 0,
-    diskon_repeat_ongkir:     parseInt(document.getElementById('f-diskon-repeat-ongkir').value) || 0,
+    diskon_repeat_rules: getDiskonRulesData(),
     konsumsi_hari:       parseInt(document.getElementById('f-konsumsi-hari').value) || null,
     buffer_reorder_hari: parseInt(document.getElementById('f-buffer-reorder').value) || 5,
     gambar_url:          document.getElementById('f-gambar-url').value || null,
