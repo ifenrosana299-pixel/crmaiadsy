@@ -349,8 +349,8 @@ async function loadSidebarBadges() {
 
   try {
     const [convs, fuToday] = await Promise.all([
-      _sbGet('conversations', `?user_id=eq.${userId}&status=eq.baru&select=id`).catch(() => []),
-      _sbGet('followup_schedule', `?user_id=eq.${userId}&scheduled_date=eq.${today}&status=eq.pending${prodQ}&select=id`).catch(() => []),
+      sbGet('conversations', `user_id=eq.${userId}&status=eq.baru&select=id`).catch(() => []),
+      sbGet('followup_schedule', `user_id=eq.${userId}&scheduled_date=eq.${today}&status=eq.pending${prodQ}&select=id`).catch(() => []),
     ]);
 
     const unread = convs.length;
