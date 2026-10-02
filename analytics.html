@@ -246,10 +246,13 @@ body.light .btn-sm:hover{border-color:#22c55e;color:#16a34a}
     <div class="chart-card" id="closing-optimizer-card">
       <div class="chart-hdr">
         <h3>🧠 AI Closing Optimizer</h3>
-        <button class="btn-sm" id="analyze-btn" onclick="runClosingAnalysis()">Analisis Sekarang</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--text3)">auto update tiap 24 jam</span>
+          <button class="btn-sm" id="analyze-btn" onclick="runClosingAnalysis()">Refresh</button>
+        </div>
       </div>
       <div id="closing-optimizer-body" style="min-height:80px">
-        <div style="color:var(--text3);font-size:12px">Klik "Analisis Sekarang" — AI akan pelajari semua percakapan, cari pola closing berhasil vs gagal, dan update cara bot closing secara otomatis.</div>
+        <div style="color:var(--text3);font-size:12px">Memuat insights...</div>
       </div>
     </div>
 
@@ -560,6 +563,9 @@ async function init() {
 
   // Objeksi closing
   loadObjeksi(userId, prodFilter, sinceISO.slice(0,10), rangeEnd.toISOString().slice(0,10));
+
+  // Load closing insights dari cache produk (tanpa analisis ulang)
+  if (prodFilter) loadClosingInsightsCache(prodFilter);
 }
 
 let objeksiChart = null;
@@ -617,6 +623,62 @@ async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
   }
 }
 
+async function loadClosingInsightsCache(productId) {
+  const body = document.getElementById('closing-optimizer-body');
+  try {
+    const rows = await sbGet('products', `id=eq.${productId}&select=closing_insights_cache`);
+    const ci = rows?.[0]?.closing_insights_cache;
+    if (!ci || !ci.analyzed_at) {
+      body.innerHTML = `<div style="color:var(--text3);font-size:12px">Belum ada analisis — bot akan analisis otomatis setelah ada percakapan masuk, atau klik Refresh.</div>`;
+      return;
+    }
+    renderClosingInsights(ci, ci.sample_size||0, ci.closed_count||0);
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--text3);font-size:12px">Gagal memuat insights.</div>`;
+  }
+}
+
+function renderClosingInsights(ci, total, closedCount) {
+  const body = document.getElementById('closing-optimizer-body');
+  const crColor = ci.cr_saat_ini >= 30 ? '#22c55e' : ci.cr_saat_ini >= 15 ? '#f59e0b' : '#ef4444';
+  let html = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+    <span class="co-cr-badge" style="background:${crColor}22;border-color:${crColor}44;color:${crColor}">CR Sekarang: ${ci.cr_saat_ini || 0}%</span>
+    ${ci.target_cr ? `<span style="font-size:12px;color:var(--text3)">→ Target: <b style="color:var(--text)">${ci.target_cr}%</b></span>` : ''}
+    <span style="font-size:11px;color:var(--text3)">(${total} percakapan · ${closedCount} closing)</span>
+  </div>`;
+  if (ci.ringkasan) html += `<div style="font-size:13px;color:var(--text2);margin:10px 0;padding:10px 12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--accent)">${ci.ringkasan}</div>`;
+  if (Array.isArray(ci.taktik_berhasil) && ci.taktik_berhasil.length) {
+    html += `<div class="co-section"><div class="co-section-title">✅ Taktik yang Terbukti Berhasil</div>`;
+    ci.taktik_berhasil.forEach(t => html += `<div class="co-item">✓ ${t}</div>`);
+    html += `</div>`;
+  }
+  if (Array.isArray(ci.kesalahan_umum) && ci.kesalahan_umum.length) {
+    html += `<div class="co-section"><div class="co-section-title">⛔ Kesalahan yang Harus Dihindari</div>`;
+    ci.kesalahan_umum.forEach(k => html += `<div class="co-item bad">✕ ${k}</div>`);
+    html += `</div>`;
+  }
+  if (Array.isArray(ci.tips_baru) && ci.tips_baru.length) {
+    html += `<div class="co-section"><div class="co-section-title">💡 Tips Closing Custom</div>`;
+    ci.tips_baru.forEach(t => html += `<div class="co-item tip">
+      <div style="font-weight:600;color:var(--text);margin-bottom:3px">${t.situasi}</div>
+      <div style="color:var(--text2)">${t.cara}</div>
+      ${t.contoh ? `<div style="margin-top:4px;font-style:italic;color:var(--text3);font-size:12px">"${t.contoh}"</div>` : ''}
+    </div>`);
+    html += `</div>`;
+  }
+  if (Array.isArray(ci.skrip_objeksi_custom) && ci.skrip_objeksi_custom.length) {
+    html += `<div class="co-section"><div class="co-section-title">💬 Skrip Objeksi dari Data Nyata</div>`;
+    ci.skrip_objeksi_custom.forEach(s => html += `<div class="co-item tip">
+      <div style="color:var(--text3);font-size:11px;margin-bottom:4px">Customer: "${s.objeksi}"</div>
+      <div style="color:var(--text2)">${s.counter}</div>
+    </div>`);
+    html += `</div>`;
+  }
+  const analyzedAt = new Date(ci.analyzed_at).toLocaleString('id-ID');
+  html += `<div class="co-meta">🔄 Auto-update tiap 24 jam · Terakhir dianalisis: ${analyzedAt}</div>`;
+  body.innerHTML = html;
+}
+
 async function runClosingAnalysis() {
   const btn  = document.getElementById('analyze-btn');
   const body = document.getElementById('closing-optimizer-body');
@@ -639,54 +701,11 @@ async function runClosingAnalysis() {
     });
     const data = await r.json();
     if (!r.ok || !data.ok) throw new Error(data.error || 'Gagal analisis');
-
-    const ci = data.insights;
-    const crColor = ci.cr_saat_ini >= 30 ? '#22c55e' : ci.cr_saat_ini >= 15 ? '#f59e0b' : '#ef4444';
-
-    let html = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-      <span class="co-cr-badge" style="background:${crColor}22;border-color:${crColor}44;color:${crColor}">CR Sekarang: ${ci.cr_saat_ini || 0}%</span>
-      ${ci.target_cr ? `<span style="font-size:12px;color:var(--text3)">→ Target: <b style="color:var(--text)">${ci.target_cr}%</b></span>` : ''}
-      <span style="font-size:11px;color:var(--text3)">(${data.total} percakapan · ${data.closed} closing)</span>
-    </div>`;
-
-    if (ci.ringkasan) html += `<div style="font-size:13px;color:var(--text2);margin:10px 0;padding:10px 12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--accent)">${ci.ringkasan}</div>`;
-
-    if (Array.isArray(ci.taktik_berhasil) && ci.taktik_berhasil.length) {
-      html += `<div class="co-section"><div class="co-section-title">✅ Taktik yang Terbukti Berhasil</div>`;
-      ci.taktik_berhasil.forEach(t => html += `<div class="co-item">✓ ${t}</div>`);
-      html += `</div>`;
-    }
-    if (Array.isArray(ci.kesalahan_umum) && ci.kesalahan_umum.length) {
-      html += `<div class="co-section"><div class="co-section-title">⛔ Kesalahan yang Harus Dihindari</div>`;
-      ci.kesalahan_umum.forEach(k => html += `<div class="co-item bad">✕ ${k}</div>`);
-      html += `</div>`;
-    }
-    if (Array.isArray(ci.tips_baru) && ci.tips_baru.length) {
-      html += `<div class="co-section"><div class="co-section-title">💡 Tips Closing Custom (dari data nyata)</div>`;
-      ci.tips_baru.forEach(t => html += `<div class="co-item tip">
-        <div style="font-weight:600;color:var(--text);margin-bottom:3px">${t.situasi}</div>
-        <div style="color:var(--text2)">${t.cara}</div>
-        ${t.contoh ? `<div style="margin-top:4px;font-style:italic;color:var(--text3);font-size:12px">"${t.contoh}"</div>` : ''}
-      </div>`);
-      html += `</div>`;
-    }
-    if (Array.isArray(ci.skrip_objeksi_custom) && ci.skrip_objeksi_custom.length) {
-      html += `<div class="co-section"><div class="co-section-title">💬 Skrip Objeksi dari Data Nyata</div>`;
-      ci.skrip_objeksi_custom.forEach(s => html += `<div class="co-item tip">
-        <div style="color:var(--text3);font-size:11px;margin-bottom:4px">Customer: "${s.objeksi}"</div>
-        <div style="color:var(--text2)">${s.counter}</div>
-      </div>`);
-      html += `</div>`;
-    }
-
-    const analyzedAt = new Date(ci.analyzed_at).toLocaleString('id-ID');
-    html += `<div class="co-meta">🧠 Insights sudah aktif — bot akan pakai pelajaran ini otomatis di percakapan berikutnya · Dianalisis: ${analyzedAt}</div>`;
-
-    body.innerHTML = html;
+    renderClosingInsights(data.insights, data.total, data.closed);
   } catch(e) {
     body.innerHTML = `<div style="color:#f87171;font-size:13px">Gagal analisis: ${e.message}</div>`;
   } finally {
-    btn.disabled = false; btn.textContent = 'Analisis Sekarang';
+    btn.disabled = false; btn.textContent = 'Refresh';
   }
 }
 
