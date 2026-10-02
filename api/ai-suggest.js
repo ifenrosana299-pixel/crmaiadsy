@@ -196,6 +196,105 @@ Tulis pesannya langsung, tanpa penjelasan.`;
     }
   }
 
+  // ── ACTION: analyze-closing (AI Closing Optimizer) ──
+  if (action === 'analyze-closing') {
+    const { productId } = body;
+    if (!userId || !productId) return res.status(400).json({ error: 'userId & productId wajib' });
+
+    const sbH2 = () => ({
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    });
+    const sbGet2 = async (table, q = '') => {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${q}`, { headers: sbH2() });
+      if (!r.ok) throw new Error(`sbGet ${table}: ${await r.text()}`);
+      return r.json();
+    };
+    const sbPatch2 = async (table, q, bd) => {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${q}`, {
+        method: 'PATCH',
+        headers: { ...sbH2(), 'Prefer': 'return=representation' },
+        body: JSON.stringify(bd),
+      });
+      if (!r.ok) throw new Error(`sbPatch ${table}: ${await r.text()}`);
+      return r.json();
+    };
+
+    try {
+      const conversations = await sbGet2('conversations',
+        `?user_id=eq.${userId}&product_id=eq.${productId}&order=created_at.desc&limit=60&select=id,status,created_at`
+      );
+      if (!conversations.length) return res.status(200).json({ ok: true, message: 'Belum ada percakapan' });
+
+      const convIds = conversations.map(c => `"${c.id}"`).join(',');
+      const [allMessages, allOrders, allObjeksi] = await Promise.all([
+        sbGet2('conv_messages', `?conversation_id=in.(${convIds})&order=created_at.asc&select=conversation_id,role,content`),
+        sbGet2('orders', `?user_id=eq.${userId}&product_id=eq.${productId}&select=conversation_id`),
+        sbGet2('closing_objections', `?user_id=eq.${userId}&product_id=eq.${productId}&select=tipe`),
+      ]);
+
+      const msgByConv = {};
+      for (const m of allMessages) {
+        if (!msgByConv[m.conversation_id]) msgByConv[m.conversation_id] = [];
+        msgByConv[m.conversation_id].push(m);
+      }
+      const closedIds = new Set(allOrders.map(o => o.conversation_id).filter(Boolean));
+      const closed = [], unclosed = [];
+      for (const conv of conversations) {
+        const msgs = msgByConv[conv.id] || [];
+        if (!msgs.length) continue;
+        const isC = closedIds.has(conv.id);
+        const bucket = isC ? closed : unclosed;
+        if (bucket.length < 8) {
+          bucket.push(msgs.slice(0, 15).map(m => `[${m.role === 'assistant' ? 'CS' : 'Customer'}]: ${m.content}`).join('\n'));
+        }
+      }
+
+      const objStats = {};
+      for (const o of allObjeksi) objStats[o.tipe] = (objStats[o.tipe] || 0) + 1;
+      const objText = Object.entries(objStats).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`- "${t}": ${n}x`).join('\n');
+      const totalConv = conversations.length;
+      const totalClosed = closedIds.size;
+      const crPct = totalConv > 0 ? Math.round((totalClosed/totalConv)*100) : 0;
+
+      const prompt = `Kamu analis closing rate untuk AI CS WhatsApp (CRM post-purchase).
+Analisis percakapan berikut dan temukan pola konkret apa yang membuat closing berhasil vs gagal.
+
+STATISTIK: ${totalConv} percakapan · ${totalClosed} closing · CR ${crPct}%
+Objeksi sering: ${objText || '(belum ada)'}
+
+BERHASIL CLOSING (${closed.length} sampel):
+${closed.map((s,i)=>`=== #${i+1} ===\n${s}`).join('\n\n') || '(belum ada)'}
+
+GAGAL CLOSING (${unclosed.length} sampel):
+${unclosed.map((s,i)=>`=== #${i+1} ===\n${s}`).join('\n\n') || '(belum ada)'}
+
+Balas HANYA JSON:
+{"cr_saat_ini":${crPct},"target_cr":<angka>,"ringkasan":"<1-2 kalimat>","taktik_berhasil":["<taktik1>","<taktik2>","<taktik3>"],"kesalahan_umum":["<kesalahan1>","<kesalahan2>"],"tips_baru":[{"situasi":"<kapan>","cara":"<apa>","contoh":"<kalimat>"}],"skrip_objeksi_custom":[{"objeksi":"<keberatan>","counter":"<cara respons>"}]}`;
+
+      const apiKey = ANTHROPIC_KEY;
+      const cr = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
+      }, 55000);
+      if (!cr.ok) throw new Error(`Claude: ${await cr.text()}`);
+      const cd = await cr.json();
+      const raw = cd.content?.[0]?.text || '{}';
+      let insights;
+      try { const m = raw.match(/\{[\s\S]*\}/); insights = m ? JSON.parse(m[0]) : {}; } catch { insights = {}; }
+      insights.analyzed_at = new Date().toISOString();
+      insights.sample_size = totalConv;
+      insights.closed_count = totalClosed;
+
+      await sbPatch2('products', `?id=eq.${productId}`, { closing_insights_cache: insights });
+      return res.status(200).json({ ok: true, insights, cr: crPct, total: totalConv, closed: totalClosed });
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── ACTION: analytics insights ──
   if (action === 'analytics-insights') {
     const userKey = await getUserAnthropicKey(userId);

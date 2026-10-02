@@ -270,7 +270,7 @@ function buildTemplatePrompt(product, customer, conversation, sumber, userRekeni
        customer.alamat.kabupaten, customer.alamat.provinsi].filter(Boolean).join(', ')
     : null;
 
-  return `IDENTITAS & KONTEKS
+  const basePrompt = `IDENTITAS & KONTEKS
 Kamu "${csNama}", tim after-sales/CRM yang follow-up customer post-purchase via WhatsApp.
 Kalau ditanya "kamu robot/AI/bot?" → jawab santai: "Hehe bukan kak, aku ${csNama} dari tim after-sales 😊" — JANGAN akui sebagai AI.
 
@@ -422,6 +422,44 @@ ETIS
 
 TUJUAN AKHIR
 Customer merasa DIPERHATIKAN setelah beli. Kepuasan → loyalitas → repeat order natural. Kalau ada peluang closing, AMBIL — jangan biarkan customer pergi tanpa diperjuangkan.`;
+
+  // ── Inject closing insights dari analisis AI percakapan ──
+  const ci = product?.closing_insights_cache;
+  if (ci && ci.analyzed_at) {
+    const lines = [
+      '',
+      '━'.repeat(30),
+      '📊 PELAJARAN DARI ANALISIS PERCAKAPAN NYATA',
+      `(Berdasarkan ${ci.sample_size||'?'} percakapan · ${ci.closed_count||0} berhasil closing · CR ${ci.cr_saat_ini||'?'}%)`,
+    ];
+    if (ci.ringkasan) lines.push('', 'Ringkasan pola: ' + ci.ringkasan);
+    if (Array.isArray(ci.taktik_berhasil) && ci.taktik_berhasil.length) {
+      lines.push('', 'TAKTIK YANG TERBUKTI BERHASIL (wajib diprioritaskan):');
+      ci.taktik_berhasil.forEach((t,i) => lines.push((i+1)+'. '+t));
+    }
+    if (Array.isArray(ci.kesalahan_umum) && ci.kesalahan_umum.length) {
+      lines.push('', 'KESALAHAN YANG HARUS DIHINDARI:');
+      ci.kesalahan_umum.forEach((k,i) => lines.push((i+1)+'. ⛔ '+k));
+    }
+    if (Array.isArray(ci.tips_baru) && ci.tips_baru.length) {
+      lines.push('', 'TIPS CLOSING CUSTOM (dari data percakapan nyata):');
+      ci.tips_baru.forEach((t,i) => {
+        lines.push((i+1)+'. Situasi: '+t.situasi);
+        lines.push('   Cara: '+t.cara);
+        if (t.contoh) lines.push('   Contoh: "'+t.contoh+'"');
+      });
+    }
+    if (Array.isArray(ci.skrip_objeksi_custom) && ci.skrip_objeksi_custom.length) {
+      lines.push('', 'SKRIP OBJEKSI DARI DATA NYATA:');
+      ci.skrip_objeksi_custom.forEach((s,i) => {
+        lines.push((i+1)+'. Customer bilang: "'+s.objeksi+'"');
+        lines.push('   Cara terbaik: '+s.counter);
+      });
+    }
+    lines.push('━'.repeat(30));
+    return basePrompt + lines.join('\n');
+  }
+  return basePrompt;
 }
 
 const PROVINSI_JAWA = ['dki jakarta','jawa barat','jawa tengah','di yogyakarta','yogyakarta','jawa timur','banten'];
