@@ -269,6 +269,14 @@ export default async function handler(req, res) {
         ).catch(() => []);
         const order = orders[0] || null;
 
+        // Skip rule sebelum_deliv kalau paket sudah SAMPAI — pesan "dalam perjalanan" tidak relevan
+        if (rule?.tipe === 'sebelum_deliv' && order?.status_resi === 'SAMPAI') {
+          await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+          results.skipped++;
+          results.details.push({ customer: customer.nama, status: 'skipped', reason: 'sudah_sampai' });
+          continue;
+        }
+
         const reEngage = customer.fu_status === 'tidak_responsif';
         const hasil = await generatePesan(rule, customer, order, apiKey, reEngage);
         if (!hasil) {

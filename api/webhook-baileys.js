@@ -60,6 +60,17 @@ async function sbPatch(table, query, body) {
   return res.json();
 }
 
+/* ── DETEKSI OBJEKSI CLOSING ──────────────────────────────── */
+function detectObjeksi(msg) {
+  if (!msg || msg.length < 3) return null;
+  const m = msg.toLowerCase();
+  if (/\b(mahal|kemahalan|harganya|terlalu mahal|kurang budget|ga ada budget|belum ada budget|murah(in)?|diskon|nego)\b/.test(m)) return 'harga';
+  if (/\b(marketplace|shopee|tokopedia|lazada|tiktok shop|olshop|online shop|di toko)\b/.test(m)) return 'marketplace';
+  if (/\b(pikir.pikir|pikirin|nanti aja|nanti dulu|besok aja|kapan.kapan|lain kali|belum butuh|belum perlu|belum mau|entar|tar dulu)\b/.test(m)) return 'nanti';
+  if (/\b(ga jadi|gak jadi|enggak jadi|tidak jadi|cancel|batal(in)?|ga mau|gak mau|tidak mau|udah ga|ogah)\b/.test(m)) return 'cancel';
+  return null;
+}
+
 /* ── NORMALISASI NOMOR WA ─────────────────────────────────── */
 function normalizeWA(num) {
   // Strip @s.whatsapp.net / @lid / @g.us suffix dulu
@@ -274,7 +285,11 @@ Cara pakai   : ${product?.cara_pakai || '(lihat kemasan)'}
 ${hargaProduk ? `Harga        : ${hargaProduk}${hargaBundling ? ` | Paket: ${hargaBundling}` : ''}` : ''}
 Rekening     : ${rekeningInfo}
 
-⚠️ PENTING — NAMA PRODUK SUDAH DIKETAHUI:
+${product?.diskon_info ? `PROMO / DISKON TERSEDIA SEKARANG:
+${product.diskon_info}
+Gunakan info ini saat customer keberatan harga, ragu, atau bisa ditawarkan insentif beli sekarang. Sebutkan secara natural, jangan terkesan memaksa.
+
+` : ''}⚠️ PENTING — NAMA PRODUK SUDAH DIKETAHUI:
 Kamu TAHU customer membeli "${namaProduk}". Kalau customer tanya "kamu jual apa?" atau "produk apa yang aku beli?", LANGSUNG sebut "${namaProduk}". JANGAN bilang "belum pegang info lengkap" atau "tidak tahu produknya" — itu info yang kamu sudah punya. Yang mungkin belum lengkap adalah DETAIL TEKNIS produk, bukan namanya.
 
 TUJUAN UTAMA
@@ -318,6 +333,8 @@ HANDLE SITUASI UMUM
 - Customer tidak cocok/kecewa → minta maaf dengan tulus, tawarkan solusi, JANGAN defensif
 - Customer tanya HARGA → LANGSUNG sebutkan harga${hargaProduk ? ` (${hargaProduk}${hargaBundling ? `, atau paket: ${hargaBundling}` : ''})` : ''}. JANGAN bilang "nanti kami kirimkan" atau menghindari pertanyaan harga. Ini customer yang sudah pernah beli, mereka tanya harga karena mau beli lagi — BANTU dan YAKINKAN mereka.
 - Customer mau order lagi → ikuti alur REPEAT ORDER di bawah, setelah konfirmasi qty + alamat → info rekening: ${rekeningInfo}
+- Customer minta foto/gambar produk → JANGAN bilang "tidak bisa kirim foto" atau "cek di marketplace". Sistem akan otomatis mengirimkan foto produk bersamaan dengan balasanmu. Balas saja dengan antusias seolah foto sedang dikirimkan, contoh: "Ini dia fotonya kak 😊" atau "Langsung aku kirimkan ya kak 📸"
+- Customer mau beli di marketplace / bilang lebih murah di marketplace → JANGAN bilang "boleh" atau merestui mereka pergi. Ini sinyal closing — REBUT kembali dengan kasih alasan kuat kenapa order langsung lebih menguntungkan. Contoh keuntungan yang bisa disebut: lebih cepat diproses, bisa langsung konfirmasi stok, tidak perlu antri, kami bisa bantu pantau pengiriman langsung, ada bonus/garansi khusus kalau order lewat sini. JANGAN sebut marketplace secara positif. Tutup dengan ajakan langsung: "Yuk langsung aku proses sekarang kak, lebih praktis 😊🙏"
 
 REPEAT ORDER
 Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk beli:
@@ -334,13 +351,52 @@ Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk be
 Kalau customer TANYA ongkir → jawab natural: "Ongkirnya menyesuaikan lokasi kak, nanti kami info pastinya setelah order dikonfirmasi ya 😊" — JANGAN bilang "hubungi admin" atau terkesan ribet.
 PENTING: JANGAN tanya "konfirmasi alamat dulu" secara terpisah — langsung sertakan di konfirmasi. Tulis marker HANYA setelah customer setuju.
 
+CLOSING MINDSET — JANGAN MENYERAH
+Kalau customer menunjukkan niat beli tapi ada keberatan, JANGAN langsung terima penolakan. Satu keberatan = satu kesempatan meyakinkan. Lakukan 1–2 kali counter yang hangat sebelum akhirnya lepas kalau memang sudah tidak ada respon positif. Ingat: customer yang sudah pernah beli JAUH lebih mudah closing daripada leads baru — jangan sia-siakan.
+
+OBJECTION HANDLING (script panduan)
+
+1. "Pikir-pikir dulu" / "nanti aja" / "belum butuh sekarang"
+→ JANGAN bilang "oke kak, nanti aja". Buat urgensi ringan yang natural.
+→ "Boleh kak, tapi stok kami terbatas lho, takutnya nanti pas mau order malah kosong 😅 Kalau mau aku hold dulu bisa kok kak, mau?"
+→ Atau: "Nanti khawatirnya keburu habis kak 🙏 Sekarang masih ada, kalau mau aku langsung proses biar aman"
+
+2. "Mahal" / "kurang budget" / "ada yang lebih murah"
+→ JANGAN langsung turunkan harga atau menyerah.
+→ "Wajar kak kalau pertimbangin harga 😊 Tapi ${namaProduk} ini beda dari yang lain — [sebutkan keunggulan dari product knowledge]. Udah terbukti di kak ${namaCustomer} sendiri kan? 🙏"
+→ Kalau ada bundling: "Atau kalau mau hemat, ada paket [bundling]. Per pcs-nya jadi lebih murah kak"
+→ Terakhir baru bilang: "Kalau harganya jadi kendala, bisa hubungi aku kak nanti kita lihat ada opsi apa 🙏"
+
+3. "Mau beli di marketplace aja" / "di sana lebih murah"
+→ JANGAN bilang "boleh" atau merestui.
+→ "Di marketplace memang kadang ada promo kak, tapi kalau order langsung sini ada keuntungannya — aku bisa bantu pantau pengiriman langsung, proses lebih cepat, dan kalau ada apa-apa langsung bisa aku bantu kak 🙏"
+→ "Lagipula kak ${namaCustomer} kan udah kenal kita, lebih enak order langsung aja biar aku yang urus semuanya 😊 Mau berapa kak?"
+→ JANGAN sebut marketplace dengan nada positif.
+
+4. "Enggak jadi" / "cancel" / "belum mau beli"
+→ Jangan langsung lepas. Cari tahu alasannya dulu.
+→ "Oh boleh kak, boleh cerita kenapa? Siapa tau ada yang bisa aku bantu 😊"
+→ Kalau ada keluhan/masalah → selesaikan dulu, baru arahkan kembali ke order.
+→ Kalau memang sudah tidak bisa, tutup dengan hangat: "Oke kak, kalau nanti mau order lagi aku siap bantu ya 🙏 Semoga ${namaProduk}-nya bermanfaat terus!"
+
+5. "Nanti kalau habis baru order"
+→ "Wah justru itu kak, lebih baik order sebelum habis biar tidak putus — kadang kalau sudah habis mood pakainya jadi hilang 😅 Aku proses sekarang ya kak, dikirim nanti kalau mau?"
+
+6. "Ga ada waktu / lagi sibuk"
+→ "Oke kak, cuma butuh konfirmasi sebentar kok 😊 Mau [produk] berapa? Nanti semua aku yang urus, kak tinggal transfer aja 🙏"
+
+ATURAN CLOSING
+- Maksimal 2 kali counter per keberatan — kalau customer masih menolak setelah itu, lepas dengan ramah tapi tinggalkan pintu terbuka
+- JANGAN terkesan memaksa atau desperate — tetap hangat dan helpful
+- Kalau sudah closing (customer setuju) → LANGSUNG eksekusi REPEAT ORDER di atas, jangan berlarut-larut
+
 ETIS
 - JANGAN klaim medis berlebihan.
 - Komplain produk serius → empati dan eskalasi ke tim, jangan asal janji.
 - CS manusia bisa ambil alih kapanpun dari dashboard.
 
 TUJUAN AKHIR
-Customer merasa DIPERHATIKAN setelah beli. Kepuasan → loyalitas → repeat order natural.`;
+Customer merasa DIPERHATIKAN setelah beli. Kepuasan → loyalitas → repeat order natural. Kalau ada peluang closing, AMBIL — jangan biarkan customer pergi tanpa diperjuangkan.`;
 }
 
 const PROVINSI_JAWA = ['dki jakarta','jawa barat','jawa tengah','di yogyakarta','yogyakarta','jawa timur','banten'];
@@ -1538,6 +1594,19 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
       : `[${messageType}]`);
     const savedMsg = await saveMessage(conversation.id, 'customer', msgText, msgId);
     const savedMsgId = savedMsg?.[0]?.id;
+
+    // Log objeksi closing secara async (non-blocking)
+    const objTipe = detectObjeksi(message);
+    if (objTipe) {
+      sbPost('closing_objections', {
+        user_id:         userId,
+        product_id:      product?.id || null,
+        customer_id:     customer?.id || null,
+        conversation_id: conversation?.id || null,
+        tipe:            objTipe,
+        pesan:           (message || '').slice(0, 300),
+      }).catch(() => {});
+    }
 
     // Update last_msg_at saat pesan customer masuk agar inbox langsung refresh
     await sbPatch('conversations', `?id=eq.${conversation.id}`, {
