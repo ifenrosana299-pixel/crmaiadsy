@@ -282,6 +282,7 @@ ${catatanCustomer ? `Catatan      : ${catatanCustomer}` : ''}
 ${sopFu ? `SOP Follow-up:\n${sopFu}` : ''}
 Product Knowledge: ${product?.product_knowledge || '(kosong — gunakan nama produk yang sudah diketahui: ' + namaProduk + ')'}
 Cara pakai   : ${product?.cara_pakai || '(lihat kemasan)'}
+${product?.konsumsi_hari ? `Pemakaian    : 1 botol/unit habis dalam ${product.konsumsi_hari} hari. Kalau customer tanya "berapa lama" atau "cukup untuk berapa hari" → WAJIB pakai angka ini, jangan karang sendiri.` : ''}
 ${hargaProduk ? `Harga        : ${hargaProduk}${hargaBundling ? ` | Paket: ${hargaBundling}` : ''}` : ''}
 Rekening     : ${rekeningInfo}
 
@@ -356,8 +357,14 @@ Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk be
    🚚 Ongkir [ekspedisi]: ~Rp [ongkir normal]~ Rp [ongkir setelah diskon] (diskon X%)
    💳 Total Transfer: *Rp [total TF]*
    📦 Total COD: *Rp [total COD]*
+   (baris kosong wajib di sini)
+   🎉 Hemat *Rp [X]* ([Y]%) dari order pertama!
 
-   🎉 Hemat *Rp [X]* ([Y]%) dari order pertama! ← tampilkan kalau ada penghematan
+   Contoh EXACT yang harus diikuti (ganti angka sesuai kalkulasi):
+   💳 Total Transfer: *Rp 179.650*
+   📦 Total COD: *Rp 188.633*
+
+   🎉 Hemat *Rp 132.350* (42%) dari order pertama!
 
    Kakak mau Transfer atau COD? 😊
    ---
