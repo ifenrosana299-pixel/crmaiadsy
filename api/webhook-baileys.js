@@ -339,17 +339,29 @@ HANDLE SITUASI UMUM
 REPEAT ORDER
 Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk beli:
 1. TANYA JUMLAH DULU: "Mau berapa ${namaProduk} kak? 😊"
-2. Setelah customer sebut jumlah → KONFIRMASI SEMUA dalam 1 pesan:
-   "Oke kak! [qty] ${namaProduk}${alamatTersimpan ? `, dikirim ke ${alamatTersimpan}` : ''} ya? Nanti kami proses segera 🙏"
-   - Kalau customer bilang alamat ganti → minta alamat baru
-   - Kalau customer bilang oke/siap → tulis marker
-3. Tulis marker di AKHIR balasan (JANGAN tampilkan ke customer):
+2. Setelah customer sebut jumlah → TAMPILKAN BREAKDOWN HARGA LENGKAP + konfirmasi alamat + ekspedisi dalam 1 pesan.
+   Gunakan angka dari KALKULASI REPEAT ORDER yang sudah dihitung di bawah.
+   Kalikan harga produk sesuai qty yang diminta, ongkir TETAP (1 pengiriman).
+   Format konfirmasi:
+   ---
+   Oke kak! [qty] ${namaProduk}, dikirim ke [alamat] via [ekspedisi sebelumnya] ya 😊
+
+   Rincian:
+   🛍️ [qty] ${namaProduk}: Rp [harga setelah diskon]
+   🚚 Ongkir [ekspedisi]: Rp [ongkir setelah diskon]
+   💳 Total Transfer: Rp [total TF]
+   📦 Total COD: Rp [total COD]
+   [Kalau ada hemat: 🎉 Hemat Rp [X] ([Y]%) dari order pertama!]
+
+   Kakak mau Transfer atau COD? 😊
+   ---
+   - Kalau customer mau GANTI EKSPEDISI → output marker [CEK_ONGKIR:ekspedisi=NAMA_EKSPEDISI] di akhir reply, sistem akan hitung ulang
+   - Kalau alamat beda → minta alamat baru dulu sebelum konfirmasi
+3. Setelah customer konfirmasi (oke/siap + pilih transfer/COD) → tulis marker:
    [REPEAT_ORDER_CONFIRMED:qty=N]
 4. Kasih info rekening: ${rekeningInfo}
 
-⛔ JANGAN proaktif sebut ongkir duluan — fokus konfirmasi produk + qty + alamat.
-Kalau customer TANYA ongkir → jawab natural: "Ongkirnya menyesuaikan lokasi kak, nanti kami info pastinya setelah order dikonfirmasi ya 😊" — JANGAN bilang "hubungi admin" atau terkesan ribet.
-PENTING: JANGAN tanya "konfirmasi alamat dulu" secara terpisah — langsung sertakan di konfirmasi. Tulis marker HANYA setelah customer setuju.
+PENTING: Selalu tampilkan KEDUA opsi (Transfer dan COD) supaya customer bisa pilih. JANGAN bilang "ongkir menyesuaikan" — kamu sudah punya angkanya dari kalkulasi di bawah.
 
 CLOSING MINDSET — JANGAN MENYERAH
 Kalau customer menunjukkan niat beli tapi ada keberatan, JANGAN langsung terima penolakan. Satu keberatan = satu kesempatan meyakinkan. Lakukan 1–2 kali counter yang hangat sebelum akhirnya lepas kalau memang sudah tidak ada respon positif. Ingat: customer yang sudah pernah beli JAUH lebih mudah closing daripada leads baru — jangan sia-siakan.
@@ -1767,9 +1779,40 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
           ctx += `\n\nINFO RESI REAL-TIME (baru dicek barusan):\n${realtimeTracking}\nGunakan info ini untuk jawab pertanyaan customer soal posisi/status paket. Sampaikan dengan bahasa natural dan ramah.`;
         }
 
-        // Override REPEAT ORDER — pakai alamat dari order, tidak perlu tanya ulang
-        if (latestOrder.alamat) {
-          ctx += `\n\nUNTUK REPEAT ORDER: Alamat pengiriman customer SUDAH DIKETAHUI dari order sebelumnya: "${latestOrder.alamat}". Saat customer mau order lagi, LANGSUNG konfirmasi: "Masih ke alamat yang sama ya kak? (${latestOrder.alamat}) 😊" — JANGAN tanya alamat dari nol.`;
+        // Kalkulasi repeat order otomatis
+        {
+          const fmt = v => `Rp ${Math.round(v || 0).toLocaleString('id-ID')}`;
+          const diskonProdukPct = product?.diskon_repeat_produk || 0;
+          const diskonOngkirPct = product?.diskon_repeat_ongkir || 0;
+          const hargaSatuan     = resolveHargaBundling(product, 1) || product?.harga || 0;
+          const ongkirAsli      = latestOrder.ongkir || 0;
+          const ekspedisiLama   = latestOrder.ekspedisi || '?';
+
+          const diskonProdukRp  = Math.round(hargaSatuan * diskonProdukPct / 100);
+          const hargaAfterDiskon= hargaSatuan - diskonProdukRp;
+          const diskonOngkirRp  = Math.round(ongkirAsli * diskonOngkirPct / 100);
+          const ongkirAfterDiskon = ongkirAsli - diskonOngkirRp;
+          const totalTF1        = hargaAfterDiskon + ongkirAfterDiskon;
+          const feeCOD1         = Math.ceil(totalTF1 * 0.05);
+          const totalCOD1       = totalTF1 + feeCOD1;
+
+          // Hemat vs order pertama (qty=1, ongkir sama)
+          const totalAwal       = (latestOrder.harga_produk || hargaSatuan) + ongkirAsli;
+          const hematRp         = totalAwal - totalTF1;
+          const hematPct        = totalAwal > 0 ? Math.round(hematRp / totalAwal * 100) : 0;
+
+          ctx += `\n\nKALKULASI REPEAT ORDER (per 1 pcs — kalikan qty untuk harga produk, ongkir tetap):
+Ekspedisi sebelumnya : ${ekspedisiLama}
+Harga produk normal  : ${fmt(hargaSatuan)}${diskonProdukPct > 0 ? ` → setelah diskon ${diskonProdukPct}%: ${fmt(hargaAfterDiskon)}` : ''}
+Ongkir estimasi      : ${fmt(ongkirAsli)}${diskonOngkirPct > 0 ? ` → setelah diskon ${diskonOngkirPct}%: ${fmt(ongkirAfterDiskon)}` : ''}
+Total Transfer (1 pcs): ${fmt(totalTF1)}
+Total COD (1 pcs)    : ${fmt(totalCOD1)} (termasuk fee COD 5%)${hematRp > 0 ? `
+Hemat vs order pertama: ${fmt(hematRp)} (${hematPct}% lebih hemat)` : ''}
+
+Cara hitung untuk qty berbeda: (harga setelah diskon × qty) + ongkir setelah diskon = Total Transfer. COD = Total TF + 5%.
+Alamat sebelumnya: ${latestOrder.alamat || customer?.alamat || '-'}
+Langsung konfirmasi alamat ini, JANGAN tanya dari nol.
+Kalau customer minta ganti ekspedisi → output [CEK_ONGKIR:ekspedisi=NAMA] di akhir balasan.`;
         }
       } else {
         if (customer?.produk) ctx += `\n- Produk dibeli: ${customer.produk}`;
@@ -1885,9 +1928,53 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
       }
     }
 
+    // ── Handle [CEK_ONGKIR:ekspedisi=XXX] — customer minta ganti kurir ──
+    const cekOngkirMatch = rawReply.match(/\[CEK_ONGKIR:ekspedisi=([^\]]+)\]/i);
+    if (cekOngkirMatch) {
+      const ekspedisiDiminta = cekOngkirMatch[1].trim();
+      console.log(`[CEK_ONGKIR] Customer minta ganti ke: ${ekspedisiDiminta}`);
+      try {
+        const wilayahCustomer = customer.alamat
+          ? [customer.alamat.kelurahan, customer.alamat.kecamatan, customer.alamat.kabupaten, customer.alamat.provinsi].filter(Boolean).join(', ')
+          : null;
+        if (wilayahCustomer) {
+          const hasilOngkir = await hitungOngkir(wilayahCustomer, product, 1, null);
+          if (hasilOngkir?.allRates?.length) {
+            const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const match = hasilOngkir.allRates.find(r => norm(r.nama).includes(norm(ekspedisiDiminta)) || norm(ekspedisiDiminta).includes(norm(r.nama)));
+            const fmtRp = v => `Rp ${Math.round(v||0).toLocaleString('id-ID')}`;
+            const diskonProdukPct = product?.diskon_repeat_produk || 0;
+            const diskonOngkirPct = product?.diskon_repeat_ongkir || 0;
+
+            let pesanGantiKurir;
+            if (match) {
+              const ongkirBaru     = match.ongkir;
+              const hargaSatuan    = resolveHargaBundling(product, 1) || product?.harga || 0;
+              const hargaDiskon    = Math.round(hargaSatuan * (1 - diskonProdukPct / 100));
+              const ongkirDiskon   = Math.round(ongkirBaru * (1 - diskonOngkirPct / 100));
+              const totalTF        = hargaDiskon + ongkirDiskon;
+              const feeCOD         = Math.ceil(totalTF * 0.05);
+              const totalCOD       = totalTF + feeCOD;
+              pesanGantiKurir = `Cek ongkir via ${match.nama} ya kak 😊\n\n🛍️ Produk: ${fmtRp(hargaDiskon)}${diskonProdukPct > 0 ? ` (diskon ${diskonProdukPct}%)` : ''}\n🚚 Ongkir ${match.nama}: ${fmtRp(ongkirDiskon)}${diskonOngkirPct > 0 ? ` (diskon ${diskonOngkirPct}%)` : ''}\n💳 Total Transfer: ${fmtRp(totalTF)}\n📦 Total COD: ${fmtRp(totalCOD)}\n\nMau lanjut pakai ${match.nama} kak? 😊`;
+            } else {
+              // Tampilkan semua kurir tersedia
+              const listKurir = hasilOngkir.allRates.slice(0, 5).map(r => `- ${r.nama}: ${fmtRp(r.ongkir)}`).join('\n');
+              pesanGantiKurir = `Kurir "${ekspedisiDiminta}" tidak tersedia ke alamat kak. Ini pilihan yang ada:\n\n${listKurir}\n\nMau pakai yang mana kak? 😊`;
+            }
+            await new Promise(r => setTimeout(r, 800));
+            const { wamid: wOngkir } = await sendWA(waSession, reply_jid, pesanGantiKurir).catch(() => ({}));
+            await saveMessage(conversation.id, 'ai', pesanGantiKurir, wOngkir);
+          }
+        }
+      } catch(e) {
+        console.error('[CEK_ONGKIR] Error:', e.message);
+      }
+    }
+
     // Bersihkan marker dari reply
     const reply = rawReply
       .replace(/\[REPEAT_ORDER_CONFIRMED:qty=\d+\]/gi, '')
+      .replace(/\[CEK_ONGKIR:[^\]]*\]/gi, '')
       .replace(/\[SISTEM[^\]]*\]/g, '')
       .trim();
 
