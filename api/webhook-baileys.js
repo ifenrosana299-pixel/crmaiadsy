@@ -354,9 +354,10 @@ Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk be
    Rincian:
    🛍️ [qty] ${namaProduk}: ~Rp [harga normal]~ Rp [harga setelah diskon] (diskon X%)
    🚚 Ongkir [ekspedisi]: ~Rp [ongkir normal]~ Rp [ongkir setelah diskon] (diskon X%)
-   💳 Total Transfer: Rp [total TF]
-   📦 Total COD: Rp [total COD]
-   🎉 Hemat Rp [X] ([Y]%) dari order pertama! ← tampilkan kalau ada penghematan
+   💳 Total Transfer: *Rp [total TF]*
+   📦 Total COD: *Rp [total COD]*
+
+   🎉 Hemat *Rp [X]* ([Y]%) dari order pertama! ← tampilkan kalau ada penghematan
 
    Kakak mau Transfer atau COD? 😊
    ---
