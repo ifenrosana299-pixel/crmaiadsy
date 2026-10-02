@@ -406,9 +406,27 @@ body.light .fu-photo-empty{background:#f1f5f9;border-color:#e2e8f0}
         </div>
 
         <div class="form-group">
-          <label>Promo / Diskon Khusus <small style="color:#64748b;font-weight:400">(dipakai AI saat customer keberatan harga)</small></label>
-          <textarea id="f-diskon-info" rows="2" placeholder="Contoh: Order 2 box gratis ongkir. Repeat order dapat diskon 10%. Stok terbatas, promo hari ini saja."></textarea>
-          <div style="font-size:11px;color:#64748b;margin-top:4px">Isi info promo/diskon di sini supaya bot bisa tawarkan ke customer yang ragu beli.</div>
+          <label>Pesan Promo / Closing <small style="color:#64748b;font-weight:400">(dipakai AI saat customer keberatan harga)</small></label>
+          <textarea id="f-diskon-info" rows="2" placeholder="Contoh: Order 2 box gratis ongkir. Stok terbatas, promo hari ini saja."></textarea>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">Kalimat yang dipakai bot untuk meyakinkan customer yang ragu.</div>
+        </div>
+
+        <!-- Diskon Repeat Order -->
+        <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:#22c55e;margin-bottom:10px">🔄 Diskon Repeat Order</div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:10px">Diskon khusus untuk customer yang beli lagi. Bot akan hitung dan tampilkan breakdown harga otomatis.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Diskon Produk (%)</label>
+              <input type="number" id="f-diskon-repeat-produk" placeholder="0" min="0" max="100" style="width:100%">
+              <div style="font-size:11px;color:#64748b;margin-top:4px">Contoh: 10 → diskon 10% dari harga produk</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Diskon Ongkir (%)</label>
+              <input type="number" id="f-diskon-repeat-ongkir" placeholder="0" min="0" max="100" style="width:100%">
+              <div style="font-size:11px;color:#64748b;margin-top:4px">Contoh: 30 → diskon 30% dari ongkir</div>
+            </div>
+          </div>
         </div>
 
         <!-- Reorder Prediction -->
@@ -816,6 +834,8 @@ function openAdd() {
   document.getElementById('f-aktif').value = 'true';
   document.getElementById('f-cara-pakai').value = '';
   document.getElementById('f-diskon-info').value = '';
+  document.getElementById('f-diskon-repeat-produk').value = '';
+  document.getElementById('f-diskon-repeat-ongkir').value = '';
   document.getElementById('f-konsumsi-hari').value = '';
   document.getElementById('f-buffer-reorder').value = '5';
   document.getElementById('f-knowledge').value = '';
@@ -842,6 +862,8 @@ async function openEdit(id) {
   loadBundling(p.harga_bundling || []);
   document.getElementById('f-cara-pakai').value = p.cara_pakai || '';
   document.getElementById('f-diskon-info').value = p.diskon_info || '';
+  document.getElementById('f-diskon-repeat-produk').value = p.diskon_repeat_produk || '';
+  document.getElementById('f-diskon-repeat-ongkir').value = p.diskon_repeat_ongkir || '';
   document.getElementById('f-konsumsi-hari').value = p.konsumsi_hari || '';
   document.getElementById('f-buffer-reorder').value = p.buffer_reorder_hari || 5;
   document.getElementById('f-knowledge').value = p.product_knowledge || '';
@@ -901,7 +923,9 @@ async function saveProduk() {
     harga,
     aktif:               document.getElementById('f-aktif').value === 'true',
     cara_pakai:          document.getElementById('f-cara-pakai').value.trim(),
-    diskon_info:         document.getElementById('f-diskon-info').value.trim() || null,
+    diskon_info:              document.getElementById('f-diskon-info').value.trim() || null,
+    diskon_repeat_produk:     parseInt(document.getElementById('f-diskon-repeat-produk').value) || 0,
+    diskon_repeat_ongkir:     parseInt(document.getElementById('f-diskon-repeat-ongkir').value) || 0,
     konsumsi_hari:       parseInt(document.getElementById('f-konsumsi-hari').value) || null,
     buffer_reorder_hari: parseInt(document.getElementById('f-buffer-reorder').value) || 5,
     gambar_url:          document.getElementById('f-gambar-url').value || null,
