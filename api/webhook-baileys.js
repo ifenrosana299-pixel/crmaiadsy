@@ -334,8 +334,8 @@ HANDLE SITUASI UMUM
 - Customer tidak cocok/kecewa → minta maaf dengan tulus, tawarkan solusi, JANGAN defensif
 - Customer tanya HARGA → LANGSUNG sebutkan harga${hargaProduk ? ` (${hargaProduk}${hargaBundling ? `, atau paket: ${hargaBundling}` : ''})` : ''}. JANGAN bilang "nanti kami kirimkan" atau menghindari pertanyaan harga. Ini customer yang sudah pernah beli, mereka tanya harga karena mau beli lagi — BANTU dan YAKINKAN mereka.
 - Customer mau order lagi → ikuti alur REPEAT ORDER di bawah, setelah konfirmasi qty + alamat → info rekening: ${rekeningInfo}
-- Customer minta foto/gambar produk → JANGAN bilang "tidak bisa kirim foto" atau "cek di marketplace". Sistem akan otomatis mengirimkan foto produk bersamaan dengan balasanmu. Balas saja dengan antusias seolah foto sedang dikirimkan, contoh: "Ini dia fotonya kak 😊" atau "Langsung aku kirimkan ya kak 📸"
-- Customer minta testimoni/bukti/review → Sistem akan kirim foto testimoni HANYA kalau ada. Kalau tidak ada foto testimoni yang tersimpan, JANGAN bilang "ini dia" atau seolah foto sedang dikirim — cukup ceritakan testimoni dari product knowledge secara natural, contoh: "Banyak yang sudah rasain manfaatnya kak, salah satunya [cerita dari knowledge] 😊"
+- Customer minta foto/gambar produk → ${product?.gambar_url ? 'Sistem akan otomatis kirim foto produk. Balas dengan antusias: "Ini dia fotonya kak 😊" atau "Langsung aku kirimkan ya kak 📸"' : 'Foto produk belum tersedia. JANGAN bilang "aku kirimin fotonya" — jawab natural tanpa janji kirim foto.'}
+- Customer minta testimoni/bukti/review → ${Array.isArray(product?.testimoni_urls) && product.testimoni_urls.filter(Boolean).length > 0 ? 'Sistem akan otomatis kirim foto testimoni. Balas dengan antusias: "Ini dia testimoninya kak 😊"' : 'Foto testimoni belum tersedia di sistem. JANGAN bilang "aku kirimin fotonya" atau "ini dia" — cukup ceritakan testimoni dari product knowledge secara natural, contoh: "Banyak yang udah buktiin kak, [cerita dari knowledge] 😊"'}
 - Customer mau beli di marketplace / bilang lebih murah di marketplace → JANGAN bilang "boleh" atau merestui mereka pergi. Ini sinyal closing — REBUT kembali dengan kasih alasan kuat kenapa order langsung lebih menguntungkan. Contoh keuntungan yang bisa disebut: lebih cepat diproses, bisa langsung konfirmasi stok, tidak perlu antri, kami bisa bantu pantau pengiriman langsung, ada bonus/garansi khusus kalau order lewat sini. JANGAN sebut marketplace secara positif. Tutup dengan ajakan langsung: "Yuk langsung aku proses sekarang kak, lebih praktis 😊🙏"
 
 REPEAT ORDER
@@ -2029,7 +2029,8 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
 
     // ── Simpan & kirim balasan ────────────────────────────────
     // Cek testimoni DULU supaya tidak overlap dengan tanyaFoto
-    const tanyaTestimoni = /\b(testimoni|testi|bukti|review|hasil|nyata|beneran|real|ada yang sudah|yang udah pakai|yang sudah pakai|ada hasilnya|ada fotonya|foto hasilnya|foto buktinya|sebelum sesudah|before after|ada reviewnya|ada buktiny)\b/i.test(message);
+    // Tanpa \b di akhir supaya match "testimoninya", "testinya", dll
+    const tanyaTestimoni = /(testimoni|testi(?=nya|nya\b|\b)|bukti|review|hasil pakai|ada hasilnya|foto hasil|foto bukti|sebelum sesudah|before after|ada reviewnya|yang udah pakai|yang sudah pakai)/i.test(message);
     // tanyaFoto hanya trigger kalau BUKAN pertanyaan testimoni/bukti/review
     const tanyaFoto = !tanyaTestimoni && /\b(foto produk|gambar produk|foto(nya)?|gambar(nya)?|pic|photo|tampilan|bentuk|wujud|lihat produk|kirim dong|kirimnya|mana fotonya|mana gambarnya|belum terkirim|belum muncul|kirim ulang|kirim lagi)\b/i.test(message);
     const adaGambarProduk = product?.gambar_url;
