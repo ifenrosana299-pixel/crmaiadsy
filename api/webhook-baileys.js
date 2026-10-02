@@ -334,6 +334,7 @@ HANDLE SITUASI UMUM
 - Customer tanya HARGA → LANGSUNG sebutkan harga${hargaProduk ? ` (${hargaProduk}${hargaBundling ? `, atau paket: ${hargaBundling}` : ''})` : ''}. JANGAN bilang "nanti kami kirimkan" atau menghindari pertanyaan harga. Ini customer yang sudah pernah beli, mereka tanya harga karena mau beli lagi — BANTU dan YAKINKAN mereka.
 - Customer mau order lagi → ikuti alur REPEAT ORDER di bawah, setelah konfirmasi qty + alamat → info rekening: ${rekeningInfo}
 - Customer minta foto/gambar produk → JANGAN bilang "tidak bisa kirim foto" atau "cek di marketplace". Sistem akan otomatis mengirimkan foto produk bersamaan dengan balasanmu. Balas saja dengan antusias seolah foto sedang dikirimkan, contoh: "Ini dia fotonya kak 😊" atau "Langsung aku kirimkan ya kak 📸"
+- Customer minta testimoni/bukti/review → Sistem akan kirim foto testimoni HANYA kalau ada. Kalau tidak ada foto testimoni yang tersimpan, JANGAN bilang "ini dia" atau seolah foto sedang dikirim — cukup ceritakan testimoni dari product knowledge secara natural, contoh: "Banyak yang sudah rasain manfaatnya kak, salah satunya [cerita dari knowledge] 😊"
 - Customer mau beli di marketplace / bilang lebih murah di marketplace → JANGAN bilang "boleh" atau merestui mereka pergi. Ini sinyal closing — REBUT kembali dengan kasih alasan kuat kenapa order langsung lebih menguntungkan. Contoh keuntungan yang bisa disebut: lebih cepat diproses, bisa langsung konfirmasi stok, tidak perlu antri, kami bisa bantu pantau pengiriman langsung, ada bonus/garansi khusus kalau order lewat sini. JANGAN sebut marketplace secara positif. Tutup dengan ajakan langsung: "Yuk langsung aku proses sekarang kak, lebih praktis 😊🙏"
 
 REPEAT ORDER
@@ -1786,51 +1787,56 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
         // Kalkulasi repeat order otomatis
         {
           const fmt = v => `Rp ${Math.round(v || 0).toLocaleString('id-ID')}`;
-          const diskonProdukPct = product?.diskon_repeat_produk || 0;
-          const diskonOngkirPct = product?.diskon_repeat_ongkir || 0;
-          const hargaSatuan     = resolveHargaBundling(product, 1) || product?.harga || 0;
-          const ongkirAsli      = latestOrder.ongkir || 0;
-          const ekspedisiLama   = latestOrder.ekspedisi || '?';
+          const ongkirAsli    = latestOrder.ongkir || 0;
+          const ekspedisiLama = latestOrder.ekspedisi || '?';
+          const rules         = Array.isArray(product?.diskon_repeat_rules) ? product.diskon_repeat_rules : [];
 
-          const diskonProdukRp  = Math.round(hargaSatuan * diskonProdukPct / 100);
-          const hargaAfterDiskon= hargaSatuan - diskonProdukRp;
-          const diskonOngkirRp  = Math.round(ongkirAsli * diskonOngkirPct / 100);
-          const ongkirAfterDiskon = ongkirAsli - diskonOngkirRp;
-          const totalTF1        = hargaAfterDiskon + ongkirAfterDiskon;
-          const feeCOD1         = Math.ceil(totalTF1 * 0.05);
-          const totalCOD1       = totalTF1 + feeCOD1;
+          // Helper: cari rule yang cocok untuk qty, fallback ke rule qty terbesar <= qty
+          function getRuleForQty(q) {
+            if (!rules.length) return null;
+            const sorted = [...rules].sort((a, b) => a.qty - b.qty);
+            let match = null;
+            for (const r of sorted) { if (r.qty <= q) match = r; }
+            return match;
+          }
 
-          // Hemat vs order pertama (qty=1, ongkir sama)
-          const totalAwal       = (latestOrder.harga_produk || hargaSatuan) + ongkirAsli;
-          const hematRp         = totalAwal - totalTF1;
-          const hematPct        = totalAwal > 0 ? Math.round(hematRp / totalAwal * 100) : 0;
+          function applyDiskon(nilai, tipe, base) {
+            if (!nilai || nilai <= 0) return 0;
+            return tipe === 'rupiah' ? Math.min(nilai, base) : Math.round(base * nilai / 100);
+          }
 
-          // Pre-hitung untuk qty 1-4 dan semua bundling yang ada
+          // Buat tabel per qty (semua qty yang ada di bundling + rules, plus 1-3)
           const bundlingList = Array.isArray(product?.harga_bundling) ? product.harga_bundling : [];
-          const qtyList = [...new Set([1, 2, 3, 4, ...bundlingList.map(b => b.qty)])].sort((a,b) => a-b);
+          const ruleQtys     = rules.map(r => r.qty);
+          const qtyList      = [...new Set([1, 2, 3, ...bundlingList.map(b => b.qty), ...ruleQtys])].sort((a,b) => a-b);
 
           let tabelQty = '';
           for (const q of qtyList) {
-            const hargaQ       = resolveHargaBundling(product, q) || (product?.harga || 0) * q;
-            const diskonProdukRpQ = Math.round(hargaQ * diskonProdukPct / 100);
-            const hargaDiskonQ = hargaQ - diskonProdukRpQ;
-            const totalTFQ     = hargaDiskonQ + ongkirAfterDiskon;
-            const feeCODQ      = Math.ceil(totalTFQ * 0.05);
-            const totalCODQ    = totalTFQ + feeCODQ;
-            const totalAwalQ   = (latestOrder.harga_produk || product?.harga || 0) * q + ongkirAsli;
-            const hematQ       = totalAwalQ - totalTFQ;
-            const hematPctQ    = totalAwalQ > 0 ? Math.round(hematQ / totalAwalQ * 100) : 0;
-            tabelQty += `\nQty ${q}: harga normal ${fmt(hargaQ)}${diskonProdukPct > 0 ? ` → setelah diskon ${diskonProdukPct}%: ${fmt(hargaDiskonQ)}` : ''} | TF: ${fmt(totalTFQ)} | COD: ${fmt(totalCODQ)}${hematQ > 0 ? ` | Hemat ${fmt(hematQ)} (${hematPctQ}%)` : ''}`;
+            const hargaQ    = resolveHargaBundling(product, q) || (product?.harga || 0) * q;
+            const rule      = getRuleForQty(q);
+            const dProdukRp = applyDiskon(rule?.produk_nilai, rule?.produk_tipe, hargaQ);
+            const dOngkirRp = applyDiskon(rule?.ongkir_nilai, rule?.ongkir_tipe, ongkirAsli);
+            const hargaAfter = hargaQ - dProdukRp;
+            const ongkirAfter = ongkirAsli - dOngkirRp;
+            const totalTF   = hargaAfter + ongkirAfter;
+            const feeCOD    = Math.ceil(totalTF * 0.05);
+            const totalCOD  = totalTF + feeCOD;
+            const totalAwal = (latestOrder.harga_produk || product?.harga || 0) * q + ongkirAsli;
+            const hematRp   = totalAwal - totalTF;
+            const hematPct  = totalAwal > 0 ? Math.round(hematRp / totalAwal * 100) : 0;
+
+            let diskonDesc = '';
+            if (dProdukRp > 0) diskonDesc += ` | diskon produk ${fmt(dProdukRp)}`;
+            if (dOngkirRp > 0) diskonDesc += ` | diskon ongkir ${fmt(dOngkirRp)}`;
+            tabelQty += `\nQty ${q}: produk normal ${fmt(hargaQ)} → setelah diskon ${fmt(hargaAfter)} | ongkir normal ${fmt(ongkirAsli)} → setelah diskon ${fmt(ongkirAfter)} | TF: ${fmt(totalTF)} | COD: ${fmt(totalCOD)}${hematRp > 0 ? ` | Hemat ${fmt(hematRp)} (${hematPct}%)` : ''}${diskonDesc}`;
           }
 
-          ctx += `\n\nKALKULASI REPEAT ORDER (ongkir tetap per pengiriman, apapun qty-nya):
-Ekspedisi sebelumnya : ${ekspedisiLama}
-Ongkir normal        : ${fmt(ongkirAsli)}${diskonOngkirPct > 0 ? ` → setelah diskon ${diskonOngkirPct}%: ${fmt(ongkirAfterDiskon)}` : ''}
-${tabelQty}
+          ctx += `\n\nKALKULASI REPEAT ORDER (ongkir tetap per pengiriman):
+Ekspedisi sebelumnya: ${ekspedisiLama}${tabelQty ? `\n${tabelQty}` : '\n(tidak ada diskon repeat order)'}
 
-WAJIB: Gunakan angka di atas sesuai qty yang diminta customer. JANGAN hitung ulang sendiri — pakai tabel ini.
+WAJIB: Pakai angka dari tabel di atas sesuai qty. JANGAN hitung ulang sendiri.
 Alamat sebelumnya: ${latestOrder.alamat || customer?.alamat || '-'}
-Langsung konfirmasi alamat ini, JANGAN tanya dari nol.
+Konfirmasi alamat ini langsung, JANGAN tanya dari nol.
 Kalau customer minta ganti ekspedisi → output [CEK_ONGKIR:ekspedisi=NAMA] di akhir balasan.`;
         }
       } else {
@@ -1962,19 +1968,31 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
             const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
             const match = hasilOngkir.allRates.find(r => norm(r.nama).includes(norm(ekspedisiDiminta)) || norm(ekspedisiDiminta).includes(norm(r.nama)));
             const fmtRp = v => `Rp ${Math.round(v||0).toLocaleString('id-ID')}`;
-            const diskonProdukPct = product?.diskon_repeat_produk || 0;
-            const diskonOngkirPct = product?.diskon_repeat_ongkir || 0;
+            const repeatRules = Array.isArray(product?.diskon_repeat_rules) ? product.diskon_repeat_rules : [];
+            function getRuleForQtyCek(q) {
+              const sorted = [...repeatRules].sort((a,b) => a.qty - b.qty);
+              let m = null; for (const r of sorted) { if (r.qty <= q) m = r; } return m;
+            }
+            function applyDiskonCek(nilai, tipe, base) {
+              if (!nilai || nilai <= 0) return 0;
+              return tipe === 'rupiah' ? Math.min(nilai, base) : Math.round(base * nilai / 100);
+            }
 
             let pesanGantiKurir;
             if (match) {
-              const ongkirBaru     = match.ongkir;
-              const hargaSatuan    = resolveHargaBundling(product, 1) || product?.harga || 0;
-              const hargaDiskon    = Math.round(hargaSatuan * (1 - diskonProdukPct / 100));
-              const ongkirDiskon   = Math.round(ongkirBaru * (1 - diskonOngkirPct / 100));
-              const totalTF        = hargaDiskon + ongkirDiskon;
-              const feeCOD         = Math.ceil(totalTF * 0.05);
-              const totalCOD       = totalTF + feeCOD;
-              pesanGantiKurir = `Cek ongkir via ${match.nama} ya kak 😊\n\n🛍️ Produk: ${fmtRp(hargaDiskon)}${diskonProdukPct > 0 ? ` (diskon ${diskonProdukPct}%)` : ''}\n🚚 Ongkir ${match.nama}: ${fmtRp(ongkirDiskon)}${diskonOngkirPct > 0 ? ` (diskon ${diskonOngkirPct}%)` : ''}\n💳 Total Transfer: ${fmtRp(totalTF)}\n📦 Total COD: ${fmtRp(totalCOD)}\n\nMau lanjut pakai ${match.nama} kak? 😊`;
+              const ongkirBaru  = match.ongkir;
+              const hargaSatuan = resolveHargaBundling(product, 1) || product?.harga || 0;
+              const rule        = getRuleForQtyCek(1);
+              const dProdukRp   = applyDiskonCek(rule?.produk_nilai, rule?.produk_tipe, hargaSatuan);
+              const dOngkirRp   = applyDiskonCek(rule?.ongkir_nilai, rule?.ongkir_tipe, ongkirBaru);
+              const hargaDiskon = hargaSatuan - dProdukRp;
+              const ongkirDiskon= ongkirBaru - dOngkirRp;
+              const totalTF     = hargaDiskon + ongkirDiskon;
+              const feeCOD      = Math.ceil(totalTF * 0.05);
+              const totalCOD    = totalTF + feeCOD;
+              const produkLine  = dProdukRp > 0 ? `~${fmtRp(hargaSatuan)}~ ${fmtRp(hargaDiskon)}` : fmtRp(hargaSatuan);
+              const ongkirLine  = dOngkirRp > 0 ? `~${fmtRp(ongkirBaru)}~ ${fmtRp(ongkirDiskon)}` : fmtRp(ongkirDiskon);
+              pesanGantiKurir = `Cek ongkir via ${match.nama} ya kak 😊\n\n🛍️ Produk: ${produkLine}\n🚚 Ongkir ${match.nama}: ${ongkirLine}\n💳 Total Transfer: ${fmtRp(totalTF)}\n📦 Total COD: ${fmtRp(totalCOD)}\n\nMau lanjut pakai ${match.nama} kak? 😊`;
             } else {
               // Tampilkan semua kurir tersedia
               const listKurir = hasilOngkir.allRates.slice(0, 5).map(r => `- ${r.nama}: ${fmtRp(r.ongkir)}`).join('\n');
@@ -2065,20 +2083,23 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
 
     // ── Auto-kirim foto testimoni kalau customer minta bukti/review ────
     const testiList = Array.isArray(product?.testimoni_urls) ? product.testimoni_urls.filter(Boolean) : [];
-    const sudahKirimTesti = convState.testimoni_terkirim;
 
-    if (tanyaTestimoni && testiList.length > 0 && !sudahKirimTesti) {
-      await new Promise(r => setTimeout(r, 800));
-      try {
-        for (let i = 0; i < testiList.length; i++) {
-          if (i > 0) await new Promise(r => setTimeout(r, 500));
-          const caption = i === 0 ? `Ini testimoni dari customer kami kak 😊` : null;
-          await sendWA(waSession, reply_jid, null, false, testiList[i], caption);
+    if (tanyaTestimoni) {
+      if (testiList.length > 0) {
+        await new Promise(r => setTimeout(r, 800));
+        try {
+          for (let i = 0; i < testiList.length; i++) {
+            if (i > 0) await new Promise(r => setTimeout(r, 500));
+            const caption = i === 0 ? `Ini testimoni dari customer kami kak 😊` : null;
+            await sendWA(waSession, reply_jid, null, false, testiList[i], caption);
+          }
+          await updateConvState(conversation.id, { testimoni_terkirim: true });
+          console.log(`[TESTI] ${testiList.length} foto testimoni terkirim`);
+        } catch(e) {
+          console.error(`[TESTI] Gagal kirim testimoni:`, e.message);
         }
-        await updateConvState(conversation.id, { testimoni_terkirim: true });
-        console.log(`[TESTI] ${testiList.length} foto testimoni terkirim`);
-      } catch(e) {
-        console.error(`[TESTI] Gagal kirim testimoni:`, e.message);
+      } else {
+        console.log('[TESTI] Tidak ada foto testimoni di produk ini — skip kirim');
       }
     }
 
