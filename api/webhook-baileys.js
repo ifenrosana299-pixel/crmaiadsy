@@ -340,18 +340,22 @@ REPEAT ORDER
 Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk beli:
 1. TANYA JUMLAH DULU: "Mau berapa ${namaProduk} kak? 😊"
 2. Setelah customer sebut jumlah → TAMPILKAN BREAKDOWN HARGA LENGKAP + konfirmasi alamat + ekspedisi dalam 1 pesan.
-   Gunakan angka dari KALKULASI REPEAT ORDER yang sudah dihitung di bawah.
-   Kalikan harga produk sesuai qty yang diminta, ongkir TETAP (1 pengiriman).
+   Gunakan angka dari KALKULASI REPEAT ORDER yang sudah dihitung di bawah (sudah ada per-qty).
+   ATURAN FORMAT HARGA (WAJIB DIIKUTI):
+   - Kalau ada diskon produk → tampilkan harga NORMAL dicoret dulu, lalu harga SETELAH diskon: ~Rp 139.000~ Rp 125.100
+   - Harga setelah diskon = harga normal DIKURANGI diskon. Bukan harga normal yang ditulis ulang.
+   - Ongkir sama: ~Rp 15.000~ Rp 10.500 kalau ada diskon ongkir
+   - Di WA, format coret pakai tanda ~teks~ (satu tilde di tiap sisi)
    Format konfirmasi:
    ---
    Oke kak! [qty] ${namaProduk}, dikirim ke [alamat] via [ekspedisi sebelumnya] ya 😊
 
    Rincian:
-   🛍️ [qty] ${namaProduk}: Rp [harga setelah diskon]
-   🚚 Ongkir [ekspedisi]: Rp [ongkir setelah diskon]
+   🛍️ [qty] ${namaProduk}: ~Rp [harga normal]~ Rp [harga setelah diskon] (diskon X%)
+   🚚 Ongkir [ekspedisi]: ~Rp [ongkir normal]~ Rp [ongkir setelah diskon] (diskon X%)
    💳 Total Transfer: Rp [total TF]
    📦 Total COD: Rp [total COD]
-   [Kalau ada hemat: 🎉 Hemat Rp [X] ([Y]%) dari order pertama!]
+   🎉 Hemat Rp [X] ([Y]%) dari order pertama! ← tampilkan kalau ada penghematan
 
    Kakak mau Transfer atau COD? 😊
    ---
@@ -361,7 +365,7 @@ Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk be
    [REPEAT_ORDER_CONFIRMED:qty=N]
 4. Kasih info rekening: ${rekeningInfo}
 
-PENTING: Selalu tampilkan KEDUA opsi (Transfer dan COD) supaya customer bisa pilih. JANGAN bilang "ongkir menyesuaikan" — kamu sudah punya angkanya dari kalkulasi di bawah.
+PENTING: Selalu tampilkan KEDUA opsi (Transfer dan COD). JANGAN tampilkan harga normal tanpa dicoret kalau ada diskon — harus ada format ~coret~.
 
 CLOSING MINDSET — JANGAN MENYERAH
 Kalau customer menunjukkan niat beli tapi ada keberatan, JANGAN langsung terima penolakan. Satu keberatan = satu kesempatan meyakinkan. Lakukan 1–2 kali counter yang hangat sebelum akhirnya lepas kalau memang sudah tidak ada respon positif. Ingat: customer yang sudah pernah beli JAUH lebih mudah closing daripada leads baru — jangan sia-siakan.
@@ -1801,15 +1805,30 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
           const hematRp         = totalAwal - totalTF1;
           const hematPct        = totalAwal > 0 ? Math.round(hematRp / totalAwal * 100) : 0;
 
-          ctx += `\n\nKALKULASI REPEAT ORDER (per 1 pcs — kalikan qty untuk harga produk, ongkir tetap):
-Ekspedisi sebelumnya : ${ekspedisiLama}
-Harga produk normal  : ${fmt(hargaSatuan)}${diskonProdukPct > 0 ? ` → setelah diskon ${diskonProdukPct}%: ${fmt(hargaAfterDiskon)}` : ''}
-Ongkir estimasi      : ${fmt(ongkirAsli)}${diskonOngkirPct > 0 ? ` → setelah diskon ${diskonOngkirPct}%: ${fmt(ongkirAfterDiskon)}` : ''}
-Total Transfer (1 pcs): ${fmt(totalTF1)}
-Total COD (1 pcs)    : ${fmt(totalCOD1)} (termasuk fee COD 5%)${hematRp > 0 ? `
-Hemat vs order pertama: ${fmt(hematRp)} (${hematPct}% lebih hemat)` : ''}
+          // Pre-hitung untuk qty 1-4 dan semua bundling yang ada
+          const bundlingList = Array.isArray(product?.harga_bundling) ? product.harga_bundling : [];
+          const qtyList = [...new Set([1, 2, 3, 4, ...bundlingList.map(b => b.qty)])].sort((a,b) => a-b);
 
-Cara hitung untuk qty berbeda: (harga setelah diskon × qty) + ongkir setelah diskon = Total Transfer. COD = Total TF + 5%.
+          let tabelQty = '';
+          for (const q of qtyList) {
+            const hargaQ       = resolveHargaBundling(product, q) || (product?.harga || 0) * q;
+            const diskonProdukRpQ = Math.round(hargaQ * diskonProdukPct / 100);
+            const hargaDiskonQ = hargaQ - diskonProdukRpQ;
+            const totalTFQ     = hargaDiskonQ + ongkirAfterDiskon;
+            const feeCODQ      = Math.ceil(totalTFQ * 0.05);
+            const totalCODQ    = totalTFQ + feeCODQ;
+            const totalAwalQ   = (latestOrder.harga_produk || product?.harga || 0) * q + ongkirAsli;
+            const hematQ       = totalAwalQ - totalTFQ;
+            const hematPctQ    = totalAwalQ > 0 ? Math.round(hematQ / totalAwalQ * 100) : 0;
+            tabelQty += `\nQty ${q}: harga normal ${fmt(hargaQ)}${diskonProdukPct > 0 ? ` → setelah diskon ${diskonProdukPct}%: ${fmt(hargaDiskonQ)}` : ''} | TF: ${fmt(totalTFQ)} | COD: ${fmt(totalCODQ)}${hematQ > 0 ? ` | Hemat ${fmt(hematQ)} (${hematPctQ}%)` : ''}`;
+          }
+
+          ctx += `\n\nKALKULASI REPEAT ORDER (ongkir tetap per pengiriman, apapun qty-nya):
+Ekspedisi sebelumnya : ${ekspedisiLama}
+Ongkir normal        : ${fmt(ongkirAsli)}${diskonOngkirPct > 0 ? ` → setelah diskon ${diskonOngkirPct}%: ${fmt(ongkirAfterDiskon)}` : ''}
+${tabelQty}
+
+WAJIB: Gunakan angka di atas sesuai qty yang diminta customer. JANGAN hitung ulang sendiri — pakai tabel ini.
 Alamat sebelumnya: ${latestOrder.alamat || customer?.alamat || '-'}
 Langsung konfirmasi alamat ini, JANGAN tanya dari nol.
 Kalau customer minta ganti ekspedisi → output [CEK_ONGKIR:ekspedisi=NAMA] di akhir balasan.`;
@@ -1983,8 +2002,10 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
     console.log(`Reply untuk ${wa_number}: ${reply.slice(0, 80)}`);
 
     // ── Simpan & kirim balasan ────────────────────────────────
-    // ── Auto-kirim gambar produk kalau customer tanya foto ────
-    const tanyaFoto = /\b(foto|gambar|pic|photo|tampilan|bentuk|wujud|lihat produk|gambarnya|fotonya|kirim dong|kirimnya|mana fotonya|mana gambarnya|belum terkirim|belum muncul|kirim ulang|kirim lagi)\b/i.test(message);
+    // Cek testimoni DULU supaya tidak overlap dengan tanyaFoto
+    const tanyaTestimoni = /\b(testimoni|testi|bukti|review|hasil|nyata|beneran|real|ada yang sudah|yang udah pakai|yang sudah pakai|ada hasilnya|ada fotonya|foto hasilnya|foto buktinya|sebelum sesudah|before after|ada reviewnya|ada buktiny)\b/i.test(message);
+    // tanyaFoto hanya trigger kalau BUKAN pertanyaan testimoni/bukti/review
+    const tanyaFoto = !tanyaTestimoni && /\b(foto produk|gambar produk|foto(nya)?|gambar(nya)?|pic|photo|tampilan|bentuk|wujud|lihat produk|kirim dong|kirimnya|mana fotonya|mana gambarnya|belum terkirim|belum muncul|kirim ulang|kirim lagi)\b/i.test(message);
     const adaGambarProduk = product?.gambar_url;
     const sudahKirimFoto  = convState.foto_terkirim;
 
@@ -2043,7 +2064,6 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
     }
 
     // ── Auto-kirim foto testimoni kalau customer minta bukti/review ────
-    const tanyaTestimoni = /\b(testimoni|testi|bukti|review|hasil|nyata|beneran|real|ada yang sudah|yang udah pakai|yang sudah pakai|ada hasilnya|ada fotonya|foto hasilnya|foto buktinya|sebelum sesudah|before after|ada reviewnya|ada buktiny)\b/i.test(message);
     const testiList = Array.isArray(product?.testimoni_urls) ? product.testimoni_urls.filter(Boolean) : [];
     const sudahKirimTesti = convState.testimoni_terkirim;
 
