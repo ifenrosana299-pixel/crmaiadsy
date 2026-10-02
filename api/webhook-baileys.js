@@ -2158,6 +2158,23 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
       console.error('Ringkasan error:', e.message);
     }
 
+    // ── Auto-analisis closing (background, max 1x per 24 jam per produk) ──
+    try {
+      const lastAnalyzed = product?.closing_insights_cache?.analyzed_at;
+      const jamSejak = lastAnalyzed ? (Date.now() - new Date(lastAnalyzed).getTime()) / 3600000 : 999;
+      if (jamSejak >= 24 && product?.id && userId) {
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000';
+        fetch(`${baseUrl}/api/ai-suggest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'analyze-closing', userId, productId: product.id }),
+        }).catch(() => {});
+        console.log(`[CLOSING-AI] Auto-analisis dipicu untuk produk ${product.id}`);
+      }
+    } catch(e) { /* silent */ }
+
     res.status(200).json({ ok: true });
 
   } catch (err) {
