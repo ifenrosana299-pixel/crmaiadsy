@@ -237,9 +237,22 @@ async function checkBotStatus() {
       sbBot.innerHTML = '⚠️ WA offline';
       sbBot.style.color = '#f59e0b';
     }
-    // Update label di prod-switcher sesuai status real
+    // Update label prod-switcher
     if (typeof window.__updateProdWaStatus === 'function') {
       window.__updateProdWaStatus(sessionId, connected);
+    }
+    // Sync wa_status ke DB supaya load berikutnya langsung akurat (fire & forget)
+    if (prod?.id && window.__SB_URL && window.__SB_KEY) {
+      const newStatus = connected ? 'connected' : 'disconnected';
+      if (prod.wa_status !== newStatus) {
+        fetch(`${window.__SB_URL}/rest/v1/products?id=eq.${prod.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY },
+          body: JSON.stringify({ wa_status: newStatus }),
+        }).catch(() => {});
+        // Update local cache juga
+        prod.wa_status = newStatus;
+      }
     }
   } catch(e) {
     sbBot.innerHTML = '⚠️ WA offline';
