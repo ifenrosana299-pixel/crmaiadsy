@@ -207,38 +207,6 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             </div>
           </div>
 
-          <!-- NOTIF OTOMATIS -->
-          <div class="rule-section" id="sec-notif-otomatis" style="margin-top:12px">
-            <div class="rule-sec-hdr" onclick="toggleSection('notif_otomatis')">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="rule-dot" style="background:#f59e0b"></span>
-                <span class="rule-sec-title">⚡ Notif Otomatis ke Customer</span>
-              </div>
-              <span class="rule-sec-arrow" id="arr-notif_otomatis">▾</span>
-            </div>
-            <div class="rule-sec-body" id="rules-list-notif_otomatis" style="padding:14px">
-              <div style="font-size:11px;color:var(--text-2);margin-bottom:12px">Pesan dikirim otomatis ke customer saat status paket berubah. Variabel: <code>{nama}</code> <code>{resi}</code> <code>{ekspedisi}</code> <code>{produk}</code></div>
-
-              <div style="margin-bottom:14px">
-                <label class="form-label" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-                  <span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>
-                  Paket Sedang Diantar (OTW)
-                </label>
-                <textarea class="form-textarea" id="notif-tmpl-otw" rows="3" placeholder="Contoh: Halo {nama} 😊 paket {produk} kamu lagi dalam perjalanan ya! Resi {resi} via {ekspedisi}. Ditunggu ya kak 🚚"></textarea>
-              </div>
-
-              <div style="margin-bottom:14px">
-                <label class="form-label" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-                  <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>
-                  Paket Baru Sampai
-                </label>
-                <textarea class="form-textarea" id="notif-tmpl-sampai" rows="3" placeholder="Contoh: Halo {nama} 😊 paket {produk} kamu udah sampai ya! Semoga bermanfaat. Kalau ada pertanyaan cara pakai, tanya aku aja kak 🙏"></textarea>
-              </div>
-
-              <button class="btn btn-primary btn-sm" onclick="saveNotifTemplate()" id="btn-save-notif-tmpl">Simpan Template</button>
-            </div>
-          </div>
-
           <!-- Section: Sedang Diantarkan (OTW) -->
           <div class="rule-section" id="sec-event_otw">
             <div class="rule-sec-hdr" onclick="toggleSection('event_otw')">
@@ -251,6 +219,12 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             </div>
             <div class="rule-sec-body" id="rules-list-event_otw">
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
+            </div>
+            <!-- Notif Template OTW -->
+            <div style="padding:12px 14px;border-top:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--text-2);margin-bottom:8px">⚡ Template notif otomatis saat paket OTW. Variabel: <code>{nama}</code> <code>{resi}</code> <code>{ekspedisi}</code> <code>{produk}</code></div>
+              <textarea class="form-textarea" id="notif-tmpl-otw" rows="3" placeholder="Contoh: Halo {nama} 😊 paket {produk} kamu lagi dalam perjalanan ya! Resi {resi} via {ekspedisi}. Ditunggu ya kak 🚚"></textarea>
+              <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveNotifTemplate()" id="btn-save-notif-tmpl">Simpan Template</button>
             </div>
           </div>
 
@@ -266,6 +240,12 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             </div>
             <div class="rule-sec-body" id="rules-list-event_sampai">
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
+            </div>
+            <!-- Notif Template SAMPAI -->
+            <div style="padding:12px 14px;border-top:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--text-2);margin-bottom:8px">⚡ Template notif otomatis saat paket sampai. Variabel: <code>{nama}</code> <code>{resi}</code> <code>{ekspedisi}</code> <code>{produk}</code></div>
+              <textarea class="form-textarea" id="notif-tmpl-sampai" rows="3" placeholder="Contoh: Halo {nama} 😊 paket {produk} kamu udah sampai ya! Semoga bermanfaat. Kalau ada pertanyaan cara pakai, tanya aku aja kak 🙏"></textarea>
+              <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveNotifTemplate()" id="btn-save-notif-tmpl-2">Simpan Template</button>
             </div>
           </div>
         </div>
@@ -1241,8 +1221,8 @@ async function loadNotifTemplate() {
 async function saveNotifTemplate() {
   const prodId = window.__activeProductFilter;
   if (!prodId) { toast('Pilih produk dulu', 'info'); return; }
-  const btn = document.getElementById('btn-save-notif-tmpl');
-  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const btns = [document.getElementById('btn-save-notif-tmpl'), document.getElementById('btn-save-notif-tmpl-2')].filter(Boolean);
+  btns.forEach(b => { b.disabled = true; b.textContent = 'Menyimpan...'; });
   try {
     await sbPatch('products', `id=eq.${prodId}`, {
       template_notif_otw:    document.getElementById('notif-tmpl-otw').value.trim() || null,
@@ -1250,7 +1230,7 @@ async function saveNotifTemplate() {
     });
     toast('Template notif tersimpan ✅', 'success');
   } catch(e) { toast('Gagal simpan: ' + e.message, 'error'); }
-  btn.disabled = false; btn.textContent = 'Simpan Template';
+  btns.forEach(b => { b.disabled = false; b.textContent = 'Simpan Template'; });
 }
 
 async function generateJadwal() {
