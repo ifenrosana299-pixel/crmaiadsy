@@ -177,7 +177,11 @@ function getSpreadSlot(customer) {
   return Math.floor(Math.random() * SPREAD_WINDOW_H * 60);
 }
 
-function shouldSendNow(customer) {
+function shouldSendNow(customer, scheduledDate, today) {
+  // Jadwal hari ini → kirim langsung di cron berikutnya (max 1 jam tunggu)
+  if (scheduledDate === today) return true;
+
+  // Jadwal hari lain yang sudah tiba → pakai smart timing (jam 9 WIB)
   const currentHour = nowWIBHour();
   const targetHour  = (customer.response_count >= MIN_RESPONSES && customer.optimal_send_hour != null)
     ? customer.optimal_send_hour
@@ -256,7 +260,7 @@ export default async function handler(req, res) {
       }
 
       // Smart timing + spread: skip kalau belum waktunya (bypass kalau force mode)
-      if (!forceMode && !shouldSendNow(customer)) {
+      if (!forceMode && !shouldSendNow(customer, s.scheduled_date, today)) {
         results.skipped_timing++;
         continue;
       }
