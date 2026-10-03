@@ -38,14 +38,14 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { user_id, product_id } = req.body || {};
+  const { user_id, product_id, rule_id } = req.body || {};
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
 
   try {
-    // 1. Rules aktif — filter by product kalau ada
-    const ruleQ = product_id
-      ? `user_id=eq.${user_id}&aktif=eq.true&or=(product_id.eq.${product_id},product_id.is.null)&order=urutan.asc`
-      : `user_id=eq.${user_id}&aktif=eq.true&order=urutan.asc`;
+    // 1. Rules aktif — filter by rule_id (edit) atau product (switcher)
+    let ruleQ = `user_id=eq.${user_id}&aktif=eq.true&order=urutan.asc`;
+    if (rule_id)    ruleQ += `&id=eq.${rule_id}`;
+    else if (product_id) ruleQ += `&or=(product_id.eq.${product_id},product_id.is.null)`;
     const rules = await sb('followup_rules', ruleQ);
     if (!rules.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada rule aktif' });
 
