@@ -183,7 +183,7 @@ function shouldSendNow(customer, scheduledDate, today) {
 
   // Jadwal hari lain yang sudah tiba → pakai smart timing (jam 9 WIB)
   const currentHour = nowWIBHour();
-  const targetHour  = (customer.response_count >= MIN_RESPONSES && customer.optimal_send_hour != null)
+  const targetHour  = customer.optimal_send_hour != null
     ? customer.optimal_send_hour
     : DEFAULT_SEND_HOUR;
 

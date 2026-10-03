@@ -1156,14 +1156,10 @@ async function learnResponseTime(conversation, customerId) {
 
   const count = (cust.response_count || 0) + 1;
 
-  // Hitung optimal jam kirim = avg response - 10 menit
-  // Baru aktif kalau sudah minimal 2x balas
-  let optimalHour = cust.optimal_send_hour;
-  if (count >= 2) {
-    const avg = responseHours.reduce((a, b) => a + b, 0) / responseHours.length;
-    optimalHour = Math.max(0, avg - (10 / 60)); // 10 menit sebelum rata-rata balas
-    optimalHour = Math.round(optimalHour * 100) / 100; // 2 desimal
-  }
+  // Hitung optimal jam kirim = rolling avg jam balas - 10 menit
+  // Aktif dari bales pertama, makin akurat seiring waktu
+  const avg = responseHours.reduce((a, b) => a + b, 0) / responseHours.length;
+  const optimalHour = Math.round(Math.max(0, avg - (10 / 60)) * 100) / 100;
 
   // Customer balas → reset no-reply counter, aktifkan lagi kalau sempat di-label tidak_responsif
   const shouldReactivate = cust.fu_status === 'tidak_responsif';
