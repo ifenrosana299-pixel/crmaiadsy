@@ -178,8 +178,8 @@ function getSpreadSlot(customer) {
 }
 
 function shouldSendNow(customer, scheduledDate, today) {
-  // Jadwal hari ini → kirim langsung di cron berikutnya (max 1 jam tunggu)
-  if (scheduledDate === today) return true;
+  // Jadwal hari ini → kirim langsung asal belum lewat jam 21:00 WIB
+  if (scheduledDate === today) return nowWIBHour() < 21;
 
   // Jadwal hari lain yang sudah tiba → pakai smart timing (jam 9 WIB)
   const currentHour = nowWIBHour();
