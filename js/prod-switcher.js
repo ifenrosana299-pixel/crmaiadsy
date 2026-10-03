@@ -63,12 +63,23 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
     return allUserProducts.find(p => p.id === activeProductFilter) || null;
   }
 
-  // Status label & warna berdasarkan koneksi WA saja (CRM tidak pakai Gmail)
+  // Status label & warna — pakai hasil cek real-time dari checkBotStatus kalau ada
+  const waStatusCache = {}; // sessionId → 'connected' | 'offline'
+
   function getProdStatus(p) {
-    const waOk = !!(p.wa_session_id);
-    if (waOk) return { label: '● WA terhubung', color: '#22c55e' };
-    return { label: '● WA belum terhubung', color: '#64748b' };
+    if (!p.wa_session_id) return { label: '● WA belum setup', color: '#64748b' };
+    const realStatus = waStatusCache[p.wa_session_id];
+    if (realStatus === 'connected') return { label: '● WA terhubung', color: '#22c55e' };
+    if (realStatus === 'offline')   return { label: '● WA terputus', color: '#f59e0b' };
+    // Belum ada data real-time → tampil loading ringan, akan di-update setelah checkBotStatus
+    return { label: '● Mengecek...', color: '#64748b' };
   }
+
+  // Dipanggil dari app.js checkBotStatus setelah dapat status real dari Baileys
+  window.__updateProdWaStatus = function(sessionId, connected) {
+    waStatusCache[sessionId] = connected ? 'connected' : 'offline';
+    render();
+  };
 
   // ── Inject div setelah #sb-bot-status ────────────────────
   function injectEl() {

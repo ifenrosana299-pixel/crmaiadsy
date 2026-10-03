@@ -229,16 +229,24 @@ async function checkBotStatus() {
   try {
     const res = await fetch('/api/baileys-proxy?path=' + encodeURIComponent('/session/status/' + sessionId));
     const s = await res.json();
-    if (s.status === 'connected') {
+    const connected = s.status === 'connected';
+    if (connected) {
       sbBot.innerHTML = '<div class="bot-dot"></div> Bot online';
       sbBot.style.color = '#22c55e';
     } else {
       sbBot.innerHTML = '⚠️ WA offline';
       sbBot.style.color = '#f59e0b';
     }
+    // Update label di prod-switcher sesuai status real
+    if (typeof window.__updateProdWaStatus === 'function') {
+      window.__updateProdWaStatus(sessionId, connected);
+    }
   } catch(e) {
     sbBot.innerHTML = '⚠️ WA offline';
     sbBot.style.color = '#f59e0b';
+    if (typeof window.__updateProdWaStatus === 'function') {
+      window.__updateProdWaStatus(sessionId, false);
+    }
   }
 }
 
