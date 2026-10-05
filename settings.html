@@ -141,6 +141,7 @@ body.light .grup-item-nama{color:#0f172a}
       <a href="#" onclick="showSection('notif',this)">🔔 Notifikasi Internal</a>
       <a href="#" onclick="showSection('ai',this)">🤖 AI Key</a>
       <a href="#" onclick="showSection('group',this)">💬 Grup WA Recap</a>
+      <a href="#" onclick="showSection('cs',this)">👥 Kontak CS</a>
     </div>
 
     <div class="settings-body">
@@ -280,6 +281,33 @@ Segera hubungi customer untuk koordinasi pengiriman ulang sebelum paket dikembal
         </div>
       </div>
 
+      <!-- ── KONTAK CS ── -->
+      <div class="settings-section" id="sec-cs">
+        <div class="section-title">Kontak CS</div>
+        <div class="section-desc">Daftar nomor WA CS. Saat ada resi <strong>BERMASALAH</strong>, notifikasi otomatis dikirim ke CS yang menangani order tersebut sesuai nama CS di kolom data order. Pastikan nama CS sama persis.</div>
+
+        <!-- List CS -->
+        <div id="cs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+          <div style="text-align:center;padding:16px;color:#64748b;font-size:13px">Memuat...</div>
+        </div>
+
+        <!-- Form tambah CS -->
+        <div style="background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px">
+          <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:12px">➕ Tambah CS</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div class="form-group" style="margin:0">
+              <label>Nama CS</label>
+              <input type="text" id="cs-nama-inp" placeholder="Contoh: Nafis">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Nomor WA (628xxx)</label>
+              <input type="text" id="cs-wa-inp" placeholder="Contoh: 6281234567890">
+            </div>
+          </div>
+          <button class="btn-primary" onclick="tambahCS()">Simpan CS</button>
+        </div>
+      </div>
+
     </div><!-- settings-body -->
   </div><!-- settings-layout -->
 </div><!-- main-content -->
@@ -330,6 +358,7 @@ function showSection(name, el) {
   if (name === 'notif')  loadNotifWA();
   if (name === 'ai')     loadAnthropicKey();
   if (name === 'group')  loadGroupJid();
+  if (name === 'cs')     loadCSContacts();
 }
 
 function saveAccount() {
@@ -687,6 +716,56 @@ function selectGrup(jid, nama) {
 function clearGroupJid() {
   _selectedGroupJid = null;
   document.getElementById('group-selected-card').style.display = 'none';
+}
+
+// ── KONTAK CS ─────────────────────────────────────────────
+async function loadCSContacts() {
+  const userId = getUser()?.id;
+  const list = document.getElementById('cs-list');
+  try {
+    const data = await sbGet('cs_contacts', `user_id=eq.${userId}&order=nama.asc`);
+    if (!data.length) {
+      list.innerHTML = `<div style="text-align:center;padding:16px;color:#64748b;font-size:13px">Belum ada CS terdaftar</div>`;
+      return;
+    }
+    list.innerHTML = data.map(cs => `
+      <div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 14px">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#60a5fa;flex-shrink:0">${(cs.nama||'?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#e2e8f0">${escH(cs.nama)}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:1px">+${escH(cs.wa_number)}</div>
+        </div>
+        <button class="btn-danger btn-sm" onclick="hapusCS('${cs.id}')">Hapus</button>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = `<div style="color:#fca5a5;font-size:13px;padding:12px">${e.message}</div>`;
+  }
+}
+
+async function tambahCS() {
+  const userId = getUser()?.id;
+  const nama = document.getElementById('cs-nama-inp').value.trim();
+  const wa   = document.getElementById('cs-wa-inp').value.trim().replace(/\D/g, '');
+  if (!nama) { toastLocal('Nama CS wajib diisi'); return; }
+  if (!wa || !/^62/.test(wa)) { toastLocal('Nomor WA harus diawali 62'); return; }
+  try {
+    await sbPost('cs_contacts', { user_id: userId, nama, wa_number: wa }, { prefer: 'return=minimal' });
+    document.getElementById('cs-nama-inp').value = '';
+    document.getElementById('cs-wa-inp').value = '';
+    toastLocal(`✅ CS ${nama} berhasil ditambahkan`);
+    sbCacheClear('cs_contacts');
+    loadCSContacts();
+  } catch(e) { toastLocal('❌ Gagal: ' + e.message); }
+}
+
+async function hapusCS(id) {
+  if (!confirm('Hapus CS ini?')) return;
+  try {
+    await sbDelete('cs_contacts', `id=eq.${id}`);
+    toastLocal('✅ CS dihapus');
+    sbCacheClear('cs_contacts');
+    loadCSContacts();
+  } catch(e) { toastLocal('❌ Gagal hapus: ' + e.message); }
 }
 
 async function saveGroupJid() {
