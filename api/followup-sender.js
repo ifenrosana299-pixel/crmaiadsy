@@ -186,8 +186,8 @@ function shouldSendNow(customer, scheduledDate, today) {
 
   // Spread: tiap customer dapat slot menit berbeda supaya tidak barengan
   const slot     = getSpreadSlot(customer);
-  // Minimum jam 8 pagi, maksimum jam 21 malam
-  const sendHour = Math.max(targetHour + (slot / 60), 8);
+  // Minimum jam 7 pagi (optimal_send_hour sudah termasuk -10 menit dari webhook-baileys)
+  const sendHour = Math.max(targetHour + (slot / 60), 7);
 
   return currentHour >= sendHour && currentHour < 21;
 }
