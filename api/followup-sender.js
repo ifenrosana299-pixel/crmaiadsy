@@ -310,18 +310,19 @@ export default async function handler(req, res) {
           fu_sent_at:   new Date().toISOString(),
         };
 
+        const nowIso = new Date().toISOString();
         if (convs.length) {
           convId = convs[0].id;
           // Merge fu_context ke state yang sudah ada
           const prevState = convs[0].state || {};
           await sb('conversations', `id=eq.${convId}`, {
             method: 'PATCH',
-            body: { updated_at: new Date().toISOString(), state: { ...prevState, ...fuContext } }
+            body: { updated_at: nowIso, last_msg_at: nowIso, state: { ...prevState, ...fuContext } }
           });
         } else {
           const newConv = await sb('conversations', '', {
             method: 'POST',
-            body: { user_id: s.user_id, customer_id: s.customer_id, product_id: customer.product_id || null, status: 'baru', sumber: 'fu', state: fuContext }
+            body: { user_id: s.user_id, customer_id: s.customer_id, product_id: customer.product_id || null, status: 'baru', sumber: 'fu', state: fuContext, last_msg_at: nowIso }
           });
           convId = newConv[0].id;
         }
