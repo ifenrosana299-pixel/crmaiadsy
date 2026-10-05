@@ -179,20 +179,16 @@ function getSpreadSlot(customer) {
 function shouldSendNow(customer, scheduledDate, today) {
   const currentHour = nowWIBHour();
 
-  // Jadwal hari ini → kirim langsung di cron berikutnya, asal jam 08:00–21:00 WIB
-  if (scheduledDate === today) return currentHour >= 8 && currentHour < 21;
-
-  // Jadwal hari lain yang sudah tiba → pakai smart timing
+  // Semua jadwal pakai smart timing — kirim di jam optimal customer
   const targetHour = customer.optimal_send_hour != null
     ? customer.optimal_send_hour
     : DEFAULT_SEND_HOUR;
 
   // Spread: tiap customer dapat slot menit berbeda supaya tidak barengan
-  const slot       = getSpreadSlot(customer);
-  const sendHour   = targetHour + (slot / 60);
+  const slot     = getSpreadSlot(customer);
+  // Minimum jam 8 pagi, maksimum jam 21 malam
+  const sendHour = Math.max(targetHour + (slot / 60), 8);
 
-  // Kirim kalau sudah melewati jam target customer (tidak miss karena cron 15 menit)
-  // Batas atas jam 21:00 supaya tidak kirim terlalu malam
   return currentHour >= sendHour && currentHour < 21;
 }
 
