@@ -25,6 +25,8 @@ body{font-family:'Inter',sans-serif;background:#0d1117;color:#e2e8f0;font-size:1
 .stat-num{font-size:20px;font-weight:700;margin-bottom:1px}
 .stat-label{font-size:11px;color:#64748b}
 .s-yellow .stat-num{color:#fbbf24}
+.s-orange .stat-num{color:#fb923c}
+.s-red .stat-num{color:#f87171}
 .s-blue .stat-num{color:#a5b4fc}
 .s-green .stat-num{color:#4ade80}
 .s-gray .stat-num{color:#94a3b8}
@@ -189,8 +191,10 @@ function render() {
 
   const html = `
     <div class="stats-row">
-      <div class="stat-card s-yellow"><div class="stat-num">${byCol.fu1.length + byCol.fu2.length + byCol.fu3.length}</div><div class="stat-label">Perlu Ditangani</div></div>
-      <div class="stat-card s-blue"><div class="stat-num">${byCol.otw.length}</div><div class="stat-label">Dikirim Ulang</div></div>
+      <div class="stat-card s-yellow"><div class="stat-num">${byCol.fu1.length}</div><div class="stat-label">🟡 FU +1</div></div>
+      <div class="stat-card s-orange"><div class="stat-num">${byCol.fu2.length}</div><div class="stat-label">🟠 FU +2</div></div>
+      <div class="stat-card s-red"><div class="stat-num">${byCol.fu3.length}</div><div class="stat-label">🔴 FU +3</div></div>
+      <div class="stat-card s-blue"><div class="stat-num">${byCol.otw.length}</div><div class="stat-label">🚚 Dikirim Ulang</div></div>
       <div class="stat-card s-gray"><div class="stat-num">${total}</div><div class="stat-label">Total Order</div></div>
     </div>
 
