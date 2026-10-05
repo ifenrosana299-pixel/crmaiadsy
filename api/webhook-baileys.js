@@ -1685,7 +1685,23 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     const isCloseIntent = detectCloseIntent(message);
     if (isCloseIntent) {
       const hasDelivered = latestOrder?.status_resi === 'SAMPAI';
-      if (hasDelivered) {
+      // Pakai formula reorder: (qty_beli × konsumsi_hari) - buffer_reorder_hari
+      // Ambil reorder rule untuk produk ini
+      const konsumsiHari = product?.konsumsi_hari || null;
+      let cukupLama = false;
+      if (hasDelivered && konsumsiHari) {
+        const reorderRule = await sbGet('followup_rules',
+          `?user_id=eq.${userId}&tipe=eq.reorder&limit=1`
+        ).catch(() => []);
+        const bufferReorder = reorderRule[0]?.buffer_reorder_hari ?? 3;
+        const qtyBeli       = latestOrder?.jumlah_produk || 1;
+        const threshold     = (qtyBeli * konsumsiHari) - bufferReorder;
+        const baseDate      = latestOrder?.tgl_delivered || latestOrder?.created_at;
+        const daysSince     = baseDate ? (Date.now() - new Date(baseDate).getTime()) / (1000 * 60 * 60 * 24) : 0;
+        cukupLama = daysSince >= threshold;
+        console.log(`[close-intent] daysSince=${Math.round(daysSince)} threshold=${threshold} (${qtyBeli}×${konsumsiHari}-${bufferReorder}) cukupLama=${cukupLama}`);
+      }
+      if (hasDelivered && cukupLama) {
         sbPatch('conversations', `?id=eq.${conversation.id}`, {
           close_intent_at: new Date().toISOString(),
           close_fu_count: 0,
