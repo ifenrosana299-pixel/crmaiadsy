@@ -807,12 +807,10 @@ async function kirimLinkCS(waNumber, csNama, csToken, btn) {
     const link    = `${origin}/undell-cs.html?token=${csToken}`;
     const pesan   = `Halo ${csNama} 👋\n\nUntuk mengurangi RTS & Undelivery, ketika ada order BERMASALAH yang sudah kamu laporkan ke tim internal — segera klik link berikut agar kamu tidak mendapat Follow Up kembali:\n\n🔗 ${link}\n\nSimpan link ini ya, link ini berlaku khusus untukmu.`;
 
-    const baileys = window.__BAILEYS_URL || '';
-    const secret  = 'adsysukses2026';
-    const r = await fetch(`${baileys}/send`, {
+    const r = await baileysFetch(`/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret, session_id: sessionId, wa_number: waNumber, message: pesan })
+      body: JSON.stringify({ secret: BAILEYS_SECRET, session_id: sessionId, wa_number: waNumber, message: pesan })
     });
     if (!r.ok) throw new Error('Baileys error: ' + r.status);
     toastLocal(`✅ Link berhasil dikirim ke ${csNama}`);
