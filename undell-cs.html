@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline Undelivered — CS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0d1117;color:#e2e8f0;font-size:13px;min-height:100vh}
+
+/* ── Header ── */
+.top-bar{background:#161b22;border-bottom:1px solid rgba(255,255,255,.07);padding:14px 20px;display:flex;align-items:center;gap:12px}
+.top-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0}
+.top-title{font-size:15px;font-weight:700;color:#f1f5f9}
+.top-sub{font-size:11px;color:#64748b;margin-top:1px}
+.cs-badge{margin-left:auto;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600}
+
+/* ── Container ── */
+.container{max-width:900px;margin:0 auto;padding:20px 16px}
+
+/* ── Stats ── */
+.stats-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.stat-card{background:#161b22;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 16px;flex:1;min-width:100px}
+.stat-num{font-size:20px;font-weight:700;margin-bottom:1px}
+.stat-label{font-size:11px;color:#64748b}
+.s-yellow .stat-num{color:#fbbf24}
+.s-blue .stat-num{color:#a5b4fc}
+.s-green .stat-num{color:#4ade80}
+.s-gray .stat-num{color:#94a3b8}
+
+/* ── Search ── */
+.search-wrap{margin-bottom:14px}
+.search-inp{width:100%;background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:13px;outline:none}
+.search-inp:focus{border-color:rgba(99,102,241,.4)}
+.search-inp::placeholder{color:#475569}
+
+/* ── Cards ── */
+.card-list{display:flex;flex-direction:column;gap:10px}
+.order-card{background:#161b22;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 16px;transition:border-color .15s}
+.order-card:hover{border-color:rgba(255,255,255,.12)}
+.order-card.paused{opacity:.5;pointer-events:none}
+
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.card-nama{font-size:14px;font-weight:600;color:#f1f5f9}
+.card-resi{font-size:11px;color:#64748b;font-family:monospace;margin-top:1px}
+.col-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.col-fu1{background:rgba(245,158,11,.15);color:#fbbf24}
+.col-fu2{background:rgba(249,115,22,.15);color:#fb923c}
+.col-fu3{background:rgba(239,68,68,.15);color:#f87171}
+.col-otw{background:rgba(99,102,241,.15);color:#a5b4fc}
+
+.card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.tag{font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
+.tag-eksp{background:rgba(99,102,241,.1);color:#a5b4fc}
+.tag-fu{background:rgba(245,158,11,.1);color:#fbbf24}
+.tag-hp{background:rgba(255,255,255,.05);color:#94a3b8}
+
+.card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-date{font-size:11px;color:#475569}
+.btn-handled{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#4ade80;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+.btn-handled:hover{background:rgba(34,197,94,.2)}
+.btn-handled:disabled{opacity:.5;cursor:not-allowed}
+.btn-done-label{font-size:12px;color:#4ade80;font-weight:600}
+
+/* ── Kolom section ── */
+.col-section{margin-bottom:20px}
+.col-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.col-count{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+
+/* ── Empty / Error / Loading ── */
+.center-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px;text-align:center}
+.state-icon{font-size:48px}
+.state-title{font-size:16px;font-weight:600;color:#e2e8f0}
+.state-sub{font-size:13px;color:#64748b;max-width:300px}
+.spinner{width:24px;height:24px;border:3px solid rgba(255,255,255,.1);border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Pagination ── */
+.pag-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px}
+.pag-btn{background:#161b22;border:1px solid rgba(255,255,255,.08);color:#94a3b8;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .1s}
+.pag-btn:hover:not(:disabled){border-color:rgba(255,255,255,.15);color:#e2e8f0}
+.pag-btn:disabled{opacity:.3;cursor:default}
+.pag-info{font-size:12px;color:#64748b}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:#1e293b;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:500;transition:transform .25s;z-index:999;white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-logo">⚠️</div>
+  <div>
+    <div class="top-title">Pipeline Undelivered</div>
+    <div class="top-sub">Order BERMASALAH yang perlu ditangani</div>
+  </div>
+  <div class="cs-badge" id="cs-name-badge">Memuat...</div>
+</div>
+
+<div class="container">
+  <div id="app-body">
+    <div class="center-state">
+      <div class="spinner"></div>
+      <div class="state-sub">Memuat data...</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const PAGE_SIZE = 10;
+let allOrders = [];
+let csInfo    = {};
+let page      = 0;
+let searchVal = '';
+
+const token = new URLSearchParams(location.search).get('token');
+
+async function init() {
+  if (!token) return showError('Token tidak ditemukan', 'Pastikan kamu membuka link yang benar dari admin.');
+  try {
+    const res = await fetch(`/api/save-settings?action=cs-undell-get&token=${encodeURIComponent(token)}`);
+    const data = await res.json();
+    if (!res.ok) return showError('Akses Ditolak', data.error || 'Token tidak valid.');
+    csInfo    = data.cs;
+    allOrders = data.orders || [];
+    document.getElementById('cs-name-badge').textContent = '👤 ' + csInfo.nama;
+    render();
+  } catch(e) {
+    showError('Gagal Memuat', e.message);
+  }
+}
+
+function getCol(o) {
+  const fu = o.fu_undell_count || 0;
+  const st = o.status_resi;
+  if (fu >= 1 && (st === 'OTW' || st === 'KOTA_TUJUAN')) return 'otw';
+  if (fu <= 1) return 'fu1';
+  if (fu === 2) return 'fu2';
+  return 'fu3';
+}
+
+function render() {
+  const search = searchVal.toLowerCase();
+  const filtered = allOrders.filter(o => {
+    if (!search) return true;
+    return `${o.nama_customer} ${o.nomer_resi}`.toLowerCase().includes(search);
+  });
+
+  const fu1 = filtered.filter(o => getCol(o) === 'fu1');
+  const fu2 = filtered.filter(o => getCol(o) === 'fu2');
+  const fu3 = filtered.filter(o => getCol(o) === 'fu3');
+  const otw = filtered.filter(o => getCol(o) === 'otw');
+
+  // Stats
+  const total  = filtered.length;
+  const aktif  = fu1.length + fu2.length + fu3.length;
+  const otwLen = otw.length;
+
+  // Pagination untuk semua aktif + otw gabungan
+  const combined = [...fu3, ...fu2, ...fu1, ...otw]; // urutan prioritas: FU3 duluan
+  const totalPg  = Math.max(1, Math.ceil(combined.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPg - 1);
+  page = safePage;
+  const sliced = combined.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
+  const html = `
+    <div class="stats-row">
+      <div class="stat-card s-yellow"><div class="stat-num">${aktif}</div><div class="stat-label">Perlu Ditangani</div></div>
+      <div class="stat-card s-blue"><div class="stat-num">${otwLen}</div><div class="stat-label">Dikirim Ulang</div></div>
+      <div class="stat-card s-gray"><div class="stat-num">${total}</div><div class="stat-label">Total Order</div></div>
+    </div>
+
+    <div class="search-wrap">
+      <input class="search-inp" id="search-inp" placeholder="🔍 Cari nama customer / nomor resi..." value="${escH(searchVal)}" oninput="onSearch(this.value)">
+    </div>
+
+    ${combined.length === 0 ? `
+      <div class="center-state" style="min-height:40vh">
+        <div class="state-icon">✅</div>
+        <div class="state-title">Semua Beres!</div>
+        <div class="state-sub">Tidak ada order BERMASALAH${search ? ' yang cocok dengan pencarian' : ' saat ini'}.</div>
+      </div>
+    ` : `
+      <div class="card-list" id="card-list">
+        ${sliced.map(o => renderCard(o)).join('')}
+      </div>
+      ${combined.length > PAGE_SIZE ? `
+        <div class="pag-row">
+          <button class="pag-btn" onclick="changePage(-1)" ${safePage === 0 ? 'disabled' : ''}>‹ Sebelumnya</button>
+          <div class="pag-info">${safePage + 1} / ${totalPg}</div>
+          <button class="pag-btn" onclick="changePage(1)" ${safePage >= totalPg - 1 ? 'disabled' : ''}>Berikutnya ›</button>
+        </div>
+      ` : ''}
+    `}
+  `;
+
+  document.getElementById('app-body').innerHTML = html;
+}
+
+function renderCard(o) {
+  const fu   = o.fu_undell_count || 0;
+  const col  = getCol(o);
+  const colLabel = { fu1:'FU +1', fu2:'FU +2', fu3:'FU +3 ⚠️', otw:'🚚 OTW' }[col];
+  const colCls   = { fu1:'col-fu1', fu2:'col-fu2', fu3:'col-fu3', otw:'col-otw' }[col];
+  const tgl  = fmtDate(o.created_at);
+
+  return `
+    <div class="order-card" id="card-${o.id}">
+      <div class="card-top">
+        <div>
+          <div class="card-nama">${escH(o.nama_customer || '-')}</div>
+          <div class="card-resi">${escH(o.nomer_resi || '-')}</div>
+        </div>
+        <span class="col-badge ${colCls}">${colLabel}</span>
+      </div>
+      <div class="card-tags">
+        ${o.ekspedisi ? `<span class="tag tag-eksp">${escH(o.ekspedisi)}</span>` : ''}
+        ${fu > 0 ? `<span class="tag tag-fu">FU ${fu}x</span>` : ''}
+        ${o.nomer_hp ? `<span class="tag tag-hp">📞 ${escH(o.nomer_hp)}</span>` : ''}
+      </div>
+      <div class="card-foot">
+        <div class="card-date">📅 ${tgl}</div>
+        <button class="btn-handled" onclick="tandaiDitangani('${o.id}', this)">✅ Sudah Ditangani</button>
+      </div>
+    </div>`;
+}
+
+async function tandaiDitangani(orderId, btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Menyimpan...';
+  try {
+    const res = await fetch(`/api/save-settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cs-undell-handle', token, order_id: orderId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal');
+    // Hapus dari allOrders local
+    allOrders = allOrders.filter(o => o.id !== orderId);
+    // Animasi card
+    const card = document.getElementById('card-' + orderId);
+    if (card) {
+      card.style.transition = 'opacity .3s, transform .3s';
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(20px)';
+      setTimeout(() => render(), 300);
+    } else {
+      render();
+    }
+    showToast('✅ Order ditandai sudah ditangani');
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '✅ Sudah Ditangani';
+    showToast('❌ Gagal: ' + e.message);
+  }
+}
+
+function onSearch(val) {
+  searchVal = val;
+  page = 0;
+  render();
+}
+
+function changePage(dir) {
+  page = Math.max(0, page + dir);
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+
+function escH(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showError(title, sub) {
+  document.getElementById('cs-name-badge').textContent = '—';
+  document.getElementById('app-body').innerHTML = `
+    <div class="center-state">
+      <div class="state-icon">🔒</div>
+      <div class="state-title">${escH(title)}</div>
+      <div class="state-sub">${escH(sub)}</div>
+    </div>`;
+}
+
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+init();
+</script>
+</body>
+</html>
