@@ -449,6 +449,7 @@ const PAGE_SIZE  = 15;
 let importData   = [];
 let currentDetailId = null;
 let trackingInProgress = new Set();
+const _trackDetailCache = {}; // cache history per order.id selama sesi
 let selectedIds  = new Set();
 
 // ── Selection helpers ───────────────────────────────────────────────
@@ -835,6 +836,13 @@ function openDetail(id) {
       ${o.keluhan ? `<div style="grid-column:1/-1"><div class="text-xs text-dim">Keluhan</div><div class="text-sm" style="color:var(--accent)">${escH(o.keluhan)}</div></div>` : ''}
     </div>
 
+    <!-- Riwayat Pengiriman -->
+    ${o.nomer_resi && o.ekspedisi ? `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div class="text-xs text-dim fw-600" style="text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Riwayat Pengiriman</div>
+      <div id="track-history-body"><div style="text-align:center;padding:8px 0;font-size:12px;color:var(--text-2)"><span class="bdg-spin"></span> Memuat...</div></div>
+    </div>` : ''}
+
     <!-- Financial -->
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px">
       <div class="text-xs text-dim fw-600" style="text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Rincian Biaya</div>
@@ -849,9 +857,73 @@ function openDetail(id) {
   `;
 
   document.getElementById('detail-modal').classList.add('show');
+
+  // Load riwayat async setelah modal terbuka
+  if (o.nomer_resi && o.ekspedisi) loadTrackHistory(o);
 }
 
 function closeDetailModal() { document.getElementById('detail-modal').classList.remove('show'); }
+
+async function loadTrackHistory(order) {
+  const wrap = document.getElementById('track-history-body');
+  if (!wrap) return;
+
+  // Pakai cache kalau ada (invalidate saat trackFromDetail)
+  const cached = _trackDetailCache[order.id];
+  const detail = cached || await fetch(
+    `/api/track-resi?resi=${encodeURIComponent(order.nomer_resi)}&ekspedisi=${encodeURIComponent(order.ekspedisi)}`
+  ).then(r => r.json()).catch(() => null);
+
+  if (detail && !cached) _trackDetailCache[order.id] = detail;
+
+  if (!detail || !detail.detail?.history?.length) {
+    wrap.innerHTML = `<div style="font-size:12px;color:var(--text-2);text-align:center;padding:6px 0">Riwayat tidak tersedia</div>`;
+    return;
+  }
+
+  const history = detail.detail.history;
+  const stage   = detail.stage;
+
+  // Cari event bermasalah (penyebab)
+  const PROB_PAT = /gagal|kendala|nobody|tidak ada orang|tidak ditempat|tidak dihuni|tidak ditemukan|alamat tidak|ditolak|pindah alamat|menunggu konfirmasi|disimpan di gudang|box undel/i;
+  const probIdx  = history.findIndex(h => PROB_PAT.test(h.desc || ''));
+  const probEvent = probIdx >= 0 ? history[probIdx] : null;
+
+  let html = '';
+
+  // Banner penyebab bermasalah
+  if (stage === 'BERMASALAH' && probEvent) {
+    html += `<div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#fb923c;margin-bottom:3px">⚠️ Penyebab Bermasalah</div>
+      <div style="font-size:12px;color:var(--text);font-weight:600">${escH(probEvent.desc)}</div>
+      ${probEvent.date ? `<div style="font-size:11px;color:var(--text-2);margin-top:2px">${escH(probEvent.date)}${probEvent.location ? ' · ' + escH(probEvent.location) : ''}</div>` : ''}
+    </div>`;
+  }
+
+  // Timeline — tampilkan semua event, terbaru di atas
+  const events = [...history].reverse();
+  html += `<div style="display:flex;flex-direction:column;gap:0">`;
+  events.forEach((h, i) => {
+    const isProb   = PROB_PAT.test(h.desc || '');
+    const isLast   = i === 0;
+    const dotColor = isProb ? '#fb923c' : isLast ? '#3b82f6' : '#22c55e';
+    const textColor = isProb ? 'color:#fb923c' : isLast ? 'color:var(--text)' : 'color:var(--text-2)';
+    const isLastItem = i === events.length - 1;
+    html += `<div style="display:flex;gap:10px;padding-bottom:${isLastItem?'0':'10px'}">
+      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};margin-top:3px;flex-shrink:0"></div>
+        ${!isLastItem ? `<div style="width:1px;flex:1;background:var(--border);margin-top:3px"></div>` : ''}
+      </div>
+      <div style="padding-bottom:2px;min-width:0">
+        <div style="font-size:12px;font-weight:${isProb||isLast?'600':'400'};${textColor};line-height:1.4">${escH(h.desc || '-')}</div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:1px">${escH(h.date || '')}${h.location ? ' · ' + escH(h.location) : ''}</div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  wrap.innerHTML = html;
+}
 
 function editFromDetail() {
   closeDetailModal();
@@ -861,6 +933,7 @@ function editFromDetail() {
 async function trackFromDetail() {
   const btn = document.getElementById('btn-track-detail');
   btn.disabled = true; btn.textContent = '⏳ Tracking...';
+  delete _trackDetailCache[currentDetailId]; // invalidate cache supaya ambil fresh
   await trackOne(currentDetailId).catch(()=>{});
   btn.disabled = false; btn.textContent = '🔄 Update Tracking';
   // Re-open detail with fresh data
