@@ -1222,8 +1222,14 @@ async function doImport() {
   const btn = document.getElementById('btn-do-import');
   btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px"></span> Mengimport...';
   try {
-    const prodId  = window.__activeProductFilter || null;
-    const payload = importData.map(r => ({ ...r, user_id: currentUser.id, product_id: prodId }));
+    const prodId   = window.__activeProductFilter || null;
+    const prodNama = prodId ? (window.__userProducts?.find(p => p.id === prodId)?.nama || null) : null;
+    const payload  = importData.map(r => ({
+      ...r,
+      user_id:    currentUser.id,
+      product_id: prodId,
+      ...(prodNama ? { produk: prodNama } : {})
+    }));
     for (let i = 0; i < payload.length; i += 500) {
       await sbPost('orders', payload.slice(i, i+500), { prefer: 'return=minimal' });
     }
