@@ -226,6 +226,7 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             <div class="rule-sec-body" id="rules-list-event_otw">
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
             </div>
+            <div id="notif-prod-otw" style="padding:0 10px 10px;display:flex;flex-direction:column;gap:6px"></div>
           </div>
 
           <!-- Section: Baru Sampai (D+0) -->
@@ -244,6 +245,7 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             <div class="rule-sec-body" id="rules-list-event_sampai">
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
             </div>
+            <div id="notif-prod-sampai" style="padding:0 10px 10px;display:flex;flex-direction:column;gap:6px"></div>
           </div>
         </div>
 
@@ -378,7 +380,7 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
 
 <!-- NOTIF TEMPLATE MODAL (OTW / SAMPAI) -->
 <div class="modal-overlay" id="notif-tmpl-modal">
-  <div class="modal">
+  <div class="modal modal-lg">
     <div class="modal-header">
       <div>
         <div class="modal-title" id="notif-tmpl-modal-title">Template Notif</div>
@@ -389,17 +391,19 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
     <div class="modal-body">
       <input type="hidden" id="notif-tmpl-product-id">
       <input type="hidden" id="notif-tmpl-field">
-      <div class="form-group">
-        <label class="form-label">Template Pesan</label>
-        <textarea class="form-textarea" id="notif-tmpl-text" rows="5" placeholder="Halo {nama} 😊 paket {produk} kamu lagi dalam perjalanan ya! Resi {resi} via {ekspedisi}. Ditunggu ya kak 🚚"></textarea>
+      <div class="flex items-center justify-between mb-2">
+        <div class="fw-600">Template Pesan</div>
+        <button class="btn btn-ghost btn-sm" onclick="addNotifTemplate()">+ Tambah Variasi</button>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+      <div class="text-xs text-muted mb-3">Tambahkan beberapa variasi — bot pilih random + AI rephrase supaya tidak kelihatan spam.</div>
+      <div id="notif-templates-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
         <span class="badge badge-blue" style="cursor:pointer" onclick="insertNotifVar('{nama}')">&#123;nama&#125;</span>
         <span class="badge badge-blue" style="cursor:pointer" onclick="insertNotifVar('{produk}')">&#123;produk&#125;</span>
         <span class="badge badge-green" style="cursor:pointer" onclick="insertNotifVar('{resi}')">&#123;resi&#125;</span>
         <span class="badge badge-green" style="cursor:pointer" onclick="insertNotifVar('{ekspedisi}')">&#123;ekspedisi&#125;</span>
       </div>
-      <div id="notif-tmpl-err" style="color:var(--red);font-size:12px;display:none"></div>
+      <div id="notif-tmpl-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeNotifTmplModal()">Batal</button>
@@ -932,6 +936,9 @@ function toggleSection(key) {
   if (!body) return;
   const hidden = body.classList.toggle('hidden');
   if (arrow) arrow.classList.toggle('collapsed', hidden);
+  // Juga toggle notif product container kalau ada (OTW / SAMPAI)
+  const notifEl = document.getElementById('notif-prod-' + (key === 'event_otw' ? 'otw' : key === 'event_sampai' ? 'sampai' : ''));
+  if (notifEl) notifEl.style.display = hidden ? 'none' : '';
 }
 
 function renderRules() {
@@ -1441,36 +1448,33 @@ async function loadNotifProducts(tipe) {
   try {
     const prodId = window.__activeProductFilter;
     const prodQ  = prodId ? `&id=eq.${prodId}` : '';
-    const field  = tipe === 'otw' ? 'template_notif_otw' : 'template_notif_sampai';
-    const listId = tipe === 'otw' ? 'rules-list-event_otw' : 'rules-list-event_sampai';
-    const cntId  = tipe === 'otw' ? 'cnt-event_otw' : 'cnt-event_sampai';
+    const arrField = tipe === 'otw' ? 'templates_notif_otw' : 'templates_notif_sampai';
+    const oldField = tipe === 'otw' ? 'template_notif_otw'  : 'template_notif_sampai';
+    const listId   = tipe === 'otw' ? 'notif-prod-otw' : 'notif-prod-sampai';
 
     const prods = await sbGet('products',
-      `user_id=eq.${currentUser.id}&aktif=eq.true${prodQ}&select=id,nama,${field}&order=nama.asc`);
+      `user_id=eq.${currentUser.id}&aktif=eq.true${prodQ}&select=id,nama,${arrField},${oldField}&order=nama.asc`);
 
-    const el  = document.getElementById(listId);
-    const cnt = document.getElementById(cntId);
+    const el = document.getElementById(listId);
     if (!el) return;
 
     if (!prods.length) {
-      el.innerHTML = `<div style="padding:6px 2px;font-size:12px;color:var(--text-2)">Belum ada produk aktif.</div>`;
-      if (cnt) cnt.textContent = '0';
+      el.innerHTML = '';
       return;
     }
 
-    // Hitung produk yang sudah punya template
-    const withTmpl = prods.filter(p => p[field]);
-    if (cnt) cnt.textContent = withTmpl.length + '/' + prods.length;
-
     el.innerHTML = prods.map(p => {
-      const tmpl   = p[field] || '';
+      const tmpls   = Array.isArray(p[arrField]) && p[arrField].length ? p[arrField] : [];
+      const oldTmpl = p[oldField] || '';
+      const tmpl    = tmpls.length ? (tmpls[0]?.text || '') : oldTmpl;
+      const count   = tmpls.length || (oldTmpl ? 1 : 0);
       const hasTmpl = !!tmpl;
       const dot = hasTmpl
         ? '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>'
         : '<span style="width:6px;height:6px;border-radius:50%;background:#94a3b8;display:inline-block;flex-shrink:0"></span>';
       const preview = hasTmpl
-        ? `<div class="rule-card-meta" style="margin-top:3px;font-style:italic">"${tmpl.slice(0, 60)}${tmpl.length > 60 ? '...' : ''}"</div>`
-        : `<div class="rule-card-meta">Belum ada template</div>`;
+        ? `<div class="rule-card-meta" style="margin-top:2px;font-style:italic">"${tmpl.slice(0, 70)}${tmpl.length > 70 ? '...' : ''}"${count > 1 ? ` <span style="color:var(--primary);font-style:normal">+${count-1} variasi</span>` : ''}</div>`
+        : `<div class="rule-card-meta">Belum ada template notif</div>`;
       return `
         <div class="rule-card">
           <div class="rule-card-top" style="cursor:default">
@@ -1488,26 +1492,35 @@ async function loadNotifProducts(tipe) {
   } catch(e) { console.error('loadNotifProducts:', e.message); }
 }
 
+let notifTmplCount = 0;
+
 function openNotifTmpl(productId, tipe) {
-  const field = tipe === 'otw' ? 'template_notif_otw' : 'template_notif_sampai';
-  // Cari dari cache DOM — ambil dari produk yang sudah di-render
-  // Re-fetch langsung biar fresh
-  sbGet('products', `id=eq.${productId}&select=id,nama,${field}`).then(rows => {
+  const arrField = tipe === 'otw' ? 'templates_notif_otw' : 'templates_notif_sampai';
+  const oldField = tipe === 'otw' ? 'template_notif_otw'  : 'template_notif_sampai';
+  sbGet('products', `id=eq.${productId}&select=id,nama,${arrField},${oldField}`).then(rows => {
     const p = rows?.[0];
     if (!p) return;
     document.getElementById('notif-tmpl-product-id').value = productId;
-    document.getElementById('notif-tmpl-field').value      = field;
+    document.getElementById('notif-tmpl-field').value      = arrField;
     document.getElementById('notif-tmpl-modal-title').textContent =
       (tipe === 'otw' ? 'Template OTW — ' : 'Template Sampai — ') + p.nama;
     document.getElementById('notif-tmpl-modal-sub').textContent =
       tipe === 'otw'
-        ? 'Dikirim saat resi berubah ke OTW / Out for Delivery'
-        : 'Dikirim saat resi berubah ke SAMPAI / Delivered';
-    document.getElementById('notif-tmpl-text').value = p[field] || '';
-    document.getElementById('notif-tmpl-text').placeholder = tipe === 'otw'
-      ? 'Halo {nama} 😊 paket {produk} kamu lagi dalam perjalanan ya! Resi {resi} via {ekspedisi}. Ditunggu ya kak 🚚'
-      : 'Halo {nama} 😊 paket {produk} kamu udah sampai ya! Semoga bermanfaat. Kalau ada pertanyaan cara pakai, tanya aku aja kak 🙏';
+        ? 'Dikirim saat resi berubah ke OTW / Out for Delivery · random pilih + AI rephrase'
+        : 'Dikirim saat resi berubah ke SAMPAI / Delivered · random pilih + AI rephrase';
+
+    document.getElementById('notif-templates-list').innerHTML = '';
+    notifTmplCount = 0;
     document.getElementById('notif-tmpl-err').style.display = 'none';
+
+    // Load dari array baru, fallback ke teks lama
+    const tmpls = Array.isArray(p[arrField]) && p[arrField].length
+      ? p[arrField]
+      : (p[oldField] ? [{ text: p[oldField] }] : []);
+
+    if (tmpls.length) tmpls.forEach(t => addNotifTemplate(t));
+    else addNotifTemplate();
+
     document.getElementById('notif-tmpl-modal').classList.add('show');
   }).catch(() => {});
 }
@@ -1516,22 +1529,49 @@ function closeNotifTmplModal() {
   document.getElementById('notif-tmpl-modal').classList.remove('show');
 }
 
+function addNotifTemplate(val = '') {
+  notifTmplCount++;
+  const idx     = notifTmplCount;
+  const el      = document.getElementById('notif-templates-list');
+  const textVal = (typeof val === 'object' && val) ? (val.text || '') : (val || '');
+  const div     = document.createElement('div');
+  div.id = `nt-wrap-${idx}`;
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <div style="min-width:22px;text-align:center;padding-top:10px;color:var(--text3);font-size:12px">${idx}</div>
+      <textarea class="form-textarea nt-input" id="nt-${idx}" placeholder="Ketik variasi pesan ${idx}..." rows="3">${textVal}</textarea>
+      <button class="btn btn-ghost btn-xs" style="margin-top:8px;color:var(--red)" onclick="removeNotifTmpl(${idx})">✕</button>
+    </div>`;
+  el.appendChild(div);
+}
+
+function removeNotifTmpl(idx) {
+  document.getElementById(`nt-wrap-${idx}`)?.remove();
+}
+
 function insertNotifVar(v) {
-  const ta = document.getElementById('notif-tmpl-text');
-  if (!ta) return;
-  const pos = ta.selectionStart ?? ta.value.length;
-  ta.value = ta.value.slice(0, pos) + v + ta.value.slice(pos);
-  ta.focus();
+  const inputs = document.querySelectorAll('.nt-input');
+  const last   = inputs[inputs.length - 1];
+  if (last) {
+    const pos = last.selectionStart ?? last.value.length;
+    last.value = last.value.slice(0, pos) + v + last.value.slice(pos);
+    last.focus();
+  }
 }
 
 async function saveNotifTmpl() {
-  const prodId = document.getElementById('notif-tmpl-product-id').value;
-  const field  = document.getElementById('notif-tmpl-field').value;
-  const tipe   = field === 'template_notif_otw' ? 'otw' : 'sampai';
-  const text   = document.getElementById('notif-tmpl-text').value.trim();
+  const prodId   = document.getElementById('notif-tmpl-product-id').value;
+  const arrField = document.getElementById('notif-tmpl-field').value;
+  const tipe     = arrField === 'templates_notif_otw' ? 'otw' : 'sampai';
 
-  if (!text) {
-    document.getElementById('notif-tmpl-err').textContent = 'Template tidak boleh kosong.';
+  const templates = [...document.querySelectorAll('[id^="nt-wrap-"]')]
+    .map(wrap => {
+      const text = wrap.querySelector('.nt-input')?.value.trim() || '';
+      return text ? { text } : null;
+    }).filter(Boolean);
+
+  if (!templates.length) {
+    document.getElementById('notif-tmpl-err').textContent = 'Minimal satu template pesan.';
     document.getElementById('notif-tmpl-err').style.display = 'block';
     return;
   }
@@ -1539,7 +1579,7 @@ async function saveNotifTmpl() {
   const btn = document.getElementById('btn-save-notif-tmpl');
   btn.disabled = true; btn.textContent = 'Menyimpan...';
   try {
-    await sbPatch('products', `id=eq.${prodId}`, { [field]: text });
+    await sbPatch('products', `id=eq.${prodId}`, { [arrField]: templates });
     toast('Template tersimpan ✅', 'success');
     closeNotifTmplModal();
     await loadNotifProducts(tipe);
