@@ -220,14 +220,11 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
               </div>
               <span class="rule-sec-arrow" id="arr-event_otw">▾</span>
             </div>
+            <div style="padding:6px 14px 8px;font-size:11px;color:var(--text-2);line-height:1.5">
+              Notif terkirim otomatis saat resi berubah ke status <b>OTW / Out for Delivery</b>. Variabel: <code>{nama}</code> <code>{resi}</code> <code>{ekspedisi}</code> <code>{produk}</code>
+            </div>
             <div class="rule-sec-body" id="rules-list-event_otw">
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
-            </div>
-            <!-- Notif Template OTW -->
-            <div style="padding:12px 14px;border-top:1px solid var(--border)">
-              <div style="font-size:11px;color:var(--text-2);margin-bottom:8px">⚡ Template notif otomatis saat paket OTW. Variabel: <code>{nama}</code> <code>{resi}</code> <code>{ekspedisi}</code> <code>{produk}</code></div>
-              <textarea class="form-textarea" id="notif-tmpl-otw" rows="3" placeholder="Contoh: Halo {nama} 😊 paket {produk} kamu lagi dalam perjalanan ya! Resi {resi} via {ekspedisi}. Ditunggu ya kak 🚚"></textarea>
-              <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveNotifTemplate()" id="btn-save-notif-tmpl">Simpan Template</button>
             </div>
           </div>
 
@@ -241,14 +238,11 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
               </div>
               <span class="rule-sec-arrow" id="arr-event_sampai">▾</span>
             </div>
+            <div style="padding:6px 14px 8px;font-size:11px;color:var(--text-2);line-height:1.5">
+              Notif terkirim otomatis saat resi berubah ke status <b>SAMPAI / Delivered</b>. Variabel: <code>{nama}</code> <code>{resi}</code> <code>{ekspedisi}</code> <code>{produk}</code>
+            </div>
             <div class="rule-sec-body" id="rules-list-event_sampai">
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
-            </div>
-            <!-- Notif Template SAMPAI -->
-            <div style="padding:12px 14px;border-top:1px solid var(--border)">
-              <div style="font-size:11px;color:var(--text-2);margin-bottom:8px">⚡ Template notif otomatis saat paket sampai. Variabel: <code>{nama}</code> <code>{resi}</code> <code>{ekspedisi}</code> <code>{produk}</code></div>
-              <textarea class="form-textarea" id="notif-tmpl-sampai" rows="3" placeholder="Contoh: Halo {nama} 😊 paket {produk} kamu udah sampai ya! Semoga bermanfaat. Kalau ada pertanyaan cara pakai, tanya aku aja kak 🙏"></textarea>
-              <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveNotifTemplate()" id="btn-save-notif-tmpl-2">Simpan Template</button>
             </div>
           </div>
         </div>
@@ -378,6 +372,38 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeReorderTmplModal()">Batal</button>
       <button class="btn btn-primary" onclick="saveReorderTmpls()" id="btn-save-reorder-tmpl">Simpan Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIF TEMPLATE MODAL (OTW / SAMPAI) -->
+<div class="modal-overlay" id="notif-tmpl-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="notif-tmpl-modal-title">Template Notif</div>
+        <div class="text-xs text-muted" id="notif-tmpl-modal-sub">Dikirim otomatis saat status resi berubah</div>
+      </div>
+      <button class="modal-close" onclick="closeNotifTmplModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="notif-tmpl-product-id">
+      <input type="hidden" id="notif-tmpl-field">
+      <div class="form-group">
+        <label class="form-label">Template Pesan</label>
+        <textarea class="form-textarea" id="notif-tmpl-text" rows="5" placeholder="Halo {nama} 😊 paket {produk} kamu lagi dalam perjalanan ya! Resi {resi} via {ekspedisi}. Ditunggu ya kak 🚚"></textarea>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+        <span class="badge badge-blue" style="cursor:pointer" onclick="insertNotifVar('{nama}')">&#123;nama&#125;</span>
+        <span class="badge badge-blue" style="cursor:pointer" onclick="insertNotifVar('{produk}')">&#123;produk&#125;</span>
+        <span class="badge badge-green" style="cursor:pointer" onclick="insertNotifVar('{resi}')">&#123;resi&#125;</span>
+        <span class="badge badge-green" style="cursor:pointer" onclick="insertNotifVar('{ekspedisi}')">&#123;ekspedisi&#125;</span>
+      </div>
+      <div id="notif-tmpl-err" style="color:var(--red);font-size:12px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNotifTmplModal()">Batal</button>
+      <button class="btn btn-primary" onclick="saveNotifTmpl()" id="btn-save-notif-tmpl">Simpan</button>
     </div>
   </div>
 </div>
@@ -1406,35 +1432,122 @@ async function saveReorderTmpls() {
   btn.disabled = false; btn.textContent = 'Simpan Template';
 }
 
-// ── NOTIF OTOMATIS TEMPLATE ─────────────────────────────────
+// ── NOTIF OTOMATIS TEMPLATE (OTW / SAMPAI) ───────────────────
 async function loadNotifTemplate() {
-  const prodId = window.__activeProductFilter;
-  if (!prodId) {
-    document.getElementById('notif-tmpl-otw').value = '';
-    document.getElementById('notif-tmpl-sampai').value = '';
-    return;
-  }
-  try {
-    const rows = await sbGet('products', `id=eq.${prodId}&select=template_notif_otw,template_notif_sampai`);
-    const p = rows?.[0] || {};
-    document.getElementById('notif-tmpl-otw').value    = p.template_notif_otw    || '';
-    document.getElementById('notif-tmpl-sampai').value = p.template_notif_sampai || '';
-  } catch(e) { console.error('loadNotifTemplate:', e.message); }
+  await Promise.all([loadNotifProducts('otw'), loadNotifProducts('sampai')]);
 }
 
-async function saveNotifTemplate() {
-  const prodId = window.__activeProductFilter;
-  if (!prodId) { toast('Pilih produk dulu', 'info'); return; }
-  const btns = [document.getElementById('btn-save-notif-tmpl'), document.getElementById('btn-save-notif-tmpl-2')].filter(Boolean);
-  btns.forEach(b => { b.disabled = true; b.textContent = 'Menyimpan...'; });
+async function loadNotifProducts(tipe) {
   try {
-    await sbPatch('products', `id=eq.${prodId}`, {
-      template_notif_otw:    document.getElementById('notif-tmpl-otw').value.trim() || null,
-      template_notif_sampai: document.getElementById('notif-tmpl-sampai').value.trim() || null,
-    });
-    toast('Template notif tersimpan ✅', 'success');
-  } catch(e) { toast('Gagal simpan: ' + e.message, 'error'); }
-  btns.forEach(b => { b.disabled = false; b.textContent = 'Simpan Template'; });
+    const prodId = window.__activeProductFilter;
+    const prodQ  = prodId ? `&id=eq.${prodId}` : '';
+    const field  = tipe === 'otw' ? 'template_notif_otw' : 'template_notif_sampai';
+    const listId = tipe === 'otw' ? 'rules-list-event_otw' : 'rules-list-event_sampai';
+    const cntId  = tipe === 'otw' ? 'cnt-event_otw' : 'cnt-event_sampai';
+
+    const prods = await sbGet('products',
+      `user_id=eq.${currentUser.id}&aktif=eq.true${prodQ}&select=id,nama,${field}&order=nama.asc`);
+
+    const el  = document.getElementById(listId);
+    const cnt = document.getElementById(cntId);
+    if (!el) return;
+
+    if (!prods.length) {
+      el.innerHTML = `<div style="padding:6px 2px;font-size:12px;color:var(--text-2)">Belum ada produk aktif.</div>`;
+      if (cnt) cnt.textContent = '0';
+      return;
+    }
+
+    // Hitung produk yang sudah punya template
+    const withTmpl = prods.filter(p => p[field]);
+    if (cnt) cnt.textContent = withTmpl.length + '/' + prods.length;
+
+    el.innerHTML = prods.map(p => {
+      const tmpl   = p[field] || '';
+      const hasTmpl = !!tmpl;
+      const dot = hasTmpl
+        ? '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>'
+        : '<span style="width:6px;height:6px;border-radius:50%;background:#94a3b8;display:inline-block;flex-shrink:0"></span>';
+      const preview = hasTmpl
+        ? `<div class="rule-card-meta" style="margin-top:3px;font-style:italic">"${tmpl.slice(0, 60)}${tmpl.length > 60 ? '...' : ''}"</div>`
+        : `<div class="rule-card-meta">Belum ada template</div>`;
+      return `
+        <div class="rule-card">
+          <div class="rule-card-top" style="cursor:default">
+            ${dot}
+            <div style="flex:1;min-width:0">
+              <div class="rule-card-name">${p.nama}</div>
+              ${preview}
+            </div>
+            <div class="rule-card-actions" onclick="event.stopPropagation()">
+              <button class="btn btn-primary btn-sm" style="font-size:11px" onclick="openNotifTmpl('${p.id}','${tipe}')">Edit Template</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) { console.error('loadNotifProducts:', e.message); }
+}
+
+function openNotifTmpl(productId, tipe) {
+  const field = tipe === 'otw' ? 'template_notif_otw' : 'template_notif_sampai';
+  // Cari dari cache DOM — ambil dari produk yang sudah di-render
+  // Re-fetch langsung biar fresh
+  sbGet('products', `id=eq.${productId}&select=id,nama,${field}`).then(rows => {
+    const p = rows?.[0];
+    if (!p) return;
+    document.getElementById('notif-tmpl-product-id').value = productId;
+    document.getElementById('notif-tmpl-field').value      = field;
+    document.getElementById('notif-tmpl-modal-title').textContent =
+      (tipe === 'otw' ? 'Template OTW — ' : 'Template Sampai — ') + p.nama;
+    document.getElementById('notif-tmpl-modal-sub').textContent =
+      tipe === 'otw'
+        ? 'Dikirim saat resi berubah ke OTW / Out for Delivery'
+        : 'Dikirim saat resi berubah ke SAMPAI / Delivered';
+    document.getElementById('notif-tmpl-text').value = p[field] || '';
+    document.getElementById('notif-tmpl-text').placeholder = tipe === 'otw'
+      ? 'Halo {nama} 😊 paket {produk} kamu lagi dalam perjalanan ya! Resi {resi} via {ekspedisi}. Ditunggu ya kak 🚚'
+      : 'Halo {nama} 😊 paket {produk} kamu udah sampai ya! Semoga bermanfaat. Kalau ada pertanyaan cara pakai, tanya aku aja kak 🙏';
+    document.getElementById('notif-tmpl-err').style.display = 'none';
+    document.getElementById('notif-tmpl-modal').classList.add('show');
+  }).catch(() => {});
+}
+
+function closeNotifTmplModal() {
+  document.getElementById('notif-tmpl-modal').classList.remove('show');
+}
+
+function insertNotifVar(v) {
+  const ta = document.getElementById('notif-tmpl-text');
+  if (!ta) return;
+  const pos = ta.selectionStart ?? ta.value.length;
+  ta.value = ta.value.slice(0, pos) + v + ta.value.slice(pos);
+  ta.focus();
+}
+
+async function saveNotifTmpl() {
+  const prodId = document.getElementById('notif-tmpl-product-id').value;
+  const field  = document.getElementById('notif-tmpl-field').value;
+  const tipe   = field === 'template_notif_otw' ? 'otw' : 'sampai';
+  const text   = document.getElementById('notif-tmpl-text').value.trim();
+
+  if (!text) {
+    document.getElementById('notif-tmpl-err').textContent = 'Template tidak boleh kosong.';
+    document.getElementById('notif-tmpl-err').style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btn-save-notif-tmpl');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  try {
+    await sbPatch('products', `id=eq.${prodId}`, { [field]: text });
+    toast('Template tersimpan ✅', 'success');
+    closeNotifTmplModal();
+    await loadNotifProducts(tipe);
+  } catch(e) {
+    document.getElementById('notif-tmpl-err').textContent = e.message;
+    document.getElementById('notif-tmpl-err').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Simpan';
 }
 
 async function syncJadwal() {
