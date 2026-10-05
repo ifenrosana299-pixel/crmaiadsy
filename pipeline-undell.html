@@ -202,7 +202,7 @@ async function loadUndell() {
       `user_id=eq.${currentUser.id}` +
       `&or=(fu_undell_count.gt.0,status_resi.eq.BERMASALAH)` +
       prodQ +
-      `&select=id,nama_customer,nomer_resi,ekspedisi,status_resi,cs,fu_undell_count,internal_alert_count,created_at,tgl_order,nomer_hp,product_id` +
+      `&select=id,nama_customer,nomer_resi,ekspedisi,status_resi,cs,fu_undell_count,internal_alert_count,created_at,nomer_hp,product_id` +
       `&order=created_at.desc&limit=500`
     );
     allOrders = orders;
@@ -286,7 +286,7 @@ function renderBoard() {
 
 function renderCard(o) {
   const fu      = o.fu_undell_count || 0;
-  const tanggal = o.tgl_order ? fmtDate(o.tgl_order) : fmtDate(o.created_at);
+  const tanggal = fmtDate(o.created_at);
   const fuTag   = fu > 0 ? `<span class="utag utag-fu">FU ${fu}x</span>` : '';
   const ekspTag = o.ekspedisi ? `<span class="utag utag-ekspedisi">${o.ekspedisi}</span>` : '';
   const csTag   = o.cs ? `<span class="utag utag-cs">${o.cs}</span>` : '';
@@ -344,7 +344,7 @@ function openDetail(orderId) {
     <div class="detail-row"><span class="detail-label">Ekspedisi</span><span class="detail-value">${escH(o.ekspedisi || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">CS</span><span class="detail-value">${escH(o.cs || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">No. HP Customer</span><span class="detail-value">${escH(o.nomer_hp || '-')}</span></div>
-    <div class="detail-row"><span class="detail-label">Tgl Order</span><span class="detail-value">${fmtDate(o.tgl_order || o.created_at)}</span></div>
+    <div class="detail-row"><span class="detail-label">Tgl Order</span><span class="detail-value">${fmtDate(o.created_at)}</span></div>
   `;
 
   document.getElementById('detail-modal').classList.add('open');
