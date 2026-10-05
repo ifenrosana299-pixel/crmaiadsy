@@ -202,6 +202,11 @@ export default async function handler(req, res) {
   if (secret !== CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
   if (req.method !== 'POST') return res.status(405).end();
 
+  // ── MODE CLOSING FU ─────────────────────────────────────────
+  if (req.query.mode === 'closing') {
+    return handleClosingFU(req, res);
+  }
+
   const today     = new Date().toISOString().slice(0, 10);
   const forceMode = req.query.force === 'true' || req.body?.force === true;
   const results   = { sent: 0, failed: 0, skipped: 0, skipped_timing: 0, details: [], force: forceMode };
@@ -371,6 +376,126 @@ export default async function handler(req, res) {
 
       // Random delay 5-15 detik antar kirim
       await randomDelay();
+    }
+
+    return res.json(results);
+  } catch(e) {
+    return res.status(500).json({ error: e.message, ...results });
+  }
+}
+
+/* ── CLOSING FU HANDLER ─────────────────────────────────────
+   Dipanggil via: POST /api/followup-sender?mode=closing
+   Cron VPS: setiap 30 menit
+   Logic:
+   1. Ambil conversations dengan close_intent_at > 2 jam lalu + close_fu_count < 3
+   2. Generate pesan closing via Claude (FU ke-1/2/3 tone berbeda)
+   3. Kirim WA + log ke conv_messages + update counter
+────────────────────────────────────────────────────────────*/
+async function handleClosingFU(req, res) {
+  const results = { sent: 0, failed: 0, skipped: 0, details: [] };
+  const MAX_FU  = 3;
+  const WAIT_MS = 2 * 60 * 60 * 1000; // 2 jam dalam ms
+
+  try {
+    const now        = new Date();
+    const cutoffIso  = new Date(now.getTime() - WAIT_MS).toISOString();
+
+    // Ambil conversations dengan close_intent_at sudah > 2 jam + belum 3x FU
+    const convs = await sb('conversations',
+      `close_intent_at=not.is.null` +
+      `&close_intent_at=lte.${encodeURIComponent(cutoffIso)}` +
+      `&close_fu_count=lt.${MAX_FU}` +
+      `&status=neq.selesai` +
+      `&select=id,user_id,customer_id,product_id,close_fu_count,state` +
+      `,customers(nama,wa_number,produk)` +
+      `,products(nama,harga,harga_bundling,wa_session_id,persona_cs_nama,diskon_info)` +
+      `&limit=30`
+    );
+
+    if (!convs.length) return res.json({ ...results, message: 'Tidak ada closing FU hari ini' });
+
+    for (const conv of convs) {
+      const customer = conv.customers;
+      const product  = conv.products;
+      if (!customer?.wa_number) { results.skipped++; continue; }
+
+      const fuCount  = conv.close_fu_count || 0;
+      const csNama   = product?.persona_cs_nama || 'Sari';
+      const namaProd = product?.nama || customer?.produk || 'produk';
+      const namaKak  = customer?.nama || 'Kak';
+
+      // Tone berbeda per FU
+      const toneMap = {
+        0: `Ini follow-up pertama. Tone: hangat dan penasaran — tanya kenapa belum lanjut, tawarkan bantuan. Jangan terlalu agresif.`,
+        1: `Ini follow-up kedua. Tone: lebih personal — sebut nama, tunjukkan kamu masih nunggu. Bisa tawarkan promo/keuntungan kecil kalau ada.`,
+        2: `Ini follow-up ketiga dan terakhir. Tone: ringan + sedikit urgensi — "terakhir nih" tapi tidak memaksa. Kasih tahu ini reminder terakhir.`,
+      };
+      const tone = toneMap[fuCount] || toneMap[2];
+
+      try {
+        const apiKey = await getAnthropicKey(conv.user_id);
+        const { default: Anthropic } = await import('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey });
+
+        const hargaInfo = product?.harga
+          ? `Harga: Rp ${Number(product.harga).toLocaleString('id-ID')}`
+          : '';
+        const promoInfo = product?.diskon_info || '';
+
+        const msg = await client.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          messages: [{
+            role: 'user',
+            content: `Kamu ${csNama}, CS after-sales yang follow-up customer.
+Customer: ${namaKak}
+Produk yang pernah dibeli + mau dibeli lagi: ${namaProd}
+${hargaInfo}
+${promoInfo ? `Promo: ${promoInfo}` : ''}
+
+${tone}
+
+Buat 1 pesan WA follow-up closing yang singkat (maks 2-3 kalimat). Bahasa Indonesia natural, kasual, tidak kaku. Pakai emoji secukupnya. Jangan pakai markdown. Balas HANYA teks pesannya.`
+          }]
+        });
+
+        const pesan = msg.content[0].text.trim();
+        if (!pesan) { results.skipped++; continue; }
+
+        // Ambil session WA
+        let sessionId = conv.user_id;
+        if (product?.wa_session_id) sessionId = product.wa_session_id;
+
+        // Kirim WA
+        await sendWA(sessionId, customer.wa_number, pesan);
+
+        // Log ke conv_messages
+        await sb('conv_messages', '', {
+          method: 'POST', prefer: 'return=minimal',
+          body: { conversation_id: conv.id, isi: pesan, role: 'ai' }
+        });
+
+        // Update counter + last_msg_at
+        const newCount = fuCount + 1;
+        const patch = {
+          close_fu_count: newCount,
+          last_msg_at: now.toISOString(),
+        };
+        // Kalau sudah 3x FU → reset intent supaya tidak FU lagi
+        if (newCount >= MAX_FU) {
+          patch.close_intent_at = null;
+        }
+        await sb('conversations', `id=eq.${conv.id}`, { method: 'PATCH', body: patch });
+
+        results.sent++;
+        results.details.push({ customer: customer.nama, fu_ke: newCount, status: 'sent' });
+
+        await randomDelay();
+      } catch(e) {
+        results.failed++;
+        results.details.push({ customer: customer?.nama, status: 'failed', error: e.message });
+      }
     }
 
     return res.json(results);

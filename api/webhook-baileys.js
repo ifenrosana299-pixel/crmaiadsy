@@ -60,6 +60,19 @@ async function sbPatch(table, query, body) {
   return res.json();
 }
 
+/* ── DETEKSI SINYAL KUAT INTENT BELI ─────────────────────── */
+function detectCloseIntent(msg) {
+  if (!msg || msg.length < 3) return false;
+  const m = msg.toLowerCase();
+  // Tanya harga
+  if (/\b(berapa\s+(harga|harganya)|harga(nya)?\s+(berapa|kalau|kalo)|beli\s+\d|mau\s+beli\s+\d|kalau\s+beli|kalo\s+beli)\b/.test(m)) return true;
+  // Tanya ongkir
+  if (/\b(ongkir|ongkos\s+kirim|biaya\s+kirim|biaya\s+pengiriman|gratis\s+ongkir)\b/.test(m)) return true;
+  // Tanya promo / bonus / diskon
+  if (/\b(promo|bonus|diskon|potongan|cashback|gratis|free\s+ongkir|ada\s+promo|ada\s+bonus|ada\s+diskon)\b/.test(m)) return true;
+  return false;
+}
+
 /* ── DETEKSI OBJEKSI CLOSING ──────────────────────────────── */
 function detectObjeksi(msg) {
   if (!msg || msg.length < 3) return null;
@@ -1664,6 +1677,28 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
         conversation_id: conversation?.id || null,
         tipe:            objTipe,
         pesan:           (message || '').slice(0, 300),
+      }).catch(() => {});
+    }
+
+    // ── Deteksi sinyal kuat intent beli → flag close_intent_at ──
+    // Hanya aktif kalau customer sudah pernah beli + produk sudah SAMPAI
+    const isCloseIntent = detectCloseIntent(message);
+    if (isCloseIntent) {
+      const hasDelivered = latestOrder?.status_resi === 'SAMPAI';
+      if (hasDelivered) {
+        sbPatch('conversations', `?id=eq.${conversation.id}`, {
+          close_intent_at: new Date().toISOString(),
+          close_fu_count: 0,
+        }).catch(() => {});
+        console.log(`[close-intent] Sinyal kuat terdeteksi: "${message.slice(0,60)}" → flag di-set`);
+      }
+    }
+    // Reset close_intent jika customer sudah jawab/aktif kembali (bukan sinyal beli)
+    // Supaya tidak double FU kalau customer sudah dilayani
+    if (!isCloseIntent && conversation.close_intent_at) {
+      sbPatch('conversations', `?id=eq.${conversation.id}`, {
+        close_intent_at: null,
+        close_fu_count: 0,
       }).catch(() => {});
     }
 
