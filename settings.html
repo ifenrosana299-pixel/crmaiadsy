@@ -770,6 +770,16 @@ async function tambahCS() {
     document.getElementById('cs-wa-inp').value = '';
     toastLocal(`✅ CS ${nama} berhasil ditambahkan`);
     sbCacheClear('cs_contacts');
+    // Auto-kirim WA dengan link Pipeline Undell
+    try {
+      const newCS = await sbGet('cs_contacts', `user_id=eq.${userId}&wa_number=eq.${wa}&select=id,token&order=created_at.desc&limit=1`);
+      if (newCS[0]?.token) {
+        const fakeBtn = { disabled: false, textContent: '' };
+        await kirimLinkCS(wa, nama, newCS[0].token, fakeBtn);
+      }
+    } catch(eWa) {
+      toastLocal('⚠️ CS tersimpan, tapi gagal kirim WA: ' + eWa.message);
+    }
     loadCSContacts();
   } catch(e) { toastLocal('❌ Gagal: ' + e.message); }
 }

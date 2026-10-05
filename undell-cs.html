@@ -29,8 +29,14 @@ body{font-family:'Inter',sans-serif;background:#0d1117;color:#e2e8f0;font-size:1
 .s-red .stat-num{color:#f87171}
 .s-blue .stat-num{color:#a5b4fc}
 .s-gray .stat-num{color:#94a3b8}
-.clickable{cursor:pointer;transition:border-color .15s,transform .1s;active:scale(.97)}
+.clickable{cursor:pointer;transition:border-color .15s,transform .1s}
 .clickable:active{transform:scale(.96)}
+.stat-card.active-filter{border-color:rgba(255,255,255,.3);background:#1e293b}
+.s-yellow.active-filter{border-color:#fbbf24}
+.s-orange.active-filter{border-color:#fb923c}
+.s-red.active-filter{border-color:#f87171}
+.s-blue.active-filter{border-color:#a5b4fc}
+.s-gray.active-filter{border-color:#94a3b8}
 @media(max-width:420px){
   .stats-row{grid-template-columns:repeat(3,1fr)}
   .stats-row .stat-card:nth-child(4),.stats-row .stat-card:nth-child(5){grid-column:span 1}
@@ -122,10 +128,11 @@ body{font-family:'Inter',sans-serif;background:#0d1117;color:#e2e8f0;font-size:1
 
 <script>
 const PAGE_SIZE = 5;
-let allOrders  = [];
-let csInfo     = {};
-let searchVal  = '';
-let secPages   = { fu1: 0, fu2: 0, fu3: 0, otw: 0 };
+let allOrders    = [];
+let csInfo       = {};
+let searchVal    = '';
+let secPages     = { fu1: 0, fu2: 0, fu3: 0, otw: 0 };
+let activeFilter = null; // null = semua, 'fu1'|'fu2'|'fu3'|'otw' = filter section
 
 const token = new URLSearchParams(location.search).get('token');
 
@@ -194,11 +201,11 @@ function render() {
 
   const html = `
     <div class="stats-row">
-      <div class="stat-card s-yellow clickable" onclick="scrollToSec('sec-fu1')"><div class="stat-num">${byCol.fu1.length}</div><div class="stat-label">🟡 FU +1</div></div>
-      <div class="stat-card s-orange clickable" onclick="scrollToSec('sec-fu2')"><div class="stat-num">${byCol.fu2.length}</div><div class="stat-label">🟠 FU +2</div></div>
-      <div class="stat-card s-red clickable" onclick="scrollToSec('sec-fu3')"><div class="stat-num">${byCol.fu3.length}</div><div class="stat-label">🔴 FU +3</div></div>
-      <div class="stat-card s-blue clickable" onclick="scrollToSec('sec-otw')"><div class="stat-num">${byCol.otw.length}</div><div class="stat-label">🚚 Dikirim Ulang</div></div>
-      <div class="stat-card s-gray"><div class="stat-num">${total}</div><div class="stat-label">Total Order</div></div>
+      <div class="stat-card s-yellow clickable${activeFilter==='fu1'?' active-filter':''}" onclick="setFilter('fu1')"><div class="stat-num">${byCol.fu1.length}</div><div class="stat-label">🟡 FU +1</div></div>
+      <div class="stat-card s-orange clickable${activeFilter==='fu2'?' active-filter':''}" onclick="setFilter('fu2')"><div class="stat-num">${byCol.fu2.length}</div><div class="stat-label">🟠 FU +2</div></div>
+      <div class="stat-card s-red clickable${activeFilter==='fu3'?' active-filter':''}" onclick="setFilter('fu3')"><div class="stat-num">${byCol.fu3.length}</div><div class="stat-label">🔴 FU +3</div></div>
+      <div class="stat-card s-blue clickable${activeFilter==='otw'?' active-filter':''}" onclick="setFilter('otw')"><div class="stat-num">${byCol.otw.length}</div><div class="stat-label">🚚 Dikirim Ulang</div></div>
+      <div class="stat-card s-gray clickable${activeFilter===null?' active-filter':''}" onclick="setFilter(null)"><div class="stat-num">${total}</div><div class="stat-label">🔢 Total</div></div>
     </div>
 
     <div class="search-wrap">
@@ -211,6 +218,17 @@ function render() {
         <div class="state-title">Semua Beres!</div>
         <div class="state-sub">Tidak ada order BERMASALAH${search ? ' yang cocok' : ''} saat ini.</div>
       </div>
+    ` : activeFilter ? `
+      ${renderSection(activeFilter, byCol[activeFilter],
+          {fu1:'🟡',fu2:'🟠',fu3:'🔴',otw:'🚚'}[activeFilter],
+          {fu1:'FU +1',fu2:'FU +2',fu3:'FU +3',otw:'Dikirim Ulang'}[activeFilter],
+          activeFilter, 'sec-active')}
+      ${byCol[activeFilter].length === 0 ? `
+        <div class="center-state" style="min-height:25vh">
+          <div class="state-icon">✅</div>
+          <div class="state-title">Kosong</div>
+          <div class="state-sub">Tidak ada order di kategori ini.</div>
+        </div>` : ''}
     ` : `
       ${renderSection('fu3', byCol.fu3, '🔴', 'FU +3', 'fu3', 'sec-fu3')}
       ${renderSection('fu2', byCol.fu2, '🟠', 'FU +2', 'fu2', 'sec-fu2')}
@@ -281,9 +299,12 @@ async function tandaiDitangani(orderId, btn) {
   }
 }
 
-function scrollToSec(id) {
-  const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function setFilter(key) {
+  // Klik card yang sama lagi = reset ke semua
+  activeFilter = activeFilter === key ? null : key;
+  secPages = { fu1: 0, fu2: 0, fu3: 0, otw: 0 };
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function secPage(key, dir) {
