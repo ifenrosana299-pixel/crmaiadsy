@@ -1,13 +1,13 @@
-// api/followup-sender.js — cron job: kirim FU otomatis tiap jam
-// Setup cron VPS: tiap jam → curl POST /api/followup-sender
+// api/followup-sender.js — cron job: kirim FU otomatis tiap 15 menit
+// Setup cron VPS: */15 * * * * curl POST /api/followup-sender
 // Header: x-cron-secret: adsysukses2026
 //
 // Anti-ban features:
-// 1. Smart timing     — tiap customer punya jam kirim optimal (belajar dari response)
-// 2. Spread window    — tiap customer dapat slot menit random dalam 2 jam → tidak barengan
+// 1. Smart timing     — tiap customer punya jam kirim optimal (belajar dari response, aktif dari bales pertama)
+// 2. Spread window    — tiap customer dapat slot menit random → tidak barengan
 // 3. AI auto-vary     — Claude Haiku rephrase template → tiap pesan unik, tidak mirip
 // 4. Random delay     — 5-15 detik antar kirim → tidak kelihatan bot
-// 5. Max per run      — maks 20 pesan per jam → tidak blasting massal
+// 5. Max per run      — maks 20 pesan per 15 menit → tidak blasting massal
 // 6. Auto-label       — customer yang tidak balas 3x FU → label tidak_responsif, di-skip otomatis
 
 const SB_URL      = process.env.SUPABASE_URL;
@@ -16,10 +16,9 @@ const BAILEYS     = process.env.BAILEYS_URL || 'http://13.140.178.4:3000';
 const SECRET      = process.env.WEBHOOK_SECRET || 'adsysukses2026';
 const CRON_SECRET = process.env.CRON_SECRET || 'adsysukses2026';
 
-const DEFAULT_SEND_HOUR  = 9;   // jam 9 WIB default
-const MIN_RESPONSES      = 2;   // minimal balas sebelum pakai smart timing
+const DEFAULT_SEND_HOUR  = 9;   // jam 9 WIB default kalau belum ada history balas
 const SPREAD_WINDOW_H    = 2;   // spread dalam 2 jam dari jam target
-const MAX_PER_RUN        = 20;  // maks kirim per jam
+const MAX_PER_RUN        = 20;  // maks kirim per 15 menit
 const DELAY_MIN_MS       = 5000;  // delay min antar pesan (5 detik)
 const DELAY_MAX_MS       = 15000; // delay max antar pesan (15 detik)
 const MAX_NO_REPLY       = 3;   // maks FU berturut-turut tanpa balas → auto tidak_responsif
@@ -178,22 +177,23 @@ function getSpreadSlot(customer) {
 }
 
 function shouldSendNow(customer, scheduledDate, today) {
-  // Jadwal hari ini → kirim langsung asal belum lewat jam 21:00 WIB
-  if (scheduledDate === today) return nowWIBHour() < 21;
-
-  // Jadwal hari lain yang sudah tiba → pakai smart timing (jam 9 WIB)
   const currentHour = nowWIBHour();
-  const targetHour  = customer.optimal_send_hour != null
+
+  // Jadwal hari ini → kirim langsung di cron berikutnya, asal jam 08:00–21:00 WIB
+  if (scheduledDate === today) return currentHour >= 8 && currentHour < 21;
+
+  // Jadwal hari lain yang sudah tiba → pakai smart timing
+  const targetHour = customer.optimal_send_hour != null
     ? customer.optimal_send_hour
     : DEFAULT_SEND_HOUR;
 
-  // Spread: tambahkan slot menit customer ke jam target
-  const slot        = getSpreadSlot(customer);
-  const spreadHour  = targetHour + (slot / 60);
+  // Spread: tiap customer dapat slot menit berbeda supaya tidak barengan
+  const slot       = getSpreadSlot(customer);
+  const sendHour   = targetHour + (slot / 60);
 
-  // Kirim kalau jam sekarang dalam window ±30 menit dari spread target
-  const diff = Math.abs(currentHour - spreadHour);
-  return diff <= 0.5; // ±30 menit
+  // Kirim kalau sudah melewati jam target customer (tidak miss karena cron 15 menit)
+  // Batas atas jam 21:00 supaya tidak kirim terlalu malam
+  return currentHour >= sendHour && currentHour < 21;
 }
 
 function randomDelay() {
