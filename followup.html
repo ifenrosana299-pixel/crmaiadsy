@@ -1223,8 +1223,10 @@ let reorderTmplCount = 0;
 
 async function loadReorderProducts() {
   try {
+    const prodId = window.__activeProductFilter;
+    const prodQ  = prodId ? `&id=eq.${prodId}` : '';
     const prods = await sbGet('products',
-      `user_id=eq.${currentUser.id}&konsumsi_hari=not.is.null&aktif=eq.true&select=id,nama,konsumsi_hari,buffer_reorder_hari,templates_reorder&order=nama.asc`);
+      `user_id=eq.${currentUser.id}&konsumsi_hari=not.is.null&aktif=eq.true${prodQ}&select=id,nama,konsumsi_hari,buffer_reorder_hari,templates_reorder&order=nama.asc`);
     const el  = document.getElementById('rules-list-reorder');
     const cnt = document.getElementById('cnt-reorder');
     if (!prods.length) {
