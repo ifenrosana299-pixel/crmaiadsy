@@ -16,6 +16,9 @@
 .sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}
 .sb-nav::-webkit-scrollbar{display:none}
 .sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse-dot 2s infinite;flex-shrink:0}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
 .sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;text-decoration:none;transition:all .12s}
 .sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
 .sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
@@ -30,87 +33,93 @@ body.light .sb-item{color:#475569!important}
 body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
 body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
 body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
 
 /* ── Board ── */
-.undell-board{display:flex;gap:14px;overflow-x:auto;padding:0 0 16px;align-items:flex-start;min-height:60vh}
-.undell-board::-webkit-scrollbar{height:6px}
-.undell-board::-webkit-scrollbar-track{background:transparent}
-.undell-board::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-body.light .undell-board::-webkit-scrollbar-thumb{background:rgba(0,0,0,.1)}
-
-.undell-col{min-width:250px;max-width:250px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.undell-board{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-items:start}
+.undell-col{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 body.light .undell-col{background:rgba(0,0,0,.02)}
 
-.undell-col-hdr{padding:12px 14px;border-bottom:1px solid var(--border)}
+.undell-col-hdr{padding:11px 12px;border-bottom:1px solid var(--border)}
 body.light .undell-col-hdr{background:#f8fafc}
 :not(body.light) .undell-col-hdr{background:#1e293b}
-.undell-col-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px;color:var(--text)}
-.undell-col-sub{font-size:11px;color:var(--text-2);margin-top:2px}
-.undell-col-count{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:auto;white-space:nowrap}
+.undell-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:6px;color:var(--text)}
+.undell-col-sub{font-size:10px;color:var(--text-2);margin-top:2px}
+.undell-col-count{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:auto;white-space:nowrap;flex-shrink:0}
 
 .col-fu1 .undell-col-count{background:rgba(245,158,11,.15);color:#fbbf24}
 .col-fu2 .undell-col-count{background:rgba(249,115,22,.15);color:#fb923c}
 .col-fu3 .undell-col-count{background:rgba(239,68,68,.15);color:#f87171}
+.col-otw .undell-col-count{background:rgba(99,102,241,.15);color:#a5b4fc}
 .col-berhasil .undell-col-count{background:rgba(34,197,94,.15);color:#4ade80}
 .col-gagal .undell-col-count{background:rgba(148,163,184,.12);color:#94a3b8}
 
 .col-fu1 .undell-col-title{color:#fbbf24}
 .col-fu2 .undell-col-title{color:#fb923c}
 .col-fu3 .undell-col-title{color:#f87171}
+.col-otw .undell-col-title{color:#a5b4fc}
 .col-berhasil .undell-col-title{color:#4ade80}
 .col-gagal .undell-col-title{color:#94a3b8}
 
-.undell-col-body{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:calc(100vh - 220px)}
-.undell-col-body::-webkit-scrollbar{width:4px}
-.undell-col-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+/* ── Column body + pagination ── */
+.undell-col-body{padding:8px;display:flex;flex-direction:column;gap:7px;min-height:60px}
+
+.undell-col-foot{padding:6px 8px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:4px}
+body.light .undell-col-foot{background:#f8fafc}
+:not(body.light) .undell-col-foot{background:#1e293b}
+.col-page-info{font-size:10px;color:var(--text-2);text-align:center;flex:1}
+.col-page-btn{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s;flex-shrink:0}
+.col-page-btn:hover:not(:disabled){background:rgba(255,255,255,.06);color:var(--text)}
+.col-page-btn:disabled{opacity:.3;cursor:default}
+body.light .col-page-btn{border-color:rgba(0,0,0,.1)}
+body.light .col-page-btn:hover:not(:disabled){background:rgba(0,0,0,.05)}
 
 /* ── Cards ── */
-.undell-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer;transition:box-shadow .12s,transform .1s}
+.undell-card{background:var(--white);border:1px solid var(--border);border-radius:9px;padding:9px 10px;cursor:pointer;transition:box-shadow .12s,transform .1s}
 .undell-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.12);transform:translateY(-1px)}
 body.light .undell-card{background:#fff}
-
-.undell-card-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
-.undell-card-resi{font-size:11px;color:var(--text-2);font-family:monospace;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.undell-card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
-.utag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+.undell-card-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+.undell-card-resi{font-size:10px;color:var(--text-2);font-family:monospace;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.undell-card-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px}
+.utag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:20px}
 .utag-ekspedisi{background:rgba(99,102,241,.12);color:#a5b4fc}
 .utag-cs{background:rgba(20,184,166,.12);color:#5eead4}
 .utag-fu{background:rgba(245,158,11,.12);color:#fbbf24}
 .utag-retur{background:rgba(239,68,68,.1);color:#f87171}
 .utag-sampai{background:rgba(34,197,94,.1);color:#4ade80}
-.undell-card-date{font-size:11px;color:var(--text-2);display:flex;align-items:center;gap:4px}
+.utag-otw{background:rgba(99,102,241,.1);color:#a5b4fc}
+.undell-card-date{font-size:10px;color:var(--text-2)}
 
-/* ── Summary strip ── */
-.undell-summary{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.undell-stat{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--text-2)}
-.undell-stat b{font-size:20px;font-weight:700;display:block;margin-bottom:1px}
+/* ── Summary ── */
+.undell-summary{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.undell-stat{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:9px 14px;font-size:11px;color:var(--text-2)}
+.undell-stat b{font-size:18px;font-weight:700;display:block;margin-bottom:1px}
 .undell-stat.s-red b{color:#f87171}
 .undell-stat.s-yellow b{color:#fbbf24}
 .undell-stat.s-green b{color:#4ade80}
+.undell-stat.s-blue b{color:#a5b4fc}
 .undell-stat.s-gray b{color:#94a3b8}
 body.light .undell-stat{background:#fff}
 
 /* ── Topbar ── */
-.undell-topbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-
-/* ── Empty col ── */
-.undell-empty{text-align:center;padding:24px 12px;color:var(--text-2);font-size:12px}
+.undell-topbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.undell-empty{text-align:center;padding:20px 8px;color:var(--text-2);font-size:11px}
 
 /* ── Detail modal ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
 .modal-overlay.open{display:flex}
-.modal{background:#1e293b;border:1px solid rgba(255,255,255,.08);border-radius:16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal{background:#1e293b;border:1px solid rgba(255,255,255,.08);border-radius:16px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
 body.light .modal{background:#fff;border-color:rgba(0,0,0,.1)}
-.modal-header{padding:16px 18px 14px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:0;background:#1e293b;z-index:1}
+.modal-header{padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:0;background:#1e293b;z-index:1}
 body.light .modal-header{background:#fff;border-bottom-color:rgba(0,0,0,.08)}
-.modal-title{font-size:15px;font-weight:700;color:var(--text)}
-.modal-close{width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.06);border:none;cursor:pointer;color:var(--text-2);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.modal-title{font-size:14px;font-weight:700;color:var(--text)}
+.modal-close{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.06);border:none;cursor:pointer;color:var(--text-2);font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 body.light .modal-close{background:rgba(0,0,0,.06)}
-.modal-body{padding:16px 18px}
-.detail-row{display:flex;gap:8px;margin-bottom:10px;font-size:13px}
+.modal-body{padding:14px 16px}
+.detail-row{display:flex;gap:8px;margin-bottom:9px;font-size:13px}
 .detail-label{color:var(--text-2);min-width:110px;flex-shrink:0}
 .detail-value{color:var(--text);font-weight:500;word-break:break-all}
-.detail-divider{height:1px;background:rgba(255,255,255,.06);margin:14px 0}
+.detail-divider{height:1px;background:rgba(255,255,255,.06);margin:12px 0}
 body.light .detail-divider{background:rgba(0,0,0,.07)}
 .sbadge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;font-size:10px;font-weight:700;color:#fff;padding:0 5px;margin-left:4px}
 </style>
@@ -121,10 +130,10 @@ body.light .detail-divider{background:rgba(0,0,0,.07)}
   <div id="sidebar"></div>
 
   <div class="main-content">
-    <div class="page-header" style="padding-bottom:16px">
+    <div class="page-header" style="padding-bottom:14px">
       <div>
         <div class="page-title">⚠️ Pipeline Undelivered</div>
-        <div class="page-sub">Tracking order BERMASALAH / Gagal Kirim dari FU hingga resolusi</div>
+        <div class="page-sub">Tracking order BERMASALAH — dari FU hingga resolusi</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:10px">
         <button class="btn btn-ghost" onclick="loadUndell()" id="btn-refresh">↻ Refresh</button>
@@ -132,18 +141,15 @@ body.light .detail-divider{background:rgba(0,0,0,.07)}
     </div>
 
     <div class="page-body">
-      <!-- Summary stats -->
       <div class="undell-summary" id="undell-summary"></div>
 
-      <!-- Topbar search -->
       <div class="undell-topbar">
-        <input type="text" class="search-input" id="undell-search" placeholder="🔍 Cari nama / resi / CS..." oninput="renderBoard()" style="max-width:240px">
+        <input type="text" class="search-input" id="undell-search" placeholder="🔍 Cari nama / resi / CS..." oninput="onSearch()" style="max-width:220px">
         <div style="font-size:12px;color:var(--text-2)" id="undell-stat-txt"></div>
       </div>
 
-      <!-- Board -->
       <div id="undell-board" class="undell-board">
-        <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat data...</div>
+        <div class="empty-state" style="grid-column:1/-1"><div class="spinner" style="margin:0 auto 12px"></div>Memuat data...</div>
       </div>
     </div>
   </div>
@@ -176,8 +182,12 @@ async function initConfig() {
 <script src="js/app.js"></script>
 <script src="js/prod-switcher.js"></script>
 <script>
+const PAGE_SIZE = 8;
+
 let currentUser = null;
-let allOrders = [];
+let allOrders   = [];
+let colPages    = { fu1: 0, fu2: 0, fu3: 0, otw: 0, berhasil: 0, gagal: 0 };
+let filteredCols = { fu1: [], fu2: [], fu3: [], otw: [], berhasil: [], gagal: [] };
 
 async function init() {
   await initConfig();
@@ -193,8 +203,6 @@ async function loadUndell() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
   try {
-    // Ambil semua order yang pernah masuk BERMASALAH (fu_undell_count > 0)
-    // plus yang sedang BERMASALAH (belum punya fu_undell_count tapi status BERMASALAH)
     const prodId = window.__activeProductFilter;
     const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
 
@@ -203,32 +211,41 @@ async function loadUndell() {
       `&or=(fu_undell_count.gt.0,status_resi.eq.BERMASALAH)` +
       prodQ +
       `&select=id,nama_customer,nomer_resi,ekspedisi,status_resi,cs,fu_undell_count,internal_alert_count,created_at,nomer_hp,product_id` +
-      `&order=created_at.desc&limit=500`
+      `&order=created_at.desc&limit=1000`
     );
     allOrders = orders;
-    renderBoard();
+    // Reset halaman semua kolom saat data baru dimuat
+    colPages = { fu1: 0, fu2: 0, fu3: 0, otw: 0, berhasil: 0, gagal: 0 };
+    buildAndRender();
   } catch(e) {
-    document.getElementById('undell-board').innerHTML = `<div class="text-red text-sm">Gagal memuat: ${e.message}</div>`;
+    document.getElementById('undell-board').innerHTML =
+      `<div class="text-red text-sm" style="grid-column:1/-1">Gagal memuat: ${e.message}</div>`;
   }
 
   if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh'; }
 }
 
 function getColumn(order) {
-  const fu  = order.fu_undell_count || 0;
-  const st  = order.status_resi;
+  const fu = order.fu_undell_count || 0;
+  const st = order.status_resi;
   if (st === 'SAMPAI') return 'berhasil';
   if (st === 'RETUR')  return 'gagal';
-  if (fu === 0) return 'fu1'; // baru masuk BERMASALAH, belum sempat FU
-  if (fu === 1) return 'fu1';
+  // Sudah pernah FU & sekarang OTW/KOTA_TUJUAN → sedang dikirim ulang
+  if (fu >= 1 && (st === 'OTW' || st === 'KOTA_TUJUAN')) return 'otw';
+  if (fu <= 1) return 'fu1';
   if (fu === 2) return 'fu2';
   return 'fu3';
 }
 
-function renderBoard() {
-  const search = (document.getElementById('undell-search')?.value || '').toLowerCase();
+function onSearch() {
+  // Reset semua halaman ke 0 saat search berubah
+  colPages = { fu1: 0, fu2: 0, fu3: 0, otw: 0, berhasil: 0, gagal: 0 };
+  buildAndRender();
+}
 
-  const cols = { fu1: [], fu2: [], fu3: [], berhasil: [], gagal: [] };
+function buildAndRender() {
+  const search = (document.getElementById('undell-search')?.value || '').toLowerCase();
+  const cols = { fu1: [], fu2: [], fu3: [], otw: [], berhasil: [], gagal: [] };
 
   allOrders.forEach(o => {
     if (search) {
@@ -238,62 +255,92 @@ function renderBoard() {
     cols[getColumn(o)].push(o);
   });
 
-  // Summary stats
-  const total   = allOrders.length;
-  const aktif   = cols.fu1.length + cols.fu2.length + cols.fu3.length;
+  filteredCols = cols;
+
+  // Summary
+  const total    = Object.values(cols).reduce((s, c) => s + c.length, 0);
+  const aktif    = cols.fu1.length + cols.fu2.length + cols.fu3.length;
+  const otw      = cols.otw.length;
   const berhasil = cols.berhasil.length;
-  const gagal   = cols.gagal.length;
-  const rate    = (berhasil + gagal) > 0 ? Math.round(berhasil / (berhasil + gagal) * 100) : 0;
+  const gagal    = cols.gagal.length;
+  const resolved = berhasil + gagal;
+  const rate     = resolved > 0 ? Math.round(berhasil / resolved * 100) : 0;
 
   document.getElementById('undell-summary').innerHTML = `
     <div class="undell-stat s-yellow"><b>${aktif}</b>Sedang diproses</div>
+    <div class="undell-stat s-blue"><b>${otw}</b>Sedang dikirim ulang</div>
     <div class="undell-stat s-green"><b>${berhasil}</b>Berhasil terkirim</div>
     <div class="undell-stat s-gray"><b>${gagal}</b>Retur / Tidak berhasil</div>
-    <div class="undell-stat"><b>${total > 0 ? rate + '%' : '-'}</b>Success rate</div>
+    <div class="undell-stat"><b>${resolved > 0 ? rate + '%' : '-'}</b>Success rate</div>
   `;
+  document.getElementById('undell-stat-txt').textContent = `${total} order ditemukan`;
 
-  document.getElementById('undell-stat-txt').textContent =
-    `${total} order ditemukan`;
+  renderBoard();
+}
 
+function renderBoard() {
   const COLS = [
-    { key: 'fu1',      cls: 'col-fu1',     icon: '🟡', label: 'FU + 1',     sub: 'Alert pertama dikirim' },
-    { key: 'fu2',      cls: 'col-fu2',     icon: '🟠', label: 'FU + 2',     sub: 'Alert kedua dikirim' },
-    { key: 'fu3',      cls: 'col-fu3',     icon: '🔴', label: 'FU + 3',     sub: 'Alert ketiga (terakhir)' },
-    { key: 'berhasil', cls: 'col-berhasil',icon: '✅', label: 'Berhasil Terkirim', sub: 'Status: SAMPAI' },
-    { key: 'gagal',    cls: 'col-gagal',   icon: '↩️', label: 'Tidak Berhasil / Retur', sub: 'Status: RETUR' },
+    { key: 'fu1',      cls: 'col-fu1',      icon: '🟡', label: 'FU + 1',               sub: 'Alert pertama dikirim' },
+    { key: 'fu2',      cls: 'col-fu2',      icon: '🟠', label: 'FU + 2',               sub: 'Alert kedua dikirim' },
+    { key: 'fu3',      cls: 'col-fu3',      icon: '🔴', label: 'FU + 3',               sub: 'Alert ketiga (terakhir)' },
+    { key: 'otw',      cls: 'col-otw',      icon: '🚚', label: 'Dikirim Ulang',        sub: 'OTW setelah BERMASALAH' },
+    { key: 'berhasil', cls: 'col-berhasil', icon: '✅', label: 'Berhasil Terkirim',    sub: 'Status: SAMPAI' },
+    { key: 'gagal',    cls: 'col-gagal',    icon: '↩️', label: 'Retur',               sub: 'Status: RETUR' },
   ];
 
   const board = document.getElementById('undell-board');
   board.innerHTML = COLS.map(col => {
-    const items = cols[col.key];
-    const cardsHtml = items.length
-      ? items.map(o => renderCard(o)).join('')
+    const items    = filteredCols[col.key];
+    const page     = colPages[col.key];
+    const total    = items.length;
+    const totalPg  = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const safePage = Math.min(page, totalPg - 1);
+    colPages[col.key] = safePage;
+
+    const sliced   = items.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+    const cardsHtml = sliced.length
+      ? sliced.map(o => renderCard(o)).join('')
       : `<div class="undell-empty">—</div>`;
+
+    const footHtml = total > PAGE_SIZE ? `
+      <div class="undell-col-foot">
+        <button class="col-page-btn" onclick="changePage('${col.key}',-1)" ${safePage === 0 ? 'disabled' : ''}>‹</button>
+        <div class="col-page-info">${safePage + 1} / ${totalPg}</div>
+        <button class="col-page-btn" onclick="changePage('${col.key}',1)" ${safePage >= totalPg - 1 ? 'disabled' : ''}>›</button>
+      </div>` : '';
+
     return `
       <div class="undell-col ${col.cls}">
         <div class="undell-col-hdr">
           <div class="undell-col-title">
-            <span>${col.icon}</span>
-            ${col.label}
-            <span class="undell-col-count">${items.length}</span>
+            <span>${col.icon}</span>${col.label}
+            <span class="undell-col-count">${total}</span>
           </div>
           <div class="undell-col-sub">${col.sub}</div>
         </div>
         <div class="undell-col-body">${cardsHtml}</div>
+        ${footHtml}
       </div>`;
   }).join('');
+}
+
+function changePage(colKey, dir) {
+  const total   = filteredCols[colKey].length;
+  const totalPg = Math.ceil(total / PAGE_SIZE);
+  colPages[colKey] = Math.max(0, Math.min(colPages[colKey] + dir, totalPg - 1));
+  renderBoard();
 }
 
 function renderCard(o) {
   const fu      = o.fu_undell_count || 0;
   const tanggal = fmtDate(o.created_at);
   const fuTag   = fu > 0 ? `<span class="utag utag-fu">FU ${fu}x</span>` : '';
-  const ekspTag = o.ekspedisi ? `<span class="utag utag-ekspedisi">${o.ekspedisi}</span>` : '';
-  const csTag   = o.cs ? `<span class="utag utag-cs">${o.cs}</span>` : '';
-  const stTag   = o.status_resi === 'RETUR'
-    ? `<span class="utag utag-retur">RETUR</span>`
-    : o.status_resi === 'SAMPAI'
-    ? `<span class="utag utag-sampai">SAMPAI</span>`
+  const ekspTag = o.ekspedisi ? `<span class="utag utag-ekspedisi">${escH(o.ekspedisi)}</span>` : '';
+  const csTag   = o.cs ? `<span class="utag utag-cs">${escH(o.cs)}</span>` : '';
+  const stKey   = o.status_resi;
+  const stTag   = stKey === 'RETUR' ? `<span class="utag utag-retur">RETUR</span>`
+    : stKey === 'SAMPAI'            ? `<span class="utag utag-sampai">SAMPAI</span>`
+    : (stKey === 'OTW' || stKey === 'KOTA_TUJUAN') ? `<span class="utag utag-otw">🚚 OTW</span>`
     : '';
 
   return `
@@ -308,35 +355,27 @@ function renderCard(o) {
 function fmtDate(iso) {
   if (!iso) return '-';
   const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2,'0');
-  const mm = String(d.getMonth()+1).padStart(2,'0');
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 }
 
 function escH(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function openDetail(orderId) {
   const o = allOrders.find(x => x.id === orderId);
   if (!o) return;
-
-  const fu     = o.fu_undell_count || 0;
-  const kolom  = getColumn(o);
-  const kolamLabel = {
-    fu1: '🟡 FU +1',
-    fu2: '🟠 FU +2',
-    fu3: '🔴 FU +3 (Terakhir)',
-    berhasil: '✅ Berhasil Terkirim',
-    gagal: '↩️ Tidak Berhasil / Retur',
+  const fu    = o.fu_undell_count || 0;
+  const kolom = getColumn(o);
+  const kolomLabel = {
+    fu1: '🟡 FU +1', fu2: '🟠 FU +2', fu3: '🔴 FU +3 (Terakhir)',
+    otw: '🚚 Sedang Dikirim Ulang', berhasil: '✅ Berhasil Terkirim', gagal: '↩️ Retur / Tidak Berhasil',
   }[kolom];
 
   document.getElementById('dm-nama').textContent = o.nama_customer || '-';
   document.getElementById('dm-sub').textContent  = o.nomer_resi || '-';
-
   document.getElementById('dm-body').innerHTML = `
-    <div class="detail-row"><span class="detail-label">Status Pipeline</span><span class="detail-value">${kolamLabel}</span></div>
+    <div class="detail-row"><span class="detail-label">Status Pipeline</span><span class="detail-value">${kolomLabel}</span></div>
     <div class="detail-row"><span class="detail-label">Status Resi</span><span class="detail-value">${escH(o.status_resi || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">Alert FU Dikirim</span><span class="detail-value">${fu}x</span></div>
     <div class="detail-divider"></div>
@@ -344,9 +383,8 @@ function openDetail(orderId) {
     <div class="detail-row"><span class="detail-label">Ekspedisi</span><span class="detail-value">${escH(o.ekspedisi || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">CS</span><span class="detail-value">${escH(o.cs || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">No. HP Customer</span><span class="detail-value">${escH(o.nomer_hp || '-')}</span></div>
-    <div class="detail-row"><span class="detail-label">Tgl Order</span><span class="detail-value">${fmtDate(o.created_at)}</span></div>
+    <div class="detail-row"><span class="detail-label">Tgl Input</span><span class="detail-value">${fmtDate(o.created_at)}</span></div>
   `;
-
   document.getElementById('detail-modal').classList.add('open');
 }
 
