@@ -719,6 +719,8 @@ function clearGroupJid() {
 }
 
 // ── KONTAK CS ─────────────────────────────────────────────
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 async function loadCSContacts() {
   const userId = getUser()?.id;
   const list = document.getElementById('cs-list');
