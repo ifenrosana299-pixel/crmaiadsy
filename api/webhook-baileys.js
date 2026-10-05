@@ -1681,27 +1681,36 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     }
 
     // ── Deteksi sinyal kuat intent beli → flag close_intent_at ──
-    // Hanya aktif kalau customer sudah pernah beli + produk sudah SAMPAI
+    // Aktif untuk 2 scenario:
+    // 1. New/prospect customer (belum ada order SAMPAI) → langsung flag
+    // 2. Existing customer yang sudah pernah beli → cek threshold produk hampir habis
     const isCloseIntent = detectCloseIntent(message);
     if (isCloseIntent) {
       const hasDelivered = latestOrder?.status_resi === 'SAMPAI';
-      // Pakai formula reorder: (qty_beli × konsumsi_hari) - buffer_reorder_hari
-      // Ambil reorder rule untuk produk ini
-      const konsumsiHari = product?.konsumsi_hari || null;
-      let cukupLama = false;
-      if (hasDelivered && konsumsiHari) {
-        const reorderRule = await sbGet('followup_rules',
-          `?user_id=eq.${userId}&tipe=eq.reorder&limit=1`
-        ).catch(() => []);
-        const bufferReorder = reorderRule[0]?.buffer_reorder_hari ?? 3;
-        const qtyBeli       = latestOrder?.jumlah_produk || 1;
-        const threshold     = (qtyBeli * konsumsiHari) - bufferReorder;
-        const baseDate      = latestOrder?.tgl_delivered || latestOrder?.created_at;
-        const daysSince     = baseDate ? (Date.now() - new Date(baseDate).getTime()) / (1000 * 60 * 60 * 24) : 0;
-        cukupLama = daysSince >= threshold;
-        console.log(`[close-intent] daysSince=${Math.round(daysSince)} threshold=${threshold} (${qtyBeli}×${konsumsiHari}-${bufferReorder}) cukupLama=${cukupLama}`);
+      let shouldFlag = false;
+
+      if (!hasDelivered) {
+        // Prospect / new customer yang nanya harga/ongkir → langsung flag
+        shouldFlag = true;
+        console.log(`[close-intent] New/prospect customer nanya harga/ongkir: "${message.slice(0,60)}" → flag`);
+      } else {
+        // Existing customer yang sudah pernah beli → cek apakah produk sudah hampir habis
+        const konsumsiHari = product?.konsumsi_hari || null;
+        if (konsumsiHari) {
+          const bufferReorder = product?.buffer_reorder_hari ?? 3;
+          const qtyBeli       = latestOrder?.jumlah_produk || 1;
+          const threshold     = (qtyBeli * konsumsiHari) - bufferReorder;
+          const baseDate      = latestOrder?.tgl_delivered || latestOrder?.created_at;
+          const daysSince     = baseDate ? (Date.now() - new Date(baseDate).getTime()) / (1000 * 60 * 60 * 24) : 0;
+          shouldFlag = daysSince >= threshold;
+          console.log(`[close-intent] Repeat customer: daysSince=${Math.round(daysSince)} threshold=${threshold} (${qtyBeli}×${konsumsiHari}-${bufferReorder}) flag=${shouldFlag}`);
+        } else {
+          // Produk tidak punya konsumsi_hari → flag saja
+          shouldFlag = true;
+        }
       }
-      if (hasDelivered && cukupLama) {
+
+      if (shouldFlag) {
         sbPatch('conversations', `?id=eq.${conversation.id}`, {
           close_intent_at: new Date().toISOString(),
           close_fu_count: 0,
