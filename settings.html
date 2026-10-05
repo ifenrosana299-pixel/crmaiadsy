@@ -816,11 +816,43 @@ async function kirimLinkCS(waNumber, csNama, csToken, btn) {
     toastLocal(`✅ Link berhasil dikirim ke ${csNama}`);
     btn.textContent = '✅ Terkirim';
     setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 3000);
+    // Log ke conversation supaya muncul di dashboard
+    try { await logConvBrowser(userId, waNumber, csNama, pesan); } catch(_) {}
   } catch(e) {
     toastLocal('❌ Gagal kirim: ' + e.message);
     btn.textContent = origText;
     btn.disabled = false;
   }
+}
+
+async function logConvBrowser(userId, waNumber, nama, message) {
+  const nowIso = new Date().toISOString();
+  // 1. Cari atau buat customer
+  let custs = await sbGet('customers', `wa_number=eq.${waNumber}&select=id,user_id`);
+  let custId;
+  if (custs.length) {
+    custId = custs[0].id;
+    if (custs[0].user_id !== userId) {
+      await sbPatch('customers', `id=eq.${custId}`, { user_id: userId, nama });
+    }
+  } else {
+    const created = await sbPost('customers', { user_id: userId, wa_number: waNumber, nama, source: 'internal', status: 'baru' }, { prefer: 'return=representation' });
+    custId = created[0]?.id;
+  }
+  if (!custId) return;
+  // 2. Cari atau buat conversation
+  let convs = await sbGet('conversations', `user_id=eq.${userId}&customer_id=eq.${custId}&status=neq.selesai&limit=1`);
+  let convId;
+  if (convs.length) {
+    convId = convs[0].id;
+    await sbPatch('conversations', `id=eq.${convId}`, { updated_at: nowIso, last_msg_at: nowIso });
+  } else {
+    const newConv = await sbPost('conversations', { user_id: userId, customer_id: custId, status: 'baru', sumber: 'fu', last_msg_at: nowIso, state: { tahap: 'internal_alert' } }, { prefer: 'return=representation' });
+    convId = newConv[0]?.id;
+  }
+  if (!convId) return;
+  // 3. Simpan pesan
+  await sbPost('conv_messages', { conversation_id: convId, isi: message, role: 'ai' }, { prefer: 'return=minimal' });
 }
 
 async function hapusCS(id) {
