@@ -1327,7 +1327,7 @@ function addReorderTemplate(val = '') {
     <div style="display:flex;gap:8px;align-items:flex-start">
       <div style="min-width:22px;text-align:center;padding-top:10px;color:var(--text3);font-size:12px">${idx}</div>
       <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-        <textarea class="form-textarea ro-tmpl-input" id="ro-tmpl-${idx}" placeholder="Ketik pesan variasi ${idx}..." rows="3">${textVal}</textarea>
+        <textarea class="form-textarea ro-tmpl-input" id="ro-tmpl-${idx}" placeholder="Ketik pesan variasi ${idx}..." rows="6">${textVal}</textarea>
         <div style="display:flex;align-items:center;gap:10px">
           <div id="ro-tmpl-img-thumb-${idx}" onclick="document.getElementById('ro-tmpl-img-file-${idx}').click()"
             style="width:56px;height:56px;border-radius:7px;border:1.5px dashed rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;flex-shrink:0;overflow:hidden;background:rgba(255,255,255,.03)">${thumbHtml}</div>
@@ -1539,7 +1539,7 @@ function addNotifTemplate(val = '') {
   div.innerHTML = `
     <div style="display:flex;gap:8px;align-items:flex-start">
       <div style="min-width:22px;text-align:center;padding-top:10px;color:var(--text3);font-size:12px">${idx}</div>
-      <textarea class="form-textarea nt-input" id="nt-${idx}" placeholder="Ketik variasi pesan ${idx}..." rows="3">${textVal}</textarea>
+      <textarea class="form-textarea nt-input" id="nt-${idx}" placeholder="Ketik variasi pesan ${idx}..." rows="6">${textVal}</textarea>
       <button class="btn btn-ghost btn-xs" style="margin-top:8px;color:var(--red)" onclick="removeNotifTmpl(${idx})">✕</button>
     </div>`;
   el.appendChild(div);
