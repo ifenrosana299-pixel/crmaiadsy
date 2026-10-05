@@ -430,7 +430,8 @@ async function autoCreateReorderSchedules(today) {
   const productMap = {};
   products.forEach(p => { productMap[p.id] = p; });
 
-  // 2. Order SAMPAI untuk produk-produk tersebut
+  // 2. Orders SAMPAI untuk produk-produk tersebut
+  // (orders table punya product_id + last_tracked_at sebagai fallback tgl_delivered)
   const orders = await sb('orders',
     `status_resi=eq.SAMPAI&product_id=in.(${productIds.join(',')})` +
     `&select=id,user_id,nomer_hp,product_id,jumlah_produk,tgl_delivered,last_tracked_at,created_at` +
@@ -474,6 +475,7 @@ async function autoCreateReorderSchedules(today) {
     const totalDays   = (qty * prod.konsumsi_hari) - buffer;
     if (totalDays <= 0) continue;
 
+    // tgl_delivered diset oleh auto-track saat SAMPAI; fallback ke last_tracked_at
     const base = order.tgl_delivered || order.last_tracked_at || order.created_at;
     if (!base) continue;
 
@@ -517,7 +519,7 @@ async function autoCreateReorderSchedules(today) {
 async function handleClosingFU(req, res) {
   const results = { sent: 0, failed: 0, skipped: 0, details: [] };
   const MAX_FU  = 3;
-  const WAIT_MS = 2 * 60 * 60 * 1000; // 2 jam dalam ms
+  const WAIT_MS = 1 * 60 * 60 * 1000; // 1 jam dalam ms
 
   try {
     const now        = new Date();
@@ -603,11 +605,10 @@ Buat 1 pesan WA follow-up closing yang singkat (maks 2-3 kalimat). Bahasa Indone
         const patch = {
           close_fu_count: newCount,
           last_msg_at: now.toISOString(),
+          // Reset close_intent_at ke sekarang supaya 2 jam timer mulai dari FU ini
+          // Kalau sudah 3x → null (stop total)
+          close_intent_at: newCount >= MAX_FU ? null : now.toISOString(),
         };
-        // Kalau sudah 3x FU → reset intent supaya tidak FU lagi
-        if (newCount >= MAX_FU) {
-          patch.close_intent_at = null;
-        }
         await sb('conversations', `id=eq.${conv.id}`, { method: 'PATCH', body: patch });
 
         results.sent++;
