@@ -202,6 +202,9 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
               </div>
               <span class="rule-sec-arrow" id="arr-reorder">▾</span>
             </div>
+            <div style="padding:6px 14px 8px;font-size:11px;color:var(--text-2);line-height:1.5">
+              FU reorder terkirim otomatis saat produk customer hampir habis — berdasarkan <b>qty × konsumsi hari</b> tiap produk. Set template pesan per produk di bawah. Tidak perlu buat rule manual.
+            </div>
             <div class="rule-sec-body" id="rules-list-reorder">
               <div style="padding:10px 0;font-size:12px;color:var(--text-2)">Memuat...</div>
             </div>
@@ -277,10 +280,6 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
             style="flex:1;min-width:140px;padding:9px 10px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
             📦 Sebelum Diterima (H-)
           </button>
-          <button type="button" id="tipe-reorder" onclick="setTipe('reorder')"
-            style="flex:1;min-width:140px;padding:9px 10px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text-2)">
-            🔄 Reorder Otomatis
-          </button>
         </div>
         <input type="hidden" id="rule-tipe" value="setelah_deliv">
         <div style="margin-top:6px;font-size:11px;color:var(--text-2)" id="tipe-desc">
@@ -301,11 +300,6 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
           <label class="form-label">Hari Setelah Order (H+) *</label>
           <input type="number" class="form-input" id="rule-hari-sebelum" placeholder="0" min="0">
           <div style="font-size:11px;color:var(--text-2);margin-top:4px">H+0 = hari yang sama saat order masuk · H+1 = besok · H+2 = lusa</div>
-        </div>
-        <div class="form-group" id="wrap-hari-reorder" style="display:none">
-          <label class="form-label">Buffer Sebelum Habis (hari) *</label>
-          <input type="number" class="form-input" id="rule-hari-reorder" placeholder="5" min="1" value="5">
-          <div style="font-size:11px;color:var(--text-2);margin-top:4px">FU dikirim X hari sebelum estimasi produk habis — dihitung dari qty × konsumsi per box (diset di Katalog Produk)</div>
         </div>
       </div>
       <div class="form-group">
@@ -346,6 +340,44 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeRuleModal()">Batal</button>
       <button class="btn btn-primary" onclick="saveRule()" id="btn-save-rule">Simpan Rule</button>
+    </div>
+  </div>
+</div>
+
+<!-- REORDER TEMPLATE MODAL -->
+<div class="modal-overlay" id="reorder-tmpl-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="reorder-tmpl-modal-title">Template Reorder</div>
+        <div class="text-xs text-muted" id="reorder-tmpl-modal-sub">FU otomatis saat produk hampir habis</div>
+      </div>
+      <button class="modal-close" onclick="closeReorderTmplModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="reorder-tmpl-product-id">
+      <div class="flex items-center justify-between mb-2">
+        <div class="fw-600">Template Pesan</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="addReorderTemplate()">+ Tambah Variasi</button>
+          <button class="btn btn-ghost btn-sm" onclick="generateReorderTemplates()" id="btn-gen-reorder-tmpl">🤖 Generate AI</button>
+        </div>
+      </div>
+      <div class="text-xs text-muted mb-3">Tambahkan beberapa variasi — bot pilih random supaya tidak kelihatan spam.</div>
+      <div id="reorder-templates-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="form-group mt-3">
+        <label class="form-label">Variabel yang tersedia:</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge badge-blue" style="cursor:pointer" onclick="insertReorderVar('{nama}')">&#123;nama&#125;</span>
+          <span class="badge badge-blue" style="cursor:pointer" onclick="insertReorderVar('{produk}')">&#123;produk&#125;</span>
+          <span class="badge badge-green" style="cursor:pointer" onclick="insertReorderVar('{resi}')">&#123;resi&#125;</span>
+        </div>
+      </div>
+      <div id="reorder-tmpl-err" style="color:var(--red);font-size:12px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeReorderTmplModal()">Batal</button>
+      <button class="btn btn-primary" onclick="saveReorderTmpls()" id="btn-save-reorder-tmpl">Simpan Template</button>
     </div>
   </div>
 </div>
@@ -413,8 +445,8 @@ async function init() {
   currentUser = requireAuth();
   if (!currentUser) return;
   renderSidebar('followup');
-  await Promise.all([loadSchedules(), loadRules(), loadNotifTemplate()]);
-  window.addEventListener('productSwitch', () => { loadSchedules(); loadRules(); loadNotifTemplate(); });
+  await Promise.all([loadSchedules(), loadRules(), loadNotifTemplate(), loadReorderProducts()]);
+  window.addEventListener('productSwitch', () => { loadSchedules(); loadRules(); loadNotifTemplate(); loadReorderProducts(); });
 }
 
 // ---- SCHEDULES ----
@@ -879,7 +911,6 @@ function toggleSection(key) {
 function renderRules() {
   const setelah     = allRules.filter(r => !r.tipe || r.tipe === 'setelah_deliv');
   const sebelum     = allRules.filter(r => r.tipe === 'sebelum_deliv');
-  const reorder     = allRules.filter(r => r.tipe === 'reorder');
   const eventOtw    = allRules.filter(r => r.tipe === 'event_otw');
   const eventSampai = allRules.filter(r => r.tipe === 'event_sampai');
 
@@ -893,11 +924,6 @@ function renderRules() {
   document.getElementById('rules-list-sebelum').innerHTML = sebelum.length
     ? sebelum.map(renderRuleCard).join('') : emptyHtml;
 
-  const rlReorder = document.getElementById('rules-list-reorder');
-  if (rlReorder) {
-    document.getElementById('cnt-reorder').textContent = reorder.length;
-    rlReorder.innerHTML = reorder.length ? reorder.map(renderRuleCard).join('') : emptyHtml;
-  }
   const rlOtw = document.getElementById('rules-list-event_otw');
   if (rlOtw) {
     document.getElementById('cnt-event_otw').textContent = eventOtw.length;
@@ -930,12 +956,11 @@ let templateCount = 0;
 function setTipe(tipe) {
   document.getElementById('rule-tipe').value = tipe;
   const isSebelum   = tipe === 'sebelum_deliv';
-  const isReorder   = tipe === 'reorder';
   const isEventOtw  = tipe === 'event_otw';
   const isEventSampai = tipe === 'event_sampai';
-  const isSetelah   = !isSebelum && !isReorder && !isEventOtw && !isEventSampai;
+  const isSetelah   = !isSebelum && !isEventOtw && !isEventSampai;
 
-  ['setelah','sebelum','reorder','event_otw','event_sampai'].forEach(k => {
+  ['setelah','sebelum','event_otw','event_sampai'].forEach(k => {
     const btn = document.getElementById('tipe-' + k);
     if (!btn) return;
     const active = tipe === (k === 'setelah' ? 'setelah_deliv' : k === 'sebelum' ? 'sebelum_deliv' : k);
@@ -943,13 +968,11 @@ function setTipe(tipe) {
     btn.style.color      = active ? '#fff' : 'var(--text-2)';
   });
 
-  document.getElementById('wrap-hari-setelah').style.display = isSetelah     ? '' : 'none';
-  document.getElementById('wrap-hari-sebelum').style.display = isSebelum     ? '' : 'none';
-  document.getElementById('wrap-hari-reorder').style.display = isReorder     ? '' : 'none';
+  document.getElementById('wrap-hari-setelah').style.display = isSetelah ? '' : 'none';
+  document.getElementById('wrap-hari-sebelum').style.display = isSebelum ? '' : 'none';
 
   const descMap = {
     sebelum_deliv: 'FU dikirim X hari <b>setelah order dibuat</b> — cocok untuk update pengiriman, antisipasi pertanyaan customer.',
-    reorder:       'FU dikirim otomatis <b>X hari sebelum estimasi produk habis</b> berdasarkan qty × konsumsi/box — cocok untuk reminder reorder + promo.',
     event_otw:     '🚚 <b>Event: Paket sedang diantarkan.</b> Dikirim otomatis saat resi berubah ke status OTW/Out for Delivery — cocok untuk "Paket lagi diantarkan kak, tunggu di rumah ya!"',
     event_sampai:  '📬 <b>Event: Paket baru sampai (D+0).</b> Dikirim otomatis saat resi berubah ke SAMPAI — cocok untuk "Yeay paket sudah sampai kan kak? Gimana kemasannya?" sebelum FU D+1/D+7.',
   };
@@ -962,7 +985,6 @@ function openRuleModal() {
   document.getElementById('rule-nama').value = '';
   document.getElementById('rule-hari').value = '';
   document.getElementById('rule-hari-sebelum').value = '';
-  // Auto-set ke produk yang sedang aktif di switcher
   document.getElementById('rule-produk').value = window.__activeProductFilter || '';
   document.getElementById('templates-list').innerHTML = '';
   templateCount = 0;
@@ -981,7 +1003,6 @@ function openEditRule(id) {
   document.getElementById('rule-nama').value = r.nama;
   document.getElementById('rule-hari').value = r.hari_setelah_delivered || '';
   document.getElementById('rule-hari-sebelum').value = r.hari_sebelum_deliv || r.hari_setelah_delivered || '';
-  document.getElementById('rule-hari-reorder').value = r.buffer_reorder_hari || 5;
   document.getElementById('rule-produk').value = r.product_id || '';
   document.getElementById('templates-list').innerHTML = '';
   templateCount = 0;
@@ -1109,15 +1130,12 @@ async function saveRule() {
   const nama = document.getElementById('rule-nama').value.trim();
   const tipe = document.getElementById('rule-tipe').value;
   const isSebelum    = tipe === 'sebelum_deliv';
-  const isReorder    = tipe === 'reorder';
   const isEventOtw   = tipe === 'event_otw';
   const isEventSampai = tipe === 'event_sampai';
   const isEvent      = isEventOtw || isEventSampai;
   const hariSetelah = document.getElementById('rule-hari').value !== '' ? parseInt(document.getElementById('rule-hari').value) : null;
   const hariSebelum = document.getElementById('rule-hari-sebelum').value !== '' ? parseInt(document.getElementById('rule-hari-sebelum').value) : null;
-  const hariReorder = document.getElementById('rule-hari-reorder').value !== '' ? parseInt(document.getElementById('rule-hari-reorder').value) : 5;
-  // Event tipes tidak butuh hari — jadwal selalu hari ini
-  const hari = isSebelum ? hariSebelum : isReorder ? hariReorder : isEvent ? 0 : hariSetelah;
+  const hari = isSebelum ? hariSebelum : isEvent ? 0 : hariSetelah;
 
   if (!nama || (!isEvent && (hari === null || hari === undefined))) {
     document.getElementById('rule-err').textContent = 'Nama rule dan hari wajib diisi.';
@@ -1141,13 +1159,12 @@ async function saveRule() {
   const payload = {
     user_id: currentUser.id,
     nama, tipe,
-    hari_setelah_delivered: (isSebelum || isReorder || isEvent) ? null : hari,
+    hari_setelah_delivered: (isSebelum || isEvent) ? null : hari,
     hari_sebelum_deliv: isSebelum ? hari : null,
-    buffer_reorder_hari: isReorder ? hari : null,
     product_id: document.getElementById('rule-produk').value || null,
     templates,
     aktif: true,
-    urutan: isEvent ? -1 : hari  // event rules tampil duluan
+    urutan: isEvent ? -1 : hari
   };
 
   try {
@@ -1199,6 +1216,192 @@ async function deleteRule(id) {
     await loadRules();
     await loadSchedules();
   } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── REORDER PRODUCT TEMPLATES ────────────────────────────────
+let reorderTmplCount = 0;
+
+async function loadReorderProducts() {
+  try {
+    const prods = await sbGet('products',
+      `user_id=eq.${currentUser.id}&konsumsi_hari=not.is.null&aktif=eq.true&select=id,nama,konsumsi_hari,buffer_reorder_hari,templates_reorder&order=nama.asc`);
+    const el  = document.getElementById('rules-list-reorder');
+    const cnt = document.getElementById('cnt-reorder');
+    if (!prods.length) {
+      el.innerHTML = `<div style="padding:6px 2px;font-size:12px;color:var(--text-2)">Belum ada produk dengan data konsumsi hari. Set di Settings → Produk.</div>`;
+      cnt.textContent = '0';
+      return;
+    }
+    cnt.textContent = prods.length;
+    window.__reorderProds = prods;
+    el.innerHTML = prods.map(p => {
+      const tmpls  = Array.isArray(p.templates_reorder) ? p.templates_reorder : [];
+      const buffer = p.buffer_reorder_hari ?? 3;
+      const dot    = tmpls.length
+        ? '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>'
+        : '<span style="width:6px;height:6px;border-radius:50%;background:#94a3b8;display:inline-block;flex-shrink:0"></span>';
+      return `
+        <div class="rule-card">
+          <div class="rule-card-top" style="cursor:default">
+            ${dot}
+            <div style="flex:1;min-width:0">
+              <div class="rule-card-name">${p.nama}</div>
+              <div class="rule-card-meta">FU H-${buffer} habis · ${tmpls.length} template · konsumsi ${p.konsumsi_hari}hr/box</div>
+            </div>
+            <div class="rule-card-actions" onclick="event.stopPropagation()">
+              <button class="btn btn-primary btn-sm" style="font-size:11px" onclick="openReorderTmpl('${p.id}')">Edit Template</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) { console.error('loadReorderProducts:', e.message); }
+}
+
+function openReorderTmpl(productId) {
+  const p = (window.__reorderProds || []).find(x => x.id === productId);
+  if (!p) return;
+  document.getElementById('reorder-tmpl-product-id').value = productId;
+  document.getElementById('reorder-tmpl-modal-title').textContent = 'Template Reorder — ' + p.nama;
+  document.getElementById('reorder-tmpl-modal-sub').textContent =
+    'FU terkirim H-' + (p.buffer_reorder_hari ?? 3) + ' sebelum habis · konsumsi ' + p.konsumsi_hari + ' hr/box';
+  document.getElementById('reorder-templates-list').innerHTML = '';
+  reorderTmplCount = 0;
+  const tmpls = Array.isArray(p.templates_reorder) ? p.templates_reorder : [];
+  if (tmpls.length) tmpls.forEach(t => addReorderTemplate(t));
+  else addReorderTemplate();
+  document.getElementById('reorder-tmpl-err').style.display = 'none';
+  document.getElementById('reorder-tmpl-modal').classList.add('show');
+}
+
+function closeReorderTmplModal() {
+  document.getElementById('reorder-tmpl-modal').classList.remove('show');
+}
+
+function addReorderTemplate(val = '') {
+  reorderTmplCount++;
+  const idx      = reorderTmplCount;
+  const el       = document.getElementById('reorder-templates-list');
+  const textVal  = (typeof val === 'object' && val) ? (val.text || '') : (val || '');
+  const imageUrl = (typeof val === 'object' && val) ? (val.image_url || '') : '';
+  const thumbHtml = imageUrl
+    ? `<img src="${imageUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:7px;border:1px solid rgba(255,255,255,.1);cursor:pointer" onclick="document.getElementById('ro-tmpl-img-file-${idx}').click()">`
+    : '📷';
+  const div = document.createElement('div');
+  div.id = `ro-tmpl-wrap-${idx}`;
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <div style="min-width:22px;text-align:center;padding-top:10px;color:var(--text3);font-size:12px">${idx}</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <textarea class="form-textarea ro-tmpl-input" id="ro-tmpl-${idx}" placeholder="Ketik pesan variasi ${idx}..." rows="3">${textVal}</textarea>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="ro-tmpl-img-thumb-${idx}" onclick="document.getElementById('ro-tmpl-img-file-${idx}').click()"
+            style="width:56px;height:56px;border-radius:7px;border:1.5px dashed rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;flex-shrink:0;overflow:hidden;background:rgba(255,255,255,.03)">${thumbHtml}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-2)" id="ro-tmpl-img-name-${idx}">${imageUrl ? imageUrl.split('/').pop().slice(0,35) : 'Gambar opsional • maks 5MB'}</div>
+            ${imageUrl ? `<button type="button" class="btn btn-ghost btn-xs" style="margin-top:4px;color:var(--red);font-size:11px" onclick="removeRoTmplImg(${idx})">✕ Hapus gambar</button>` : ''}
+          </div>
+        </div>
+        <input type="file" id="ro-tmpl-img-file-${idx}" accept="image/*" style="display:none" onchange="handleRoTmplPhoto(this, ${idx})">
+        <input type="hidden" id="ro-tmpl-img-url-${idx}" value="${imageUrl}">
+      </div>
+      <button class="btn btn-ghost btn-xs" style="margin-top:8px;color:var(--red)" onclick="removeRoTmpl(${idx})">✕</button>
+    </div>`;
+  el.appendChild(div);
+}
+
+function removeRoTmpl(idx) { document.getElementById(`ro-tmpl-wrap-${idx}`)?.remove(); }
+function removeRoTmplImg(idx) {
+  document.getElementById(`ro-tmpl-img-url-${idx}`).value = '';
+  document.getElementById(`ro-tmpl-img-file-${idx}`).value = '';
+  document.getElementById(`ro-tmpl-img-name-${idx}`).textContent = 'Gambar opsional • maks 5MB';
+  document.getElementById(`ro-tmpl-img-thumb-${idx}`).innerHTML = '📷';
+  const nameEl = document.getElementById(`ro-tmpl-img-name-${idx}`);
+  if (nameEl?.nextElementSibling) nameEl.nextElementSibling.remove();
+}
+
+async function handleRoTmplPhoto(input, idx) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Foto maksimal 5MB', 'error'); input.value = ''; return; }
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const path = `${currentUser.id}/ro_tmpl_${Date.now()}.${ext}`;
+  toast('Mengupload gambar...');
+  try {
+    const res = await fetch(`${window.__SB_URL}/storage/v1/object/followup-media/${path}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${window.__SB_KEY}`, 'Content-Type': file.type },
+      body: file,
+    });
+    if (!res.ok) throw new Error('Upload gagal');
+    const url = `${window.__SB_URL}/storage/v1/object/public/followup-media/${path}`;
+    document.getElementById(`ro-tmpl-img-url-${idx}`).value = url;
+    document.getElementById(`ro-tmpl-img-name-${idx}`).textContent = file.name.slice(0, 35);
+    document.getElementById(`ro-tmpl-img-thumb-${idx}`).innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:7px;cursor:pointer">`;
+    toast('Gambar berhasil diupload!', 'success');
+  } catch(e) { toast('Gagal: ' + e.message, 'error'); input.value = ''; }
+}
+
+function insertReorderVar(v) {
+  const inputs = document.querySelectorAll('.ro-tmpl-input');
+  const last   = inputs[inputs.length - 1];
+  if (last) last.value += v;
+}
+
+async function generateReorderTemplates() {
+  const prodId = document.getElementById('reorder-tmpl-product-id').value;
+  const p      = (window.__reorderProds || []).find(x => x.id === prodId);
+  if (!p) return;
+  const btn    = document.getElementById('btn-gen-reorder-tmpl');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch('/api/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'generate-templates',
+        user_id: currentUser.id,
+        rule_nama: 'Reorder ' + p.nama,
+        hari: p.buffer_reorder_hari ?? 3
+      })
+    });
+    const d = await r.json();
+    if (d.templates?.length) {
+      document.getElementById('reorder-templates-list').innerHTML = '';
+      reorderTmplCount = 0;
+      d.templates.forEach(t => addReorderTemplate(t));
+    } else {
+      toast('Gagal generate template', 'error');
+    }
+  } catch(e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '🤖 Generate AI';
+}
+
+async function saveReorderTmpls() {
+  const prodId = document.getElementById('reorder-tmpl-product-id').value;
+  if (!prodId) return;
+  const templates = [...document.querySelectorAll('[id^="ro-tmpl-wrap-"]')]
+    .map(wrap => {
+      const text      = wrap.querySelector('.ro-tmpl-input')?.value.trim() || '';
+      const image_url = wrap.querySelector('[id^="ro-tmpl-img-url-"]')?.value.trim() || null;
+      return text ? { text, image_url: image_url || null } : null;
+    }).filter(Boolean);
+  if (!templates.length) {
+    document.getElementById('reorder-tmpl-err').textContent = 'Minimal satu template pesan.';
+    document.getElementById('reorder-tmpl-err').style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('btn-save-reorder-tmpl');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  try {
+    await sbPatch('products', `id=eq.${prodId}`, { templates_reorder: templates });
+    toast('Template reorder tersimpan ✅', 'success');
+    closeReorderTmplModal();
+    await loadReorderProducts();
+  } catch(e) {
+    document.getElementById('reorder-tmpl-err').textContent = e.message;
+    document.getElementById('reorder-tmpl-err').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Simpan Template';
 }
 
 // ── NOTIF OTOMATIS TEMPLATE ─────────────────────────────────
