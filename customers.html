@@ -210,12 +210,42 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
         <div class="form-group">
-          <label class="form-label">Produk</label>
-          <input type="text" class="form-input" id="inp-produk" placeholder="Nama produk">
+          <label class="form-label">Produk 1</label>
+          <input type="text" class="form-input" id="inp-produk" placeholder="Nama produk utama">
         </div>
         <div class="form-group">
           <label class="form-label">Jumlah</label>
           <input type="number" class="form-input" id="inp-jumlah" value="1" min="1">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Produk 2 <span style="color:var(--text-2);font-weight:400">(opsional)</span></label>
+          <input type="text" class="form-input" id="inp-produk2" placeholder="Nama produk kedua">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jumlah</label>
+          <input type="number" class="form-input" id="inp-jumlah2" value="0" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Nomer Resi</label>
+          <input type="text" class="form-input" id="inp-resi" placeholder="Nomor resi pengiriman">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jumlah COD (Rp)</label>
+          <input type="number" class="form-input" id="inp-cod" value="0" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Ekspedisi</label>
+          <input type="text" class="form-input" id="inp-ekspedisi" placeholder="JNE / J&T / SiCepat...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ADV</label>
+          <input type="text" class="form-input" id="inp-adv" placeholder="Nama advertiser">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -228,14 +258,28 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
           <input type="text" class="form-input" id="inp-promo" placeholder="Kode promo / diskon">
         </div>
       </div>
+      <div class="form-group">
+        <label class="form-label">Alamat</label>
+        <input type="text" class="form-input" id="inp-alamat" placeholder="Jl. Contoh No.1">
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
-          <label class="form-label">Ekspedisi</label>
-          <input type="text" class="form-input" id="inp-ekspedisi" placeholder="JNE / J&T / SiCepat...">
+          <label class="form-label">Kelurahan</label>
+          <input type="text" class="form-input" id="inp-kelurahan" placeholder="Kel. Menteng">
         </div>
         <div class="form-group">
-          <label class="form-label">Nomer Resi</label>
-          <input type="text" class="form-input" id="inp-resi" placeholder="Nomor resi pengiriman">
+          <label class="form-label">Kecamatan</label>
+          <input type="text" class="form-input" id="inp-kecamatan" placeholder="Kec. Menteng">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Kabupaten / Kota</label>
+          <input type="text" class="form-input" id="inp-kabupaten" placeholder="Jakarta Pusat">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Provinsi</label>
+          <input type="text" class="form-input" id="inp-provinsi" placeholder="DKI Jakarta">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -264,17 +308,9 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
           <input type="number" class="form-input" id="inp-harga" value="0" min="0">
         </div>
         <div class="form-group">
-          <label class="form-label">Jumlah COD (Rp)</label>
-          <input type="number" class="form-input" id="inp-cod" value="0" min="0">
+          <label class="form-label">Keluhan / Kondisi</label>
+          <input type="text" class="form-input" id="inp-keluhan" placeholder="Nyeri lutut, susah tidur, dll">
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Alamat Penerima</label>
-        <textarea class="form-textarea" id="inp-alamat" placeholder="Alamat lengkap penerima" rows="2"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Keluhan / Kondisi Customer</label>
-        <textarea class="form-textarea" id="inp-keluhan" placeholder="Contoh: nyeri lutut, susah tidur, dll" rows="2"></textarea>
       </div>
       <div id="add-err" style="color:var(--red);font-size:12px;display:none;margin-top:4px"></div>
     </div>
@@ -832,7 +868,7 @@ async function trackFromDetail() {
 }
 
 // ── Add / Edit modal ────────────────────────────────────────────────
-const FIELDS = ['tanggal','cs','nama','hp','produk','jumlah','payment','promo','ekspedisi','resi','ongkir','pot-ongkir','admin','pot-admin','harga','cod','alamat'];
+const FIELDS = ['tanggal','cs','nama','hp','produk','jumlah','produk2','jumlah2','resi','cod','ekspedisi','adv','payment','promo','alamat','kelurahan','kecamatan','kabupaten','provinsi','ongkir','pot-ongkir','admin','pot-admin','harga','keluhan'];
 
 function openAddModal() {
   document.getElementById('add-modal-title').textContent = 'Tambah Order';
@@ -853,24 +889,31 @@ function openEditModal(id) {
   if (!o) return;
   document.getElementById('add-modal-title').textContent = 'Edit Order';
   document.getElementById('edit-id').value      = o.id;
-  document.getElementById('inp-tanggal').value  = o.tanggal || '';
-  document.getElementById('inp-cs').value       = o.cs || '';
-  document.getElementById('inp-nama').value     = o.nama_customer || '';
-  document.getElementById('inp-hp').value       = o.nomer_hp || '';
-  document.getElementById('inp-produk').value   = o.produk || '';
-  document.getElementById('inp-jumlah').value   = o.jumlah_produk || 1;
-  document.getElementById('inp-payment').value  = o.payment || '';
-  document.getElementById('inp-promo').value    = o.promo || '';
-  document.getElementById('inp-ekspedisi').value= o.ekspedisi || '';
-  document.getElementById('inp-resi').value     = o.nomer_resi || '';
-  document.getElementById('inp-ongkir').value   = o.ongkir || 0;
-  document.getElementById('inp-pot-ongkir').value = o.potongan_ongkir || 0;
-  document.getElementById('inp-admin').value    = o.admin || 0;
-  document.getElementById('inp-pot-admin').value= o.potongan_admin || 0;
-  document.getElementById('inp-harga').value    = o.harga_produk || 0;
-  document.getElementById('inp-cod').value      = o.jumlah_cod || 0;
-  document.getElementById('inp-alamat').value   = o.alamat || '';
-  document.getElementById('inp-keluhan').value  = o.keluhan || '';
+  document.getElementById('inp-tanggal').value   = o.tanggal || '';
+  document.getElementById('inp-cs').value        = o.cs || '';
+  document.getElementById('inp-nama').value      = o.nama_customer || '';
+  document.getElementById('inp-hp').value        = o.nomer_hp || '';
+  document.getElementById('inp-produk').value    = o.produk || '';
+  document.getElementById('inp-jumlah').value    = o.jumlah_produk || 1;
+  document.getElementById('inp-produk2').value   = o.produk_2 || '';
+  document.getElementById('inp-jumlah2').value   = o.jumlah_produk_2 || 0;
+  document.getElementById('inp-resi').value      = o.nomer_resi || '';
+  document.getElementById('inp-cod').value       = o.jumlah_cod || 0;
+  document.getElementById('inp-ekspedisi').value = o.ekspedisi || '';
+  document.getElementById('inp-adv').value       = o.adv || '';
+  document.getElementById('inp-payment').value   = o.payment || '';
+  document.getElementById('inp-promo').value     = o.promo || '';
+  document.getElementById('inp-alamat').value    = o.alamat || '';
+  document.getElementById('inp-kelurahan').value = o.kelurahan || '';
+  document.getElementById('inp-kecamatan').value = o.kecamatan || '';
+  document.getElementById('inp-kabupaten').value = o.kabupaten || '';
+  document.getElementById('inp-provinsi').value  = o.provinsi || '';
+  document.getElementById('inp-ongkir').value    = o.ongkir || 0;
+  document.getElementById('inp-pot-ongkir').value= o.potongan_ongkir || 0;
+  document.getElementById('inp-admin').value     = o.admin || 0;
+  document.getElementById('inp-pot-admin').value = o.potongan_admin || 0;
+  document.getElementById('inp-harga').value     = o.harga_produk || 0;
+  document.getElementById('inp-keluhan').value   = o.keluhan || '';
   document.getElementById('add-err').style.display = 'none';
   document.getElementById('add-modal').classList.add('show');
 }
@@ -896,20 +939,27 @@ async function saveOrder() {
     cs:              document.getElementById('inp-cs').value.trim(),
     nama_customer:   nama,
     nomer_hp:        normalizePhone(hp),
-    produk:          document.getElementById('inp-produk').value.trim(),
-    jumlah_produk:   parseInt(document.getElementById('inp-jumlah').value) || 1,
-    payment:         document.getElementById('inp-payment').value.trim(),
-    promo:           document.getElementById('inp-promo').value.trim(),
+    produk:           document.getElementById('inp-produk').value.trim(),
+    jumlah_produk:    parseInt(document.getElementById('inp-jumlah').value) || 1,
+    produk_2:         document.getElementById('inp-produk2').value.trim() || null,
+    jumlah_produk_2:  parseInt(document.getElementById('inp-jumlah2').value) || null,
+    nomer_resi:       resi,
+    jumlah_cod:       parseInt(document.getElementById('inp-cod').value) || 0,
     ekspedisi,
-    nomer_resi:      resi,
-    ongkir:          parseInt(document.getElementById('inp-ongkir').value) || 0,
-    potongan_ongkir: parseInt(document.getElementById('inp-pot-ongkir').value) || 0,
-    admin:           parseInt(document.getElementById('inp-admin').value) || 0,
-    potongan_admin:  parseInt(document.getElementById('inp-pot-admin').value) || 0,
-    harga_produk:    parseInt(document.getElementById('inp-harga').value) || 0,
-    jumlah_cod:      parseInt(document.getElementById('inp-cod').value) || 0,
-    alamat:          document.getElementById('inp-alamat').value.trim(),
-    keluhan:         document.getElementById('inp-keluhan').value.trim(),
+    adv:              document.getElementById('inp-adv').value.trim() || null,
+    payment:          document.getElementById('inp-payment').value.trim(),
+    promo:            document.getElementById('inp-promo').value.trim(),
+    alamat:           document.getElementById('inp-alamat').value.trim(),
+    kelurahan:        document.getElementById('inp-kelurahan').value.trim() || null,
+    kecamatan:        document.getElementById('inp-kecamatan').value.trim() || null,
+    kabupaten:        document.getElementById('inp-kabupaten').value.trim() || null,
+    provinsi:         document.getElementById('inp-provinsi').value.trim() || null,
+    ongkir:           parseInt(document.getElementById('inp-ongkir').value) || 0,
+    potongan_ongkir:  parseInt(document.getElementById('inp-pot-ongkir').value) || 0,
+    admin:            parseInt(document.getElementById('inp-admin').value) || 0,
+    potongan_admin:   parseInt(document.getElementById('inp-pot-admin').value) || 0,
+    harga_produk:     parseInt(document.getElementById('inp-harga').value) || 0,
+    keluhan:          document.getElementById('inp-keluhan').value.trim(),
     status_resi:     resi ? 'DIKIRIM' : 'MENUNGGU_RESI',
     updated_at:      new Date().toISOString(),
   };
