@@ -939,11 +939,11 @@ async function saveOrder() {
 
 // ── Import Excel ─────────────────────────────────────────────────────
 function downloadTemplate() {
-  const headers = ['tanggal','ekspedisi','nomer_resi','payment','produk','jumlah_produk','promo','nama_customer','nomer_hp','alamat','keluhan','cs','ongkir','potongan_ongkir','admin','potongan_admin','harga_produk','jumlah_cod'];
+  const headers = ['tanggal','nama_customer','nomer_hp','produk_1','jumlah_1','produk_2','jumlah_2','cs','nomer_resi','jumlah_cod','ekspedisi','alamat','kelurahan','kecamatan','kabupaten','provinsi','adv','promo','keluhan','payment','ongkir','potongan_ongkir','admin','potongan_admin','harga_produk'];
   const contoh = [
-    ['2024-01-15','JNE','JNE123456789','COD','Herbanesia Kapsul',1,'DISKON10','Siti Rahayu','08123456789','Jl. Merdeka No.10, Jakarta Selatan','CS Rina',25000,0,2000,0,150000,177000],
-    ['2024-01-16','J&T','JT9876543210','COD','Herbanesia Kapsul',2,'','Budi Santoso','08987654321','Jl. Sudirman No.5, Bandung','CS Rina',30000,5000,2000,0,300000,327000],
-    ['2024-01-17','SiCepat','','Transfer','Herbanesia Kapsul',1,'','Dewi Lestari','08111222333','Jl. Pahlawan No.3, Surabaya','CS Budi',0,0,0,0,150000,150000],
+    ['2024-01-15','Siti Rahayu','08123456789','Serum Notelli',1,'','','CS Rina','JNE123456789',177000,'JNE','Jl. Merdeka No.10','Kel. Menteng','Kec. Menteng','Jakarta Pusat','DKI Jakarta','ADV Budi','DISKON10','','COD',25000,0,2000,0,150000],
+    ['2024-01-16','Budi Santoso','08987654321','Serum Notelli',2,'Krim XYZ',1,'CS Rina','JT9876543210',327000,'J&T','Jl. Sudirman No.5','Kel. Dago','Kec. Coblong','Bandung','Jawa Barat','ADV Ani','','','COD',30000,5000,2000,0,300000],
+    ['2024-01-17','Dewi Lestari','08111222333','Serum Notelli',1,'','','CS Budi','',150000,'SiCepat','Jl. Pahlawan No.3','Kel. Gubeng','Kec. Gubeng','Surabaya','Jawa Timur','','','','Transfer',0,0,0,0,150000],
   ];
   const rows = [headers, ...contoh];
   const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
@@ -1005,59 +1005,76 @@ function parseExcel(file) {
 
       const col = {
         tanggal:        findCol(headers,'tanggal','tgl','tgl_order','date','tanggal_order'),
-        ekspedisi:      findCol(headers,'ekspedisi','kurir','courier','shipping'),
-        nomer_resi:     findCol(headers,'nomer_resi','resi','no_resi','nomor_resi','tracking'),
-        payment:        findCol(headers,'payment','pembayaran','metode_bayar'),
-        produk:         findCol(headers,'produk','product','nama_produk'),
-        jumlah_produk:  findCol(headers,'jumlah_produk','jumlah','qty','quantity'),
-        promo:          findCol(headers,'promo','diskon','kode_promo'),
         nama_customer:  findCol(headers,'nama_customer','nama','name','customer'),
-        nomer_hp:       findCol(headers,'nomer_hp','hp','wa','phone','no_hp','telepon','nomor_hp'),
-        alamat:         findCol(headers,'alamat','address','alamat_penerima','alamat_lengkap'),
-        keluhan:        findCol(headers,'keluhan','complaint','keluhan_customer','kondisi'),
+        nomer_hp:       findCol(headers,'nomer_hp','hp','wa','phone','no_hp','telepon','nomor_hp','no_hp'),
+        produk:         findCol(headers,'produk_1','produk','product','nama_produk'),
+        jumlah_produk:  findCol(headers,'jumlah_1','jumlah_produk','jumlah','qty','quantity'),
+        produk_2:       findCol(headers,'produk_2'),
+        jumlah_produk_2:findCol(headers,'jumlah_2','jumlah_produk_2'),
         cs:             findCol(headers,'cs','nama_cs','customer_service'),
+        nomer_resi:     findCol(headers,'nomer_resi','resi','no_resi','nomor_resi','tracking'),
+        jumlah_cod:     findCol(headers,'jumlah_cod','total_cod','cod','total'),
+        ekspedisi:      findCol(headers,'ekspedisi','kurir','courier','shipping'),
+        alamat:         findCol(headers,'alamat','address','alamat_penerima','alamat_lengkap'),
+        kelurahan:      findCol(headers,'kelurahan','kel'),
+        kecamatan:      findCol(headers,'kecamatan','kec'),
+        kabupaten:      findCol(headers,'kabupaten','kab','kota'),
+        provinsi:       findCol(headers,'provinsi','prov'),
+        adv:            findCol(headers,'adv','advertiser','iklan'),
+        promo:          findCol(headers,'promo','diskon','kode_promo'),
+        keluhan:        findCol(headers,'keluhan','complaint','keluhan_customer','kondisi'),
+        payment:        findCol(headers,'payment','pembayaran','metode_bayar'),
         ongkir:         findCol(headers,'ongkir','ongkos_kirim','shipping_cost'),
         pot_ongkir:     findCol(headers,'potongan_ongkir','pot_ongkir','diskon_ongkir'),
         admin:          findCol(headers,'admin','biaya_admin','fee_admin'),
         pot_admin:      findCol(headers,'potongan_admin','pot_admin','diskon_admin'),
         harga_produk:   findCol(headers,'harga_produk','harga','price'),
-        jumlah_cod:     findCol(headers,'jumlah_cod','cod','total_cod','total'),
       };
 
       if (col.nama_customer < 0 || col.nomer_hp < 0) throw new Error('Kolom "nama_customer" dan "nomer_hp" wajib ada.');
 
-      const g = (r, k) => col[k] >= 0 ? r[col[k]] : '';
+      const g  = (r, k) => col[k] >= 0 ? r[col[k]] : '';
+      const gs = (r, k) => String(g(r,k)||'').trim();
       const gi = (r, k) => { const v = g(r,k); return parseInt(v)||0; };
 
       importData = rows.map(r => {
-        const resi = String(g(r,'nomer_resi')||'').trim();
+        const resi    = gs(r,'nomer_resi');
+        const produk2 = gs(r,'produk_2');
+        const jml2    = gi(r,'jumlah_produk_2');
         return {
-          tanggal:         fmtDateForDB(g(r,'tanggal')) || new Date().toISOString().slice(0,10),
-          ekspedisi:       String(g(r,'ekspedisi')||'').trim(),
-          nomer_resi:      resi,
-          payment:         String(g(r,'payment')||'').trim(),
-          produk:          String(g(r,'produk')||'').trim(),
-          jumlah_produk:   gi(r,'jumlah_produk') || 1,
-          promo:           String(g(r,'promo')||'').trim(),
-          nama_customer:   String(g(r,'nama_customer')||'').trim(),
-          nomer_hp:        normalizePhone(String(g(r,'nomer_hp')||'')),
-          alamat:          String(g(r,'alamat')||'').trim(),
-          keluhan:         String(g(r,'keluhan')||'').trim(),
-          cs:              String(g(r,'cs')||'').trim(),
-          ongkir:          gi(r,'ongkir'),
-          potongan_ongkir: gi(r,'pot_ongkir'),
-          admin:           gi(r,'admin'),
-          potongan_admin:  gi(r,'pot_admin'),
-          harga_produk:    gi(r,'harga_produk'),
-          jumlah_cod:      gi(r,'jumlah_cod'),
-          status_resi:     resi ? 'DIKIRIM' : 'MENUNGGU_RESI',
+          tanggal:          fmtDateForDB(g(r,'tanggal')) || new Date().toISOString().slice(0,10),
+          nama_customer:    gs(r,'nama_customer'),
+          nomer_hp:         normalizePhone(gs(r,'nomer_hp')),
+          produk:           gs(r,'produk'),
+          jumlah_produk:    gi(r,'jumlah_produk') || 1,
+          produk_2:         produk2 || null,
+          jumlah_produk_2:  produk2 ? (jml2 || 1) : null,
+          cs:               gs(r,'cs'),
+          nomer_resi:       resi,
+          jumlah_cod:       gi(r,'jumlah_cod'),
+          ekspedisi:        gs(r,'ekspedisi'),
+          alamat:           gs(r,'alamat'),
+          kelurahan:        gs(r,'kelurahan') || null,
+          kecamatan:        gs(r,'kecamatan') || null,
+          kabupaten:        gs(r,'kabupaten') || null,
+          provinsi:         gs(r,'provinsi')  || null,
+          adv:              gs(r,'adv')       || null,
+          promo:            gs(r,'promo'),
+          keluhan:          gs(r,'keluhan'),
+          payment:          gs(r,'payment'),
+          ongkir:           gi(r,'ongkir'),
+          potongan_ongkir:  gi(r,'pot_ongkir'),
+          admin:            gi(r,'admin'),
+          potongan_admin:   gi(r,'pot_admin'),
+          harga_produk:     gi(r,'harga_produk'),
+          status_resi:      resi ? 'DIKIRIM' : 'MENUNGGU_RESI',
         };
       }).filter(r => r.nama_customer && r.nomer_hp);
 
       if (!importData.length) throw new Error('Tidak ada data valid. Cek kolom nama_customer dan nomer_hp.');
 
       document.getElementById('preview-count').textContent = `${importData.length} order siap diimport`;
-      const previewCols = ['tanggal','nama_customer','nomer_hp','produk','ekspedisi','nomer_resi','jumlah_cod'];
+      const previewCols = ['tanggal','nama_customer','nomer_hp','produk','produk_2','cs','nomer_resi','jumlah_cod','kabupaten','adv'];
       document.getElementById('preview-head').innerHTML = previewCols.map(c => `<th>${c}</th>`).join('');
       document.getElementById('preview-body').innerHTML = importData.slice(0,20).map(r =>
         `<tr>${previewCols.map(c => `<td>${escH(String(r[c]||'-'))}</td>`).join('')}</tr>`
