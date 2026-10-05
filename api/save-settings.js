@@ -186,6 +186,45 @@ Buat balasan yang tepat dan natural untuk mendorong repeat order. Balas HANYA te
       return res.json({ pesan: msg.content[0].text.trim() });
     }
 
+    // ---- CS UNDELL: GET orders by token ----
+    if (action === 'cs-undell-get') {
+      const { token } = req.query;
+      if (!token) return res.status(400).json({ error: 'Token wajib' });
+      const csRows = await sb('cs_contacts', `token=eq.${token}&select=id,nama,wa_number,user_id`);
+      if (!csRows.length) return res.status(401).json({ error: 'Token tidak valid' });
+      const cs = csRows[0];
+      const csNama = cs.nama.toLowerCase().replace(/^cs\s+/i, '').trim();
+      const orders = await sb('orders',
+        `user_id=eq.${cs.user_id}` +
+        `&or=(fu_undell_count.gt.0,status_resi.eq.BERMASALAH)` +
+        `&fu_paused=neq.true` +
+        `&select=id,nama_customer,nomer_resi,ekspedisi,status_resi,cs,fu_undell_count,created_at,nomer_hp` +
+        `&order=created_at.desc&limit=200`
+      );
+      const filtered = orders.filter(o => {
+        const raw = (o.cs || '').toLowerCase().trim();
+        const stripped = raw.replace(/^cs\s+/i, '').trim();
+        return stripped === csNama || raw === csNama;
+      });
+      return res.json({ cs: { nama: cs.nama, wa_number: cs.wa_number }, orders: filtered });
+    }
+
+    // ---- CS UNDELL: POST tandai ditangani ----
+    if (action === 'cs-undell-handle') {
+      const { token, order_id } = body;
+      if (!token || !order_id) return res.status(400).json({ error: 'Token dan order_id wajib' });
+      const csRows = await sb('cs_contacts', `token=eq.${token}&select=id,nama,user_id`);
+      if (!csRows.length) return res.status(401).json({ error: 'Token tidak valid' });
+      const cs = csRows[0];
+      const orderCheck = await sb('orders', `id=eq.${order_id}&user_id=eq.${cs.user_id}&select=id,cs`);
+      if (!orderCheck.length) return res.status(403).json({ error: 'Order tidak ditemukan' });
+      const csNama   = (orderCheck[0].cs || '').toLowerCase().replace(/^cs\s+/i, '').trim();
+      const csTarget = cs.nama.toLowerCase().replace(/^cs\s+/i, '').trim();
+      if (csNama !== csTarget) return res.status(403).json({ error: 'Bukan order kamu' });
+      await sb('orders', `id=eq.${order_id}`, { method: 'PATCH', body: { fu_paused: true } });
+      return res.json({ ok: true });
+    }
+
     return res.status(400).json({ error: 'Unknown action' });
   } catch(e) {
     return res.status(500).json({ error: e.message });
