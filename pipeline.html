@@ -189,6 +189,11 @@ async function init() {
 async function loadPipeline() {
   const btn = document.getElementById('btn-refresh');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  // Selalu clear cache followup_schedule supaya data selalu fresh
+  if (typeof sbCacheClear === 'function') {
+    sbCacheClear('followup_schedule');
+    sbCacheClear('followup_rules');
+  }
   try {
     const prodId = window.__activeProductFilter;
     const prodQ  = prodId ? `&or=(product_id.eq.${prodId},product_id.is.null)` : '';
