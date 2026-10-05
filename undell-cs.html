@@ -63,10 +63,17 @@ body{font-family:'Inter',sans-serif;background:#0d1117;color:#e2e8f0;font-size:1
 .btn-handled:disabled{opacity:.5;cursor:not-allowed}
 .btn-done-label{font-size:12px;color:#4ade80;font-weight:600}
 
-/* ── Kolom section ── */
-.col-section{margin-bottom:20px}
-.col-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.col-count{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+/* ── Filter tabs ── */
+.filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.ftab{background:#161b22;border:1px solid rgba(255,255,255,.07);color:#64748b;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px}
+.ftab:hover{border-color:rgba(255,255,255,.12);color:#94a3b8}
+.ftab.active{color:#fff}
+.ftab.f-all.active{background:rgba(99,102,241,.2);border-color:rgba(99,102,241,.4);color:#a5b4fc}
+.ftab.f-fu1.active{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);color:#fbbf24}
+.ftab.f-fu2.active{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.3);color:#fb923c}
+.ftab.f-fu3.active{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171}
+.ftab.f-otw.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:#a5b4fc}
+.ftab-count{font-size:10px;font-weight:700;background:rgba(255,255,255,.08);border-radius:20px;padding:1px 6px}
 
 /* ── Empty / Error / Loading ── */
 .center-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px;text-align:center}
@@ -112,10 +119,11 @@ body{font-family:'Inter',sans-serif;background:#0d1117;color:#e2e8f0;font-size:1
 
 <script>
 const PAGE_SIZE = 10;
-let allOrders = [];
-let csInfo    = {};
-let page      = 0;
-let searchVal = '';
+let allOrders  = [];
+let csInfo     = {};
+let page       = 0;
+let searchVal  = '';
+let filterCol  = 'all'; // 'all' | 'fu1' | 'fu2' | 'fu3' | 'otw'
 
 const token = new URLSearchParams(location.search).get('token');
 
@@ -145,44 +153,63 @@ function getCol(o) {
 
 function render() {
   const search = searchVal.toLowerCase();
-  const filtered = allOrders.filter(o => {
-    if (!search) return true;
-    return `${o.nama_customer} ${o.nomer_resi}`.toLowerCase().includes(search);
+
+  // Kelompokkan semua order
+  const byCol = { fu1: [], fu2: [], fu3: [], otw: [] };
+  allOrders.forEach(o => {
+    const s = `${o.nama_customer} ${o.nomer_resi}`.toLowerCase();
+    if (search && !s.includes(search)) return;
+    byCol[getCol(o)]?.push(o);
   });
 
-  const fu1 = filtered.filter(o => getCol(o) === 'fu1');
-  const fu2 = filtered.filter(o => getCol(o) === 'fu2');
-  const fu3 = filtered.filter(o => getCol(o) === 'fu3');
-  const otw = filtered.filter(o => getCol(o) === 'otw');
+  const counts = {
+    all: byCol.fu1.length + byCol.fu2.length + byCol.fu3.length + byCol.otw.length,
+    fu1: byCol.fu1.length, fu2: byCol.fu2.length,
+    fu3: byCol.fu3.length, otw: byCol.otw.length,
+  };
 
-  // Stats
-  const total  = filtered.length;
-  const aktif  = fu1.length + fu2.length + fu3.length;
-  const otwLen = otw.length;
+  // Urutan tampil: FU3 paling kritis duluan
+  const combined = filterCol === 'all'
+    ? [...byCol.fu3, ...byCol.fu2, ...byCol.fu1, ...byCol.otw]
+    : [...byCol[filterCol]];
 
-  // Pagination untuk semua aktif + otw gabungan
-  const combined = [...fu3, ...fu2, ...fu1, ...otw]; // urutan prioritas: FU3 duluan
   const totalPg  = Math.max(1, Math.ceil(combined.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPg - 1);
   page = safePage;
   const sliced = combined.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
+  const TABS = [
+    { key: 'all', cls: 'f-all', icon: '📋', label: 'Semua' },
+    { key: 'fu1', cls: 'f-fu1', icon: '🟡', label: 'FU +1' },
+    { key: 'fu2', cls: 'f-fu2', icon: '🟠', label: 'FU +2' },
+    { key: 'fu3', cls: 'f-fu3', icon: '🔴', label: 'FU +3' },
+    { key: 'otw', cls: 'f-otw', icon: '🚚', label: 'Dikirim Ulang' },
+  ];
+
   const html = `
     <div class="stats-row">
-      <div class="stat-card s-yellow"><div class="stat-num">${aktif}</div><div class="stat-label">Perlu Ditangani</div></div>
-      <div class="stat-card s-blue"><div class="stat-num">${otwLen}</div><div class="stat-label">Dikirim Ulang</div></div>
-      <div class="stat-card s-gray"><div class="stat-num">${total}</div><div class="stat-label">Total Order</div></div>
+      <div class="stat-card s-yellow"><div class="stat-num">${byCol.fu1.length + byCol.fu2.length + byCol.fu3.length}</div><div class="stat-label">Perlu Ditangani</div></div>
+      <div class="stat-card s-blue"><div class="stat-num">${byCol.otw.length}</div><div class="stat-label">Dikirim Ulang</div></div>
+      <div class="stat-card s-gray"><div class="stat-num">${counts.all}</div><div class="stat-label">Total Order</div></div>
     </div>
 
     <div class="search-wrap">
       <input class="search-inp" id="search-inp" placeholder="🔍 Cari nama customer / nomor resi..." value="${escH(searchVal)}" oninput="onSearch(this.value)">
     </div>
 
+    <div class="filter-tabs">
+      ${TABS.map(t => `
+        <button class="ftab ${t.cls}${filterCol === t.key ? ' active' : ''}" onclick="setFilter('${t.key}')">
+          ${t.icon} ${t.label}
+          <span class="ftab-count">${counts[t.key]}</span>
+        </button>`).join('')}
+    </div>
+
     ${combined.length === 0 ? `
-      <div class="center-state" style="min-height:40vh">
+      <div class="center-state" style="min-height:35vh">
         <div class="state-icon">✅</div>
-        <div class="state-title">Semua Beres!</div>
-        <div class="state-sub">Tidak ada order BERMASALAH${search ? ' yang cocok dengan pencarian' : ' saat ini'}.</div>
+        <div class="state-title">${filterCol === 'all' ? 'Semua Beres!' : 'Tidak Ada di Kategori Ini'}</div>
+        <div class="state-sub">Tidak ada order${search ? ' yang cocok' : ''} di kategori ini.</div>
       </div>
     ` : `
       <div class="card-list" id="card-list">
@@ -258,6 +285,12 @@ async function tandaiDitangani(orderId, btn) {
     btn.textContent = '✅ Sudah Ditangani';
     showToast('❌ Gagal: ' + e.message);
   }
+}
+
+function setFilter(col) {
+  filterCol = col;
+  page = 0;
+  render();
 }
 
 function onSearch(val) {
