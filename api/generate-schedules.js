@@ -51,7 +51,7 @@ export default async function handler(req, res) {
 
     // 2. Semua orders user (tidak filter by product_id — biar semua masuk)
     const orders = await sb('orders',
-      `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,tgl_delivered,product_id,qty&order=created_at.desc&limit=2000`);
+      `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,tgl_delivered,product_id,qty,jumlah_produk&order=created_at.desc&limit=2000`);
     if (!orders.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada order' });
 
     // 3. Semua customers user + produk untuk konsumsi_hari
@@ -186,7 +186,7 @@ export default async function handler(req, res) {
           if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
           const prod = productMap[order.product_id || cust.product_id];
           if (!prod?.konsumsi_hari) { skipReasons.no_base++; continue; }
-          const qty    = parseInt(order.qty) || 1;
+          const qty    = parseInt(order.jumlah_produk) || parseInt(order.qty) || 1;
           const buffer = rule.buffer_reorder_hari ?? prod.buffer_reorder_hari ?? 5;
           const base   = order.last_tracked_at || order.tanggal || order.created_at;
           if (!base) { skipReasons.no_base++; continue; }
