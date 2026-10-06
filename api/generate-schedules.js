@@ -217,6 +217,10 @@ export default async function handler(req, res) {
         const diff = (new Date(today) - new Date(scheduledDate)) / 86400000;
         if (diff > 30) { skipReasons.too_old++; continue; }
 
+        // Kalau jadwal sudah lewat (rule baru ditambah untuk customer lama),
+        // insert sebagai skipped — momentnya sudah tidak relevan
+        const isPast = scheduledDate < today;
+
         toInsert.push({
           user_id,
           customer_id: cust.id,
@@ -224,7 +228,7 @@ export default async function handler(req, res) {
           rule_id: rule.id,
           rule_nama: rule.nama,
           scheduled_date: scheduledDate,
-          status: 'pending'
+          status: isPast ? 'skipped' : 'pending'
         });
         existSet.add(key);
       }
