@@ -518,8 +518,9 @@ async function autoCreateReorderSchedules(today) {
 ────────────────────────────────────────────────────────────*/
 async function handleClosingFU(req, res) {
   const results = { sent: 0, failed: 0, skipped: 0, details: [] };
-  const MAX_FU  = 3;
-  const WAIT_MS = 1 * 60 * 60 * 1000; // 1 jam dalam ms
+  const MAX_FU     = 5;                        // total: 3x hari 1 + 1x hari 2 + 1x hari 3
+  const WAIT_MS    = 1 * 60 * 60 * 1000;       // 1 jam antar FU dalam hari yang sama
+  const NEXT_DAY_MS = 23 * 60 * 60 * 1000;     // ~23 jam untuk lanjut hari berikutnya
 
   try {
     const now        = new Date();
@@ -553,9 +554,11 @@ async function handleClosingFU(req, res) {
       const toneMap = {
         0: `Ini follow-up pertama. Tone: hangat dan penasaran — tanya kenapa belum lanjut, tawarkan bantuan. Jangan terlalu agresif.`,
         1: `Ini follow-up kedua. Tone: lebih personal — sebut nama, tunjukkan kamu masih nunggu. Bisa tawarkan promo/keuntungan kecil kalau ada.`,
-        2: `Ini follow-up ketiga dan terakhir. Tone: ringan + sedikit urgensi — "terakhir nih" tapi tidak memaksa. Kasih tahu ini reminder terakhir.`,
+        2: `Ini follow-up ketiga (terakhir hari ini). Tone: ringan + sedikit urgensi — bilang "hari ini" tapi tidak memaksa.`,
+        3: `Ini follow-up hari kedua. Tone: santai tapi tetap hangat — bilang masih nunggu kabarnya, tanya apakah ada yang bisa dibantu.`,
+        4: `Ini follow-up terakhir (hari ketiga). Tone: ringan, tanpa tekanan — bilang ini reminder terakhir, tetap buka pintu kalau customer mau lanjut kapanpun.`,
       };
-      const tone = toneMap[fuCount] || toneMap[2];
+      const tone = toneMap[fuCount] || toneMap[4];
 
       try {
         const apiKey = await getAnthropicKey(conv.user_id);
@@ -602,12 +605,21 @@ Buat 1 pesan WA follow-up closing yang singkat (maks 2-3 kalimat). Bahasa Indone
 
         // Update counter + last_msg_at
         const newCount = fuCount + 1;
+        // Hari 1: FU 1,2,3 interval 1 jam  → close_intent_at = now (trigger 1 jam lagi)
+        // Hari 2: FU 4 setelah ~23 jam     → close_intent_at = now + 22 jam (trigger 23 jam lagi)
+        // Hari 3: FU 5 setelah ~23 jam     → close_intent_at = now + 22 jam
+        // Stop: newCount >= 5              → close_intent_at = null
+        let nextIntentAt = null;
+        if (newCount < MAX_FU) {
+          const isNextDay = newCount >= 3; // selesai hari 1 → lanjut hari berikutnya
+          nextIntentAt = isNextDay
+            ? new Date(now.getTime() + 22 * 60 * 60 * 1000).toISOString()
+            : now.toISOString();
+        }
         const patch = {
           close_fu_count: newCount,
           last_msg_at: now.toISOString(),
-          // Reset close_intent_at ke sekarang supaya 2 jam timer mulai dari FU ini
-          // Kalau sudah 3x → null (stop total)
-          close_intent_at: newCount >= MAX_FU ? null : now.toISOString(),
+          close_intent_at: nextIntentAt,
         };
         await sb('conversations', `id=eq.${conv.id}`, { method: 'PATCH', body: patch });
 
