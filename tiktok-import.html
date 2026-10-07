@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Import TikTok Shop — AI CRM Adsy</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ── Page-specific ── */
+.import-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+}
+@media(max-width:860px) { .import-grid { grid-template-columns: 1fr; } }
+
+.paste-area {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: inherit;
+  transition: border-color .12s, box-shadow .12s;
+}
+.paste-area:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.paste-area::placeholder { color: var(--text-3); font-size: 12px; }
+body.light .paste-area { background: #f8fafc; }
+
+.preview-box {
+  background: rgba(59,130,246,.05);
+  border: 1px solid rgba(59,130,246,.15);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 14px;
+}
+body.light .preview-box { background: rgba(59,130,246,.04); }
+
+.prev-row { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; font-size: 13px; }
+.prev-lbl { color: var(--text-2); font-size: 11px; min-width: 80px; padding-top: 1px; }
+.prev-val { color: var(--text); font-weight: 500; flex: 1; word-break: break-word; }
+
+.hist-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
+}
+.hist-pending { background: rgba(245,158,11,.1);  color: #fbbf24; border: 1px solid rgba(245,158,11,.2); }
+.hist-done    { background: rgba(34,197,94,.1);   color: #4ade80; border: 1px solid rgba(34,197,94,.2);  }
+body.light .hist-pending { color: #d97706; }
+body.light .hist-done    { color: #16a34a; }
+
+.act-btn {
+  font-size: 11px; padding: 3px 8px; border-radius: 5px;
+  border: 1px solid var(--border); background: none;
+  color: var(--text-2); cursor: pointer; transition: .12s;
+}
+.act-btn:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.act-btn.del   { color: var(--red); border-color: rgba(239,68,68,.2); }
+.act-btn.del:hover { background: rgba(239,68,68,.08); }
+body.light .act-btn:hover { background: rgba(0,0,0,.04); }
+
+.section-divider { border-top: 1px solid var(--border); margin: 10px 0; }
+
+.count-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(59,130,246,.12); color: #60a5fa;
+  border-radius: 12px; padding: 1px 10px; font-size: 12px; font-weight: 600;
+}
+body.light .count-pill { color: #2563eb; }
+</style>
+</head>
+<body>
+<script>if(localStorage.getItem('cs_theme')!=='dark')document.body.classList.add('light');</script>
+
+<div class="app-layout">
+<div id="sidebar"></div>
+
+<div class="main-content">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Import TikTok Shop</div>
+      <div class="page-sub" id="th-datetime"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost" onclick="toggleTheme()" id="theme-btn">🌙</button>
+    </div>
+  </div>
+
+  <!-- ── Form Import ── -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span>Paste Data Order Baru</span>
+      <span class="text-dim text-sm">Copy dari halaman detail order TikTok Shop</span>
+    </div>
+
+    <div class="import-grid">
+
+      <!-- Kolom kiri: Paste areas -->
+      <div>
+        <label class="form-label">
+          Info Pembeli
+          <span style="color:var(--text-3);font-weight:400;text-transform:none;letter-spacing:0"> — nama · HP · alamat dari "Detail pembeli"</span>
+        </label>
+        <textarea class="paste-area" id="paste-pembeli" rows="5"
+          placeholder="Ita yuliana&#10;(+62)895341630933&#10;Jl. Tanah koja 2 Gang Haji saprin II No. 17 Rt 4/Rw 5&#10;Jatinegara Kaum,Pulogadung,Jakarta Timur,DKI Jakarta,Indonesia"
+          oninput="autoParse()"></textarea>
+
+        <label class="form-label" style="margin-top:14px">
+          Rincian Biaya
+          <span style="color:var(--text-3);font-weight:400;text-transform:none;letter-spacing:0"> — dari "Yang dibayar pembeli"</span>
+        </label>
+        <textarea class="paste-area" id="paste-biaya" rows="5"
+          placeholder="Subtotal item setelah diskon&#10;Rp150.000&#10;...&#10;Total&#10;Rp150.100"
+          oninput="autoParse()"></textarea>
+      </div>
+
+      <!-- Kolom kanan: Fields manual + preview -->
+      <div>
+        <label class="form-label">Produk</label>
+        <select class="form-input" id="sel-produk" style="margin-bottom:12px">
+          <option value="">— Pilih produk —</option>
+        </select>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label class="form-label">Qty</label>
+            <input type="number" class="form-input" id="inp-qty" value="1" min="1">
+          </div>
+          <div>
+            <label class="form-label">Metode Bayar</label>
+            <select class="form-input" id="sel-metode">
+              <option value="QRIS">QRIS</option>
+              <option value="COD">COD</option>
+              <option value="Transfer">Transfer Bank</option>
+              <option value="Kredit">Kartu Kredit</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label class="form-label">Tanggal Order</label>
+          <input type="date" class="form-input" id="inp-tanggal">
+        </div>
+
+        <!-- Preview hasil parse -->
+        <div class="preview-box" id="preview-box" style="display:none">
+          <div style="font-size:10px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">
+            Hasil Parse
+          </div>
+          <div class="prev-row"><span class="prev-lbl">Nama</span><span class="prev-val" id="prev-nama">—</span></div>
+          <div class="prev-row"><span class="prev-lbl">HP</span><span class="prev-val" id="prev-hp">—</span></div>
+          <div class="prev-row"><span class="prev-lbl">Alamat</span><span class="prev-val" id="prev-alamat" style="font-size:12px">—</span></div>
+          <div class="prev-row"><span class="prev-lbl">Kecamatan</span><span class="prev-val" id="prev-kec">—</span></div>
+          <div class="prev-row"><span class="prev-lbl">Kota</span><span class="prev-val" id="prev-kota">—</span></div>
+          <div class="prev-row"><span class="prev-lbl">Provinsi</span><span class="prev-val" id="prev-prov">—</span></div>
+          <div class="section-divider"></div>
+          <div class="prev-row"><span class="prev-lbl">Subtotal</span><span class="prev-val" id="prev-sub">—</span></div>
+          <div class="prev-row">
+            <span class="prev-lbl">Total</span>
+            <span class="prev-val fw-600" id="prev-total" style="color:#10b981">—</span>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="saveOrder()" id="btn-save">
+            💾 Simpan ke CRM
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /import-grid -->
+  </div><!-- /card form -->
+
+  <!-- ── Riwayat Import ── -->
+  <div class="card">
+    <div class="card-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span>Riwayat Import</span>
+        <span class="count-pill" id="hist-count">0</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="loadHistory()" style="font-size:12px">🔄 Refresh</button>
+        <button class="btn btn-ghost" onclick="downloadExcel(false)" style="font-size:12px">📥 Download Terpilih</button>
+        <button class="btn btn-ghost" onclick="downloadExcel(true)" style="font-size:12px">📥 Download Semua</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px;padding-left:16px">
+              <input type="checkbox" id="chk-all" onchange="toggleAllCheck(this.checked)">
+            </th>
+            <th>Tanggal</th>
+            <th>Customer</th>
+            <th>HP</th>
+            <th>Produk</th>
+            <th style="text-align:center">Qty</th>
+            <th>Total</th>
+            <th>Metode</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="hist-body">
+          <tr>
+            <td colspan="10" style="text-align:center;color:var(--text-2);padding:36px">
+              ⏳ Memuat data...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main-content -->
+</div><!-- /app-layout -->
+
+<script src="js/app.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/prod-switcher.js"></script>
+<script>
+/* ════════════════════════════════
+   TikTok Shop Import
+════════════════════════════════ */
+
+let historyData = [];
+let products    = [];
+let parsed      = {};
+
+/* ── Init ── */
+(async function init() {
+  requireAuth();
+  renderSidebar('tiktok-import');
+  updateDatetime();
+  setInterval(updateDatetime, 60000);
+
+  // Default tanggal = hari ini
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('inp-tanggal').value = today;
+
+  await initConfig();
+  await loadProducts();
+  syncActiveProduk();   // auto-select produk aktif di dropdown
+  await loadHistory();
+})();
+
+/* ── Sync dropdown ke produk aktif ── */
+function syncActiveProduk() {
+  const activeId = window.__activeProductFilter;
+  if (!activeId) return;
+  const sel = document.getElementById('sel-produk');
+  if (sel) sel.value = activeId;
+}
+
+/* ── Saat user ganti produk aktif via switcher → reload ── */
+window.addEventListener('productSwitch', () => {
+  syncActiveProduk();
+  loadHistory();
+});
+
+/* ── Load products — hanya produk milik user ini ── */
+async function loadProducts() {
+  try {
+    const user = getUser();
+    const params = user?.product_ids?.length
+      ? `select=id,nama_produk&id=in.(${user.product_ids.join(',')})&order=nama_produk.asc`
+      : 'select=id,nama_produk&order=nama_produk.asc';
+    const data = await sbGet('products', params);
+    products = data || [];
+    const sel = document.getElementById('sel-produk');
+    // hapus opsi lama selain placeholder
+    while (sel.options.length > 1) sel.remove(1);
+    products.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = p.nama_produk;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    console.warn('loadProducts:', e.message);
+  }
+}
+
+/* ════════════════════════════════
+   Parser
+════════════════════════════════ */
+
+function isPhone(s) {
+  return /^[\s(]*(\+?62|08)\d{7,}/.test(s.replace(/[\s\-().]/g, ''));
+}
+
+function normalizePhone(s) {
+  let n = s.replace(/[^\d]/g, '');
+  if (n.startsWith('62')) n = '0' + n.slice(2);
+  return n;
+}
+
+function parseRp(s) {
+  return parseInt((s || '').replace(/[^\d]/g, '')) || 0;
+}
+
+function parsePembeli(text) {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return {};
+
+  let i = 0, nama = '', hp = '', jalan = [];
+
+  // Baris 1: nama (skip kalau phone)
+  if (lines[i] && !isPhone(lines[i])) { nama = lines[i]; i++; }
+  // Berikut: HP
+  if (lines[i] && isPhone(lines[i]))  { hp   = normalizePhone(lines[i]); i++; }
+  // Tengah: baris alamat jalan (semua kecuali baris terakhir)
+  while (i < lines.length - 1)        { jalan.push(lines[i]); i++; }
+  // Baris terakhir: wilayah "Kel,Kec,Kota,Prov,Negara"
+  const wilayah = lines[lines.length - 1] || '';
+  const parts   = wilayah.split(',').map(p => p.trim());
+
+  return {
+    nama,
+    hp,
+    alamat    : jalan.join(', '),
+    kelurahan : parts[0] || '',
+    kecamatan : parts[1] || '',
+    kota      : parts[2] || '',
+    provinsi  : parts[3] || '',
+  };
+}
+
+function parseRincian(text) {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  const map   = {};
+  for (let i = 0; i < lines.length - 1; i++) {
+    if (/^-?Rp/.test(lines[i + 1])) {
+      map[lines[i]] = parseRp(lines[i + 1]);
+      i++;
+    }
+  }
+  return {
+    subtotal : map['Subtotal item setelah diskon'] || 0,
+    total    : map['Total']                        || 0,
+  };
+}
+
+function fmtRp(n) {
+  if (!n) return '—';
+  return 'Rp' + Number(n).toLocaleString('id-ID');
+}
+
+function autoParse() {
+  const t1 = document.getElementById('paste-pembeli').value;
+  const t2 = document.getElementById('paste-biaya').value;
+  const p1 = parsePembeli(t1);
+  const p2 = parseRincian(t2);
+  parsed   = { ...p1, ...p2 };
+
+  const hasData = p1.nama || p1.hp;
+  const box     = document.getElementById('preview-box');
+  box.style.display = hasData ? 'block' : 'none';
+
+  document.getElementById('prev-nama').textContent   = p1.nama      || '—';
+  document.getElementById('prev-hp').textContent     = p1.hp        || '—';
+  document.getElementById('prev-alamat').textContent = p1.alamat    || '—';
+  document.getElementById('prev-kec').textContent    = p1.kecamatan || '—';
+  document.getElementById('prev-kota').textContent   = p1.kota      || '—';
+  document.getElementById('prev-prov').textContent   = p1.provinsi  || '—';
+  document.getElementById('prev-sub').textContent    = fmtRp(p2.subtotal);
+  document.getElementById('prev-total').textContent  = fmtRp(p2.total);
+}
+
+/* ════════════════════════════════
+   Save
+════════════════════════════════ */
+
+async function saveOrder() {
+  if (!parsed.nama && !parsed.hp) {
+    toast('Paste info pembeli dulu', 'error'); return;
+  }
+
+  const selProd     = document.getElementById('sel-produk');
+  const namaProduk  = selProd.options[selProd.selectedIndex]?.text || '';
+  const productId   = selProd.value || null;
+
+  const row = {
+    nama_customer : parsed.nama      || '',
+    nomer_hp      : parsed.hp        || '',
+    alamat        : parsed.alamat    || '',
+    kelurahan     : parsed.kelurahan || '',
+    kecamatan     : parsed.kecamatan || '',
+    kota          : parsed.kota      || '',
+    provinsi      : parsed.provinsi  || '',
+    nama_produk   : namaProduk,
+    product_id    : productId,
+    qty           : parseInt(document.getElementById('inp-qty').value) || 1,
+    metode_bayar  : document.getElementById('sel-metode').value,
+    subtotal      : parsed.subtotal  || 0,
+    total         : parsed.total     || 0,
+    tanggal       : document.getElementById('inp-tanggal').value || new Date().toISOString().slice(0, 10),
+    sudah_diimport: false,
+  };
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+
+  try {
+    await sbPost('tiktok_orders', row);
+    toast('Order tersimpan!', 'ok');
+    document.getElementById('paste-pembeli').value = '';
+    document.getElementById('paste-biaya').value   = '';
+    document.getElementById('preview-box').style.display = 'none';
+    document.getElementById('inp-qty').value = 1;
+    parsed = {};
+    await loadHistory();
+  } catch(e) {
+    toast('Gagal simpan: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Simpan ke CRM';
+  }
+}
+
+/* ════════════════════════════════
+   History
+════════════════════════════════ */
+
+async function loadHistory() {
+  try {
+    const activeId = window.__activeProductFilter;
+    const filter   = activeId ? `&product_id=eq.${activeId}` : '';
+    const data = await sbGet('tiktok_orders', `select=*&order=created_at.desc&limit=300${filter}`);
+    historyData = data || [];
+    renderHistory();
+  } catch(e) {
+    document.getElementById('hist-body').innerHTML =
+      `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:28px">Gagal load: ${e.message}</td></tr>`;
+  }
+}
+
+function renderHistory() {
+  document.getElementById('hist-count').textContent = historyData.length;
+  const tbody = document.getElementById('hist-body');
+
+  if (!historyData.length) {
+    tbody.innerHTML =
+      `<tr><td colspan="10" style="text-align:center;color:var(--text-2);padding:40px">
+        <div style="font-size:28px;margin-bottom:8px">📦</div>
+        Belum ada data
+      </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = historyData.map(r => {
+    const tgl    = r.tanggal || (r.created_at ? r.created_at.slice(0, 10) : '—');
+    const badge  = r.sudah_diimport
+      ? `<span class="hist-badge hist-done">✓ Diimport</span>`
+      : `<span class="hist-badge hist-pending">Pending</span>`;
+    const markBtn = !r.sudah_diimport
+      ? `<button class="act-btn" onclick="markImported('${r.id}')">✓ Mark</button> `
+      : '';
+    return `<tr>
+      <td style="padding-left:16px">
+        <input type="checkbox" class="row-chk" data-id="${r.id}" ${r.sudah_diimport ? 'disabled title="Sudah diimport"' : ''}>
+      </td>
+      <td class="text-sm text-dim">${esc(tgl)}</td>
+      <td>
+        <div class="fw-600" style="font-size:13px">${esc(r.nama_customer || '—')}</div>
+        <div class="text-sm text-dim">${esc(r.kelurahan ? r.kecamatan + ', ' + r.kota : r.kota || '')}</div>
+      </td>
+      <td class="text-sm">${esc(r.nomer_hp || '—')}</td>
+      <td class="text-sm">${esc(r.nama_produk || '—')}</td>
+      <td class="text-sm" style="text-align:center">${r.qty || 1}</td>
+      <td class="text-sm fw-600">${fmtRp(r.total)}</td>
+      <td class="text-sm">${esc(r.metode_bayar || '—')}</td>
+      <td>${badge}</td>
+      <td style="white-space:nowrap">
+        ${markBtn}<button class="act-btn del" onclick="deleteRow('${r.id}')">Hapus</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── Mark as imported ── */
+async function markImported(id) {
+  try {
+    await sbPatch('tiktok_orders', `id=eq.${id}`, { sudah_diimport: true });
+    toast('Ditandai sudah diimport', 'ok');
+    await loadHistory();
+  } catch(e) { toast('Gagal: ' + e.message, 'error'); }
+}
+
+/* ── Delete ── */
+async function deleteRow(id) {
+  if (!confirm('Hapus data ini?')) return;
+  try {
+    await sbDelete('tiktok_orders', `id=eq.${id}`);
+    toast('Data dihapus', 'ok');
+    await loadHistory();
+  } catch(e) { toast('Gagal hapus: ' + e.message, 'error'); }
+}
+
+/* ── Select all ── */
+function toggleAllCheck(v) {
+  document.querySelectorAll('.row-chk:not(:disabled)').forEach(c => c.checked = v);
+}
+
+/* ════════════════════════════════
+   Download Excel
+   — format cocok dengan Import Excel di customers.html
+════════════════════════════════ */
+
+function downloadExcel(semua) {
+  if (!window.XLSX) {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+    s.onload = () => doDownload(semua);
+    document.head.appendChild(s);
+    return;
+  }
+  doDownload(semua);
+}
+
+function doDownload(semua) {
+  let rows;
+  if (semua) {
+    rows = historyData;
+  } else {
+    const ids = new Set(
+      [...document.querySelectorAll('.row-chk:checked')].map(c => c.dataset.id)
+    );
+    rows = historyData.filter(r => ids.has(r.id));
+  }
+
+  if (!rows.length) {
+    toast(semua ? 'Tidak ada data' : 'Pilih data dulu', 'error'); return;
+  }
+
+  // Header sesuai customers.html Import Excel
+  const headers = [
+    'tanggal', 'nama_customer', 'nomer_hp',
+    'produk_1', 'jumlah_1', 'produk_2', 'jumlah_2',
+    'cs', 'nomer_resi', 'jumlah_cod', 'ekspedisi',
+    'alamat', 'kelurahan', 'kecamatan', 'kabupaten', 'provinsi',
+    'adv', 'promo', 'keluhan', 'payment',
+    'ongkir', 'potongan_ongkir', 'admin', 'potongan_admin', 'harga_produk'
+  ];
+
+  const wsData = [
+    headers,
+    ...rows.map(r => [
+      r.tanggal       || '',
+      r.nama_customer || '',
+      r.nomer_hp      || '',
+      r.nama_produk   || '',      // produk_1
+      r.qty           || 1,       // jumlah_1
+      '',                         // produk_2
+      '',                         // jumlah_2
+      '',                         // cs
+      '',                         // nomer_resi
+      r.metode_bayar === 'COD' ? (r.total || 0) : 0,  // jumlah_cod
+      '',                         // ekspedisi
+      r.alamat        || '',
+      r.kelurahan     || '',
+      r.kecamatan     || '',
+      r.kota          || '',      // kabupaten = kota
+      r.provinsi      || '',
+      '',                         // adv
+      '',                         // promo
+      '',                         // keluhan
+      r.metode_bayar  || '',      // payment
+      '',                         // ongkir
+      '',                         // potongan_ongkir
+      '',                         // admin
+      '',                         // potongan_admin
+      r.subtotal      || '',      // harga_produk
+    ])
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Auto column width
+  ws['!cols'] = headers.map((_, i) => ({ wch: i < 3 ? 20 : 15 }));
+
+  const wb   = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'TikTok Orders');
+
+  const fname = `tiktok_orders_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  toast(`Download ${rows.length} order berhasil`, 'ok');
+}
+</script>
+</body>
+</html>
