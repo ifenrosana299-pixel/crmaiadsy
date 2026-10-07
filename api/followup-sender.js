@@ -522,6 +522,12 @@ async function handleClosingFU(req, res) {
   const WAIT_MS    = 1 * 60 * 60 * 1000;       // 1 jam antar FU dalam hari yang sama
   const NEXT_DAY_MS = 23 * 60 * 60 * 1000;     // ~23 jam untuk lanjut hari berikutnya
 
+  // Cek jam WIB — jangan kirim di luar 07:00–21:00 WIB
+  const wibHour = nowWIBHour();
+  if (wibHour < 7 || wibHour >= 21) {
+    return res.json({ ...results, message: `Skip closing FU — di luar jam aktif (${Math.floor(wibHour)}:${String(Math.floor((wibHour%1)*60)).padStart(2,'0')} WIB)` });
+  }
+
   try {
     const now        = new Date();
     const cutoffIso  = new Date(now.getTime() - WAIT_MS).toISOString();
