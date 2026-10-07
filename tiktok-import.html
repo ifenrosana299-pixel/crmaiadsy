@@ -538,7 +538,7 @@ function renderHistory() {
       : '';
     return `<tr style="cursor:pointer" onclick="openDetail('${r.id}')" title="Klik untuk lihat detail">
       <td style="padding-left:16px" onclick="event.stopPropagation()">
-        <input type="checkbox" class="row-chk" data-id="${r.id}" ${r.sudah_diimport ? 'disabled title="Sudah diimport"' : ''}>
+        <input type="checkbox" class="row-chk" data-id="${r.id}">
       </td>
       <td class="text-sm text-dim">${esc(tgl)}</td>
       <td>
