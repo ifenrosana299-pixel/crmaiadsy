@@ -154,11 +154,6 @@ body.light .count-pill { color: #2563eb; }
 
       <!-- Kolom kanan: Fields manual + preview -->
       <div>
-        <label class="form-label">Produk</label>
-        <select class="form-input" id="sel-produk" style="margin-bottom:12px">
-          <option value="">— Pilih produk —</option>
-        </select>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
             <label class="form-label">Qty</label>
@@ -173,6 +168,17 @@ body.light .count-pill { color: #2563eb; }
               <option value="Kredit">Kartu Kredit</option>
               <option value="Lainnya">Lainnya</option>
             </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label class="form-label">Ekspedisi</label>
+            <input type="text" class="form-input" id="inp-ekspedisi" placeholder="J&T, JNE, Sicepat...">
+          </div>
+          <div>
+            <label class="form-label">Nomor Resi</label>
+            <input type="text" class="form-input" id="inp-resi" placeholder="Isi setelah diproses">
           </div>
         </div>
 
@@ -194,6 +200,8 @@ body.light .count-pill { color: #2563eb; }
           <div class="prev-row"><span class="prev-lbl">Provinsi</span><span class="prev-val" id="prev-prov">—</span></div>
           <div class="section-divider"></div>
           <div class="prev-row"><span class="prev-lbl">Subtotal</span><span class="prev-val" id="prev-sub">—</span></div>
+          <div class="prev-row"><span class="prev-lbl">Ongkir</span><span class="prev-val" id="prev-ongkir">—</span></div>
+          <div class="prev-row"><span class="prev-lbl">Pot. Ongkir</span><span class="prev-val" id="prev-potongkir" style="color:#10b981">—</span></div>
           <div class="prev-row">
             <span class="prev-lbl">Total</span>
             <span class="prev-val fw-600" id="prev-total" style="color:#10b981">—</span>
@@ -234,8 +242,10 @@ body.light .count-pill { color: #2563eb; }
             <th>Tanggal</th>
             <th>Customer</th>
             <th>HP</th>
-            <th>Produk</th>
             <th style="text-align:center">Qty</th>
+            <th>Resi</th>
+            <th>Ekspedisi</th>
+            <th>Ongkir</th>
             <th>Total</th>
             <th>Metode</th>
             <th>Status</th>
@@ -244,7 +254,7 @@ body.light .count-pill { color: #2563eb; }
         </thead>
         <tbody id="hist-body">
           <tr>
-            <td colspan="10" style="text-align:center;color:var(--text-2);padding:36px">
+            <td colspan="11" style="text-align:center;color:var(--text-2);padding:36px">
               ⏳ Memuat data...
             </td>
           </tr>
@@ -280,47 +290,11 @@ let parsed      = {};
   document.getElementById('inp-tanggal').value = today;
 
   await initConfig();
-  await loadProducts();
-  syncActiveProduk();   // auto-select produk aktif di dropdown
   await loadHistory();
 })();
 
-/* ── Sync dropdown ke produk aktif ── */
-function syncActiveProduk() {
-  const activeId = window.__activeProductFilter;
-  if (!activeId) return;
-  const sel = document.getElementById('sel-produk');
-  if (sel) sel.value = activeId;
-}
-
-/* ── Saat user ganti produk aktif via switcher → reload ── */
-window.addEventListener('productSwitch', () => {
-  syncActiveProduk();
-  loadHistory();
-});
-
-/* ── Load products — hanya produk milik user ini ── */
-async function loadProducts() {
-  try {
-    const user = getUser();
-    const params = user?.product_ids?.length
-      ? `select=id,nama_produk&id=in.(${user.product_ids.join(',')})&order=nama_produk.asc`
-      : 'select=id,nama_produk&order=nama_produk.asc';
-    const data = await sbGet('products', params);
-    products = data || [];
-    const sel = document.getElementById('sel-produk');
-    // hapus opsi lama selain placeholder
-    while (sel.options.length > 1) sel.remove(1);
-    products.forEach(p => {
-      const o = document.createElement('option');
-      o.value = p.id;
-      o.textContent = p.nama_produk;
-      sel.appendChild(o);
-    });
-  } catch(e) {
-    console.warn('loadProducts:', e.message);
-  }
-}
+/* ── Saat user ganti produk aktif via switcher → reload history ── */
+window.addEventListener('productSwitch', () => loadHistory());
 
 /* ════════════════════════════════
    Parser
@@ -377,8 +351,10 @@ function parseRincian(text) {
     }
   }
   return {
-    subtotal : map['Subtotal item setelah diskon'] || 0,
-    total    : map['Total']                        || 0,
+    subtotal       : map['Subtotal item setelah diskon']    || 0,
+    ongkir         : map['Biaya pengiriman sebelum diskon'] || 0,
+    potongan_ongkir: map['Diskon ongkir dari platform']     || 0,
+    total          : map['Total']                           || 0,
   };
 }
 
@@ -404,8 +380,10 @@ function autoParse() {
   document.getElementById('prev-kec').textContent    = p1.kecamatan || '—';
   document.getElementById('prev-kota').textContent   = p1.kota      || '—';
   document.getElementById('prev-prov').textContent   = p1.provinsi  || '—';
-  document.getElementById('prev-sub').textContent    = fmtRp(p2.subtotal);
-  document.getElementById('prev-total').textContent  = fmtRp(p2.total);
+  document.getElementById('prev-sub').textContent        = fmtRp(p2.subtotal);
+  document.getElementById('prev-ongkir').textContent     = fmtRp(p2.ongkir);
+  document.getElementById('prev-potongkir').textContent  = p2.potongan_ongkir ? '-' + fmtRp(p2.potongan_ongkir) : '—';
+  document.getElementById('prev-total').textContent      = fmtRp(p2.total);
 }
 
 /* ════════════════════════════════
@@ -417,26 +395,32 @@ async function saveOrder() {
     toast('Paste info pembeli dulu', 'error'); return;
   }
 
-  const selProd     = document.getElementById('sel-produk');
-  const namaProduk  = selProd.options[selProd.selectedIndex]?.text || '';
-  const productId   = selProd.value || null;
+  // Ambil produk dari active product switcher
+  const activeId   = window.__activeProductFilter;
+  const activeProd = (window.__userProducts || []).find(p => p.id === activeId);
+  const namaProduk = activeProd?.nama_produk || '';
+  const productId  = activeId || null;
 
   const row = {
-    nama_customer : parsed.nama      || '',
-    nomer_hp      : parsed.hp        || '',
-    alamat        : parsed.alamat    || '',
-    kelurahan     : parsed.kelurahan || '',
-    kecamatan     : parsed.kecamatan || '',
-    kota          : parsed.kota      || '',
-    provinsi      : parsed.provinsi  || '',
-    nama_produk   : namaProduk,
-    product_id    : productId,
-    qty           : parseInt(document.getElementById('inp-qty').value) || 1,
-    metode_bayar  : document.getElementById('sel-metode').value,
-    subtotal      : parsed.subtotal  || 0,
-    total         : parsed.total     || 0,
-    tanggal       : document.getElementById('inp-tanggal').value || new Date().toISOString().slice(0, 10),
-    sudah_diimport: false,
+    nama_customer   : parsed.nama      || '',
+    nomer_hp        : parsed.hp        || '',
+    alamat          : parsed.alamat    || '',
+    kelurahan       : parsed.kelurahan || '',
+    kecamatan       : parsed.kecamatan || '',
+    kota            : parsed.kota      || '',
+    provinsi        : parsed.provinsi  || '',
+    nama_produk     : namaProduk,
+    product_id      : productId,
+    qty             : parseInt(document.getElementById('inp-qty').value) || 1,
+    metode_bayar    : document.getElementById('sel-metode').value,
+    ekspedisi       : document.getElementById('inp-ekspedisi').value.trim(),
+    nomer_resi      : document.getElementById('inp-resi').value.trim(),
+    subtotal        : parsed.subtotal        || 0,
+    ongkir          : parsed.ongkir          || 0,
+    potongan_ongkir : parsed.potongan_ongkir || 0,
+    total           : parsed.total           || 0,
+    tanggal         : document.getElementById('inp-tanggal').value || new Date().toISOString().slice(0, 10),
+    sudah_diimport  : false,
   };
 
   const btn = document.getElementById('btn-save');
@@ -448,7 +432,9 @@ async function saveOrder() {
     document.getElementById('paste-pembeli').value = '';
     document.getElementById('paste-biaya').value   = '';
     document.getElementById('preview-box').style.display = 'none';
-    document.getElementById('inp-qty').value = 1;
+    document.getElementById('inp-qty').value        = 1;
+    document.getElementById('inp-resi').value       = '';
+    document.getElementById('inp-ekspedisi').value  = '';
     parsed = {};
     await loadHistory();
   } catch(e) {
@@ -481,7 +467,7 @@ function renderHistory() {
 
   if (!historyData.length) {
     tbody.innerHTML =
-      `<tr><td colspan="10" style="text-align:center;color:var(--text-2);padding:40px">
+      `<tr><td colspan="11" style="text-align:center;color:var(--text-2);padding:40px">
         <div style="font-size:28px;margin-bottom:8px">📦</div>
         Belum ada data
       </td></tr>`;
@@ -506,8 +492,10 @@ function renderHistory() {
         <div class="text-sm text-dim">${esc(r.kelurahan ? r.kecamatan + ', ' + r.kota : r.kota || '')}</div>
       </td>
       <td class="text-sm">${esc(r.nomer_hp || '—')}</td>
-      <td class="text-sm">${esc(r.nama_produk || '—')}</td>
       <td class="text-sm" style="text-align:center">${r.qty || 1}</td>
+      <td class="text-sm" style="font-family:monospace">${esc(r.nomer_resi || '—')}</td>
+      <td class="text-sm">${esc(r.ekspedisi || '—')}</td>
+      <td class="text-sm">${r.ongkir ? fmtRp(r.ongkir) : '—'}</td>
       <td class="text-sm fw-600">${fmtRp(r.total)}</td>
       <td class="text-sm">${esc(r.metode_bayar || '—')}</td>
       <td>${badge}</td>
@@ -594,9 +582,9 @@ function doDownload(semua) {
       '',                         // produk_2
       '',                         // jumlah_2
       '',                         // cs
-      '',                         // nomer_resi
+      r.nomer_resi    || '',      // nomer_resi
       r.metode_bayar === 'COD' ? (r.total || 0) : 0,  // jumlah_cod
-      '',                         // ekspedisi
+      r.ekspedisi     || '',      // ekspedisi
       r.alamat        || '',
       r.kelurahan     || '',
       r.kecamatan     || '',
@@ -606,8 +594,8 @@ function doDownload(semua) {
       '',                         // promo
       '',                         // keluhan
       r.metode_bayar  || '',      // payment
-      '',                         // ongkir
-      '',                         // potongan_ongkir
+      r.ongkir        || '',      // ongkir
+      r.potongan_ongkir || '',    // potongan_ongkir
       '',                         // admin
       '',                         // potongan_admin
       r.subtotal      || '',      // harga_produk
