@@ -824,17 +824,22 @@ async function renderInbox() {
   const el = document.getElementById('conv-list');
   if (!convs.length) {
     el.innerHTML = `<div class="empty-inbox">📭<br><br>Belum ada percakapan</div>`;
-    // Clear panel tengah kalau inbox kosong
+    // Reset panel tengah & kanan
     activeConvId = null; activeConv = null; activeCustomer = null;
-    document.getElementById('ch-name').textContent = 'Pilih percakapan';
-    document.getElementById('ch-sub').innerHTML    = '<span>—</span>';
-    document.getElementById('ch-av').textContent   = '?';
-    document.getElementById('ch-av').style.background = '#374151';
+    document.getElementById('ch-name').textContent     = 'Pilih percakapan';
+    document.getElementById('ch-sub').innerHTML        = '<span>—</span>';
+    document.getElementById('ch-av').textContent       = '?';
+    document.getElementById('ch-av').style.background  = '#374151';
     document.getElementById('ch-status-area').innerHTML = '';
-    const msgEl = document.getElementById('messages');
-    if (msgEl) msgEl.innerHTML = '';
-    const infoEl = document.getElementById('info-panel');
-    if (infoEl) infoEl.innerHTML = '';
+    document.getElementById('messages-area').innerHTML  =
+      `<div class="no-chat"><div class="no-chat-icon">💬</div>
+       <div style="font-size:14px;font-weight:500;color:#374151">Pilih percakapan</div>
+       <div style="font-size:12px;color:#374151;margin-top:4px">atau tunggu balasan customer</div></div>`;
+    document.getElementById('ae-name').textContent = 'Pilih percakapan';
+    document.getElementById('ae-av').textContent   = '?';
+    document.getElementById('ae-chips').innerHTML  = '';
+    document.getElementById('fu-schedule-list').innerHTML =
+      `<div style="font-size:12px;color:#475569;text-align:center;padding:12px 0">Pilih percakapan</div>`;
     return;
   }
 
