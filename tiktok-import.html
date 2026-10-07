@@ -452,7 +452,10 @@ async function saveOrder() {
   // Ambil produk dari active product switcher
   const activeId   = window.__activeProductFilter;
   const activeProd = (window.__userProducts || []).find(p => p.id === activeId);
-  const namaProduk = activeProd?.nama_produk || '';
+  // Fallback: ambil nama dari teks yang tampil di prod-switcher UI
+  const namaProduk = activeProd?.nama_produk
+    || document.querySelector('.prod-sw-name')?.textContent?.trim()
+    || '';
   const productId  = activeId || null;
 
   const row = {
@@ -657,7 +660,11 @@ function openDetail(id) {
     <div class="det-grid">
       <div class="det-field">
         <span class="det-lbl">Produk</span>
-        <span class="det-val">${esc(r.nama_produk || '—')}</span>
+        <span class="det-val">${esc(
+          r.nama_produk ||
+          (window.__userProducts||[]).find(p=>p.id===r.product_id)?.nama_produk ||
+          '—'
+        )}</span>
       </div>
       <div class="det-field">
         <span class="det-lbl">Qty</span>
