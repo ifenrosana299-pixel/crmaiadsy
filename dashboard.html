@@ -824,6 +824,17 @@ async function renderInbox() {
   const el = document.getElementById('conv-list');
   if (!convs.length) {
     el.innerHTML = `<div class="empty-inbox">📭<br><br>Belum ada percakapan</div>`;
+    // Clear panel tengah kalau inbox kosong
+    activeConvId = null; activeConv = null; activeCustomer = null;
+    document.getElementById('ch-name').textContent = 'Pilih percakapan';
+    document.getElementById('ch-sub').innerHTML    = '<span>—</span>';
+    document.getElementById('ch-av').textContent   = '?';
+    document.getElementById('ch-av').style.background = '#374151';
+    document.getElementById('ch-status-area').innerHTML = '';
+    const msgEl = document.getElementById('messages');
+    if (msgEl) msgEl.innerHTML = '';
+    const infoEl = document.getElementById('info-panel');
+    if (infoEl) infoEl.innerHTML = '';
     return;
   }
 
