@@ -344,18 +344,36 @@ function parsePembeli(text) {
 function parseRincian(text) {
   const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
   const map   = {};
-  for (let i = 0; i < lines.length - 1; i++) {
-    if (/^-?Rp/.test(lines[i + 1])) {
-      map[lines[i]] = parseRp(lines[i + 1]);
-      i++;
+  let metode  = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    // Tangkap metode pembayaran
+    if (lines[i] === 'Metode pembayaran' && lines[i + 1]) {
+      metode = lines[i + 1]; i++; continue;
+    }
+    // Tangkap pasangan label → Rp
+    if (i < lines.length - 1 && /^-?Rp/.test(lines[i + 1])) {
+      map[lines[i]] = parseRp(lines[i + 1]); i++;
     }
   }
+
   return {
-    subtotal       : map['Subtotal item setelah diskon']    || 0,
-    ongkir         : map['Biaya pengiriman sebelum diskon'] || 0,
-    potongan_ongkir: map['Diskon ongkir dari platform']     || 0,
-    total          : map['Total']                           || 0,
+    subtotal        : map['Subtotal item setelah diskon']    || 0,
+    ongkir          : map['Biaya pengiriman sebelum diskon'] || 0,
+    potongan_ongkir : map['Diskon ongkir dari platform']     || 0,
+    total           : map['Total']                           || 0,
+    metode_raw      : metode,
   };
+}
+
+function mapMetode(raw) {
+  if (!raw) return '';
+  const r = raw.toLowerCase();
+  if (r.includes('tempat') || r.includes('cod'))      return 'COD';
+  if (r.includes('qris'))                              return 'QRIS';
+  if (r.includes('transfer'))                          return 'Transfer';
+  if (r.includes('kredit') || r.includes('debit'))     return 'Kredit';
+  return 'Lainnya';
 }
 
 function fmtRp(n) {
@@ -384,6 +402,12 @@ function autoParse() {
   document.getElementById('prev-ongkir').textContent     = fmtRp(p2.ongkir);
   document.getElementById('prev-potongkir').textContent  = p2.potongan_ongkir ? '-' + fmtRp(p2.potongan_ongkir) : '—';
   document.getElementById('prev-total').textContent      = fmtRp(p2.total);
+
+  // Auto-set metode bayar kalau berhasil di-parse
+  if (p2.metode_raw) {
+    const mapped = mapMetode(p2.metode_raw);
+    if (mapped) document.getElementById('sel-metode').value = mapped;
+  }
 }
 
 /* ════════════════════════════════
