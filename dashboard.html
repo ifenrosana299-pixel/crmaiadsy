@@ -262,6 +262,7 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
 .ctag.eskalasi{background:rgba(239,68,68,.1);color:#fca5a5}
 .ctag.ai{background:rgba(99,102,241,.1);color:#a5b4fc}
 .ctag.new-msg{background:rgba(245,158,11,.15);color:#fbbf24;font-weight:700}
+.ctag.responsif{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.2)}
 .conv-unread{width:8px;height:8px;background:#3b82f6;border-radius:50%;position:absolute;right:12px;top:50%;transform:translateY(-50%)}
 .empty-inbox{text-align:center;padding:40px 16px;color:#475569}
 
@@ -724,7 +725,7 @@ setInterval(updateDatetime, 60000);
 /* ── LOAD STATS ── */
 async function loadStats() {
   const userId = getUser()?.id;
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&select=*,customers(product_id)`);
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&select=*,customers(product_id,fu_status,response_count)`);
 
   const prodFilter = window.__activeProductFilter;
   if (prodFilter) convs = convs.filter(c => c.product_id === prodFilter || (!c.product_id && c.customers?.product_id === prodFilter));
@@ -788,7 +789,7 @@ window.addEventListener('productSwitch', () => {
 async function renderInbox() {
   const userId = getUser()?.id;
   // Sertakan product_id customer agar bisa filter conversation lama yang belum punya product_id
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=last_msg_at.${sortOrder}.nullslast&select=*,customers(product_id)`);
+  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=last_msg_at.${sortOrder}.nullslast&select=*,customers(product_id,fu_status,response_count)`);
   allConvs = convs;
 
   const _prodFilter = window.__activeProductFilter;
@@ -860,7 +861,8 @@ async function renderInbox() {
     const isLive  = conv.status === 'baru' || conv.status === 'diproses';
     const isDone  = conv.status === 'selesai';
     const isNew   = isDone && conv.state?.has_new_message;
-    const tags    = `<span class="ctag wa">WA</span>${isLive?'<span class="ctag live">Live</span>':''}${isEsc?'<span class="ctag eskalasi">Eskalasi</span>':''}${isDone&&!isNew?'<span class="ctag ai">Selesai</span>':''}${isNew?'<span class="ctag new-msg">Balas Baru</span>':''}`;
+    const isResponsif = (conv.customers?.response_count > 0);
+    const tags    = `<span class="ctag wa">WA</span>${isLive?'<span class="ctag live">Live</span>':''}${isEsc?'<span class="ctag eskalasi">Eskalasi</span>':''}${isDone&&!isNew?'<span class="ctag ai">Selesai</span>':''}${isNew?'<span class="ctag new-msg">Balas Baru</span>':''}${isResponsif?'<span class="ctag responsif">Responsif</span>':''}`;
     const unreadDot = (conv.status === 'baru' || isNew) ? '<div class="conv-unread"></div>' : '';
     return `<div class="conv-item${activeConvId===conv.id?' active':''}" onclick="selectConv('${conv.id}')">
       <div class="conv-av" style="background:${color}">${initials(nama)}</div>
