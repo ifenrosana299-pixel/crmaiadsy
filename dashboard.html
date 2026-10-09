@@ -794,11 +794,8 @@ async function renderInbox() {
   const _prodFilter = window.__activeProductFilter;
   if (_prodFilter) {
     convs = convs.filter(c => {
-      // Conversation internal/alert (sumber=fu) selalu muncul terlepas dari filter produk
-      if (c.sumber === 'fu') return true;
-      // Kalau conversation sudah punya product_id → filter ketat
+      // Filter by product_id conversation, fallback ke product_id customer
       if (c.product_id) return c.product_id === _prodFilter;
-      // Conversation lama tanpa product_id → cek dari customer-nya
       return c.customers?.product_id === _prodFilter;
     });
   }
