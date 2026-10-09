@@ -507,6 +507,7 @@ async function saveOrder() {
       ongkir:         row.ongkir,
       potongan_ongkir:row.potongan_ongkir,
       jumlah_cod:     row.total,
+      harga_produk:   row.subtotal,
       tanggal:        row.tanggal,
       status_resi:    nomerResi ? 'DIKIRIM' : 'MENUNGGU_RESI',
     });
