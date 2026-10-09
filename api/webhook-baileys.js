@@ -1508,7 +1508,7 @@ module.exports = async function handler(req, res) {
     // ── Ambil rekening dari users table ───────────────────────
     const userRows = await sbGet('users', `?id=eq.${userId}&select=rekening,anthropic_key,group_jid,default_sumber&limit=1`).catch(() => []);
     const userRekening      = userRows[0]?.rekening      || null;
-    const userAnthropicKey  = userRows[0]?.anthropic_key || ANTHROPIC_KEY;
+    const userAnthropicKey  = product?.anthropic_key || userRows[0]?.anthropic_key || ANTHROPIC_KEY;
     const userGroupJid      = userRows[0]?.group_jid     || WA_GROUP_JID;
     const userDefaultSumber = userRows[0]?.default_sumber || null;
     console.log(`Produk: ${product?.nama || 'tidak diketahui'} (${sumber})`);
