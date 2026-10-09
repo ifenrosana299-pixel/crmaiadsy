@@ -85,7 +85,8 @@ export default async function handler(req, res) {
           produk: o.produk || '',
           product_id: o.product_id || product_id || null,
           source: 'import',
-          status: 'baru'
+          status: 'baru',
+          send_minute_slot: Math.floor(Math.random() * 120) // 0-120 menit, langsung fix dari awal
         });
       }
 
