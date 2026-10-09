@@ -485,6 +485,16 @@ async function saveOrder() {
   btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
 
   try {
+    // Cek duplikat by nomer_resi sebelum insert
+    if (row.nomer_resi) {
+      const existing = await sbGet('orders', `nomer_resi=eq.${encodeURIComponent(row.nomer_resi)}&user_id=eq.${window.__currentUser?.id}&select=id,nama_customer&limit=1`);
+      if (existing && existing.length > 0) {
+        btn.disabled = false; btn.textContent = 'Simpan Order';
+        toast(`Duplikat! Resi ${row.nomer_resi} sudah ada (${existing[0].nama_customer})`, 'error');
+        return;
+      }
+    }
+
     await sbPost('tiktok_orders', row);
 
     // Juga simpan ke orders supaya FU H+0 auto-terbuat
