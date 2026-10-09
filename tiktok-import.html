@@ -310,7 +310,8 @@ let parsed      = {};
 
 /* ── Init ── */
 (async function init() {
-  requireAuth();
+  window.__currentUser = requireAuth();
+  if (!window.__currentUser) return;
   renderSidebar('tiktok-import');
   updateDatetime();
   setInterval(updateDatetime, 60000);
@@ -485,7 +486,39 @@ async function saveOrder() {
 
   try {
     await sbPost('tiktok_orders', row);
-    toast('Order tersimpan!', 'ok');
+
+    // Juga simpan ke orders supaya FU H+0 auto-terbuat
+    const nomerResi = row.nomer_resi || '';
+    await sbPost('orders', {
+      user_id:        window.__currentUser?.id,
+      product_id:     row.product_id,
+      produk:         row.nama_produk,
+      nama_customer:  row.nama_customer,
+      nomer_hp:       row.nomer_hp,
+      nomer_resi:     nomerResi,
+      ekspedisi:      row.ekspedisi,
+      alamat:         row.alamat,
+      kelurahan:      row.kelurahan,
+      kecamatan:      row.kecamatan,
+      kabupaten:      row.kota,
+      provinsi:       row.provinsi,
+      jumlah_produk:  row.qty,
+      payment:        row.metode_bayar,
+      ongkir:         row.ongkir,
+      potongan_ongkir:row.potongan_ongkir,
+      jumlah_cod:     row.total,
+      tanggal:        row.tanggal,
+      status_resi:    nomerResi ? 'DIKIRIM' : 'MENUNGGU_RESI',
+    });
+
+    // Auto-generate jadwal FU (H+0 dst) — sama seperti customers.html
+    fetch('/api/generate-schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: window.__currentUser?.id, product_id: row.product_id || null })
+    }).catch(() => {});
+
+    toast('Order tersimpan + FU dijadwalkan!', 'ok');
     document.getElementById('paste-pembeli').value = '';
     document.getElementById('paste-biaya').value   = '';
     document.getElementById('preview-box').style.display = 'none';
