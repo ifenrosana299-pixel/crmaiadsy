@@ -190,8 +190,9 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
 #stats-row{background:#161b22;border-bottom:1px solid rgba(255,255,255,.06);padding:0 20px;height:72px;display:flex;gap:6px;flex-shrink:0;overflow-x:auto;overflow-y:hidden;align-items:center}
 #stats-row::-webkit-scrollbar{height:3px}
 #stats-row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
-.stat-card{flex:1;min-width:110px;height:62px;background:#0d1117;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:0 10px;display:flex;align-items:center;gap:10px;transition:border-color .15s;cursor:default}
-.stat-card:hover{border-color:rgba(59,130,246,.3)}
+.stat-card{flex:1;min-width:110px;height:62px;background:#0d1117;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:0 10px;display:flex;align-items:center;gap:10px;transition:all .15s;cursor:pointer}
+.stat-card:hover{border-color:rgba(59,130,246,.3);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.stat-card.active-filter{border-color:rgba(59,130,246,.6);background:rgba(59,130,246,.06)}
 .stat-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
 .stat-icon.blue{background:rgba(59,130,246,.13);color:#3b82f6}
 .stat-icon.red{background:rgba(239,68,68,.13);color:#ef4444}
@@ -262,7 +263,7 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
 .ctag.eskalasi{background:rgba(239,68,68,.1);color:#fca5a5}
 .ctag.ai{background:rgba(99,102,241,.1);color:#a5b4fc}
 .ctag.new-msg{background:rgba(245,158,11,.15);color:#fbbf24;font-weight:700}
-.ctag.responsif{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.2)}
+.ctag.responsif{background:rgba(234,179,8,.12);color:#fcd34d;border:1px solid rgba(234,179,8,.2)}
 .conv-unread{width:8px;height:8px;background:#3b82f6;border-radius:50%;position:absolute;right:12px;top:50%;transform:translateY(-50%)}
 .empty-inbox{text-align:center;padding:40px 16px;color:#475569}
 
@@ -430,7 +431,7 @@ body.light .cm-input::placeholder{color:#94a3b8}
 
   <!-- STATS ROW -->
   <div id="stats-row">
-    <div class="stat-card">
+    <div class="stat-card" onclick="filterByCard('open')" id="sc-open">
       <div class="stat-icon blue">💬</div>
       <div class="stat-text">
         <div class="stat-label">Open Tickets</div>
@@ -438,7 +439,7 @@ body.light .cm-input::placeholder{color:#94a3b8}
         <div class="stat-sub muted" id="st-open-sub">percakapan aktif</div>
       </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" onclick="filterByCard('eskalasi')" id="sc-eskalasi">
       <div class="stat-icon red">⚠️</div>
       <div class="stat-text">
         <div class="stat-label">Eskalasi</div>
@@ -446,7 +447,7 @@ body.light .cm-input::placeholder{color:#94a3b8}
         <div class="stat-sub danger" id="st-esc-sub">perlu penanganan</div>
       </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" onclick="filterByCard('ai')" id="sc-ai">
       <div class="stat-icon purple">🤖</div>
       <div class="stat-text">
         <div class="stat-label">AI Response</div>
@@ -454,15 +455,15 @@ body.light .cm-input::placeholder{color:#94a3b8}
         <div class="stat-sub ok" id="st-ai-sub">balasan AI hari ini</div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon amber">📅</div>
+    <div class="stat-card" onclick="filterByCard('responsif')" id="sc-responsif">
+      <div class="stat-icon amber">⭐</div>
       <div class="stat-text">
-        <div class="stat-label">FU Hari Ini</div>
+        <div class="stat-label">Responsif</div>
         <div class="stat-num" id="st-aktif">0</div>
-        <div class="stat-sub muted" id="st-aktif-sub">jadwal follow-up</div>
+        <div class="stat-sub muted" id="st-aktif-sub">customer sudah balas</div>
       </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" onclick="filterByCard('selesai')" id="sc-selesai">
       <div class="stat-icon green">🔄</div>
       <div class="stat-text">
         <div class="stat-label">Repeat Order</div>
@@ -734,13 +735,8 @@ async function loadStats() {
   const esc     = convs.filter(c => c.status === 'eskalasi').length;
   const selesai = convs.filter(c => c.status === 'selesai').length;
 
-  // FU Hari Ini
-  const today = new Date().toISOString().slice(0,10);
-  let fuToday = 0;
-  try {
-    const fuList = await _sbGet('followup_schedule', `?user_id=eq.${userId}&scheduled_date=eq.${today}&status=eq.pending`);
-    fuToday = fuList.length || 0;
-  } catch(e) {}
+  // Responsif: customer yang sudah pernah balas (response_count > 0)
+  const responsif = convs.filter(c => (c.customers?.response_count || 0) > 0).length;
 
   // AI messages hari ini
   const convIds = convs.map(c => c.id).join(',');
@@ -752,13 +748,13 @@ async function loadStats() {
   document.getElementById('st-open').textContent     = open;
   document.getElementById('st-eskalasi').textContent = esc;
   document.getElementById('st-ai').textContent       = aiMsgs.length || 0;
-  document.getElementById('st-aktif').textContent    = fuToday;
+  document.getElementById('st-aktif').textContent    = responsif;
   document.getElementById('st-unik').textContent     = selesai;
   document.getElementById('st-open-sub').textContent = open + ' percakapan aktif';
   document.getElementById('st-esc-sub').textContent  = esc > 0 ? esc + ' perlu penanganan' : 'aman terkendali';
   document.getElementById('st-esc-sub').className    = 'stat-sub ' + (esc > 0 ? 'danger' : 'ok');
   document.getElementById('st-ai-sub').textContent   = (aiMsgs.length || 0) + ' balasan AI hari ini';
-  document.getElementById('st-aktif-sub').textContent = fuToday + ' jadwal follow-up';
+  document.getElementById('st-aktif-sub').textContent = responsif + ' customer sudah balas';
   document.getElementById('st-unik-sub').textContent  = selesai + ' percakapan selesai';
 
   document.getElementById('fn-all').textContent     = convs.length;
@@ -811,6 +807,13 @@ async function renderInbox() {
       return bn - an;
     });
   }
+
+  // Filter by stat card click
+  if (_activeCardFilter === 'open')      convs = convs.filter(c => c.status !== 'selesai');
+  else if (_activeCardFilter === 'eskalasi')  convs = convs.filter(c => c.status === 'eskalasi');
+  else if (_activeCardFilter === 'ai')        convs = convs.filter(c => c.sumber === 'ai');
+  else if (_activeCardFilter === 'responsif') convs = convs.filter(c => (c.customers?.response_count || 0) > 0);
+  else if (_activeCardFilter === 'selesai')   convs = convs.filter(c => c.status === 'selesai');
 
   if (searchFilter) {
     convs = convs.filter(c => {
@@ -1390,6 +1393,21 @@ window.addEventListener('load', async () => {
 
   setInterval(poll, 5000);
 });
+
+let _activeCardFilter = null;
+function filterByCard(type) {
+  // Toggle: klik lagi → reset filter
+  if (_activeCardFilter === type) {
+    _activeCardFilter = null;
+    document.querySelectorAll('.stat-card').forEach(el => el.classList.remove('active-filter'));
+  } else {
+    _activeCardFilter = type;
+    document.querySelectorAll('.stat-card').forEach(el => el.classList.remove('active-filter'));
+    const cardId = { open:'sc-open', eskalasi:'sc-eskalasi', ai:'sc-ai', responsif:'sc-responsif', selesai:'sc-selesai' }[type];
+    if (cardId) document.getElementById(cardId)?.classList.add('active-filter');
+  }
+  renderInbox();
+}
 </script>
 
 <!-- Modal Repeat Order -->
