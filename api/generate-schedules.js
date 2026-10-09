@@ -22,7 +22,8 @@ async function sb(table, params = '', opts = {}) {
 function normalizePhone(p) {
   if (!p) return '';
   p = String(p).replace(/\D/g, '');
-  if (p.startsWith('0')) p = '62' + p.slice(1);
+  if (p.startsWith('00')) p = p.slice(2);       // 0085714... → 85714...
+  if (p.startsWith('0')) p = '62' + p.slice(1); // 085714... → 6285714...
   if (!p.startsWith('62')) p = '62' + p;
   return p;
 }
