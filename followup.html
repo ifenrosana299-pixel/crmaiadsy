@@ -329,6 +329,7 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
           <span class="badge badge-green" style="cursor:pointer" title="Nama ekspedisi (JNE, SiCepat, dll)" onclick="insertVar('{ekspedisi}')">&#123;ekspedisi&#125;</span>
           <span class="badge badge-green" style="cursor:pointer" title="Status terakhir resi (dalam pengiriman, dll)" onclick="insertVar('{status_resi}')">&#123;status_resi&#125;</span>
           <span class="badge badge-green" style="cursor:pointer" title="Alamat pengiriman customer" onclick="insertVar('{alamat}')">&#123;alamat&#125;</span>
+          <span class="badge badge-amber" style="cursor:pointer" title="Total tagihan COD (harga produk)" onclick="insertVar('{total_cod}')">&#123;total_cod&#125;</span>
         </div>
       </div>
       <div id="rule-err" style="color:var(--red);font-size:12px;display:none"></div>
@@ -367,6 +368,7 @@ body.light .rule-card-tmpl{background:rgba(0,0,0,.03)}
           <span class="badge badge-blue" style="cursor:pointer" onclick="insertReorderVar('{nama}')">&#123;nama&#125;</span>
           <span class="badge badge-blue" style="cursor:pointer" onclick="insertReorderVar('{produk}')">&#123;produk&#125;</span>
           <span class="badge badge-green" style="cursor:pointer" onclick="insertReorderVar('{resi}')">&#123;resi&#125;</span>
+          <span class="badge badge-amber" style="cursor:pointer" title="Total tagihan COD" onclick="insertReorderVar('{total_cod}')">&#123;total_cod&#125;</span>
         </div>
       </div>
       <div id="reorder-tmpl-err" style="color:var(--red);font-size:12px;display:none"></div>
@@ -767,7 +769,8 @@ async function autoLoadTemplate(custId, rule) {
       .replace(/{resi}/g,        order.nomer_resi  || '')
       .replace(/{ekspedisi}/g,   order.ekspedisi   || '')
       .replace(/{status_resi}/g, order.status_resi || '')
-      .replace(/{alamat}/g,      order.alamat      || '');
+      .replace(/{alamat}/g,      order.alamat      || '')
+      .replace(/{total_cod}/g,   order.jumlah_cod ? `Rp${Number(order.jumlah_cod).toLocaleString('id-ID')}` : '-');
 
     document.getElementById('send-pesan').value = filled;
     if (imageUrl) {
