@@ -131,7 +131,8 @@ async function generatePesan(rule, customer, order, apiKey, reEngage = false) {
       .replace(/{resi}/g,        order?.nomer_resi     || '-')
       .replace(/{ekspedisi}/g,   order?.ekspedisi      || '-')
       .replace(/{status_resi}/g, order?.status_resi    || '-')
-      .replace(/{alamat}/g,      order?.alamat         || '-');
+      .replace(/{alamat}/g,      order?.alamat         || '-')
+      .replace(/{total_cod}/g,   order?.jumlah_cod ? `Rp${Number(order.jumlah_cod).toLocaleString('id-ID')}` : '-');
 
     // Re-engagement mode: gunakan strategi khusus memancing balasan
     // Fallback ke rephrase biasa kalau tidak ada API key
@@ -279,7 +280,7 @@ export default async function handler(req, res) {
         const apiKey = await getAnthropicKey(s.user_id);
 
         const orders = await sb('orders',
-          `nomer_hp=eq.${customer.wa_number}&user_id=eq.${s.user_id}&order=created_at.desc&limit=1&select=produk,nomer_resi,ekspedisi,status_resi,alamat`
+          `nomer_hp=eq.${customer.wa_number}&user_id=eq.${s.user_id}&order=created_at.desc&limit=1&select=produk,nomer_resi,ekspedisi,status_resi,alamat,jumlah_cod`
         ).catch(() => []);
         const order = orders[0] || null;
 
