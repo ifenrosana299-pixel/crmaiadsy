@@ -108,12 +108,10 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
       ? `<div class="prod-sw-av" style="background:${color}">${initials(active.nama)}</div>`
       : `<div class="prod-sw-av all">📋</div>`;
 
-    const nameHtml = active
-      ? active.nama + (active.persona_cs_nama ? `<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:5px">${active.persona_cs_nama}</span>` : '')
-      : (showAll ? 'Semua Produk' : (allUserProducts[0]?.nama || 'Produk'));
+    const nameHtml = active ? active.nama : (showAll ? 'Semua Produk' : (allUserProducts[0]?.nama || 'Produk'));
     const st       = active ? getProdStatus(active) : null;
     const subHtml  = active
-      ? `<span style="color:${st.color}">${st.label}</span>`
+      ? `${active.persona_cs_nama ? `<span style="color:#94a3b8">${active.persona_cs_nama}</span><span style="color:#475569"> · </span>` : ''}<span style="color:${st.color}">${st.label}</span>`
       : (showAll ? `${allUserProducts.length} produk` : (() => { const s = getProdStatus(allUserProducts[0]); return `<span style="color:${s.color}">${s.label}</span>`; })());
 
     el.innerHTML = `
@@ -161,8 +159,8 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
         <div class="prod-sw-opt ${isActive?'active':''}" onclick="window.__switchProd('${p.id}')">
           <div class="prod-sw-opt-av" style="background:${color}">${initials(p.nama)}</div>
           <div class="prod-sw-opt-info">
-            <div class="prod-sw-opt-name">${p.nama}${p.persona_cs_nama ? `<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:5px">${p.persona_cs_nama}</span>` : ''}</div>
-            <div class="prod-sw-opt-sub" style="color:${getProdStatus(p).color}">${getProdStatus(p).label}</div>
+            <div class="prod-sw-opt-name">${p.nama}</div>
+            <div class="prod-sw-opt-sub">${p.persona_cs_nama ? `<span style="color:#94a3b8">${p.persona_cs_nama}</span><span style="color:#475569"> · </span>` : ''}<span style="color:${getProdStatus(p).color}">${getProdStatus(p).label}</span></div>
           </div>
           ${isActive ? '<div class="prod-sw-opt-check">✓</div>' : ''}
         </div>
