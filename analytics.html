@@ -231,6 +231,17 @@ body.light .btn-sm:hover{border-color:#22c55e;color:#16a34a}
       <canvas id="bar-chart" height="80"></canvas>
     </div>
 
+    <!-- Biaya AI per Produk -->
+    <div class="chart-card" id="ai-cost-card">
+      <div class="chart-hdr">
+        <h3>💸 Biaya AI per Produk</h3>
+        <div style="font-size:11px;color:var(--text3)">estimasi · Claude Haiku $0.80/M input, $4.00/M output</div>
+      </div>
+      <div id="ai-cost-body" style="min-height:60px">
+        <div style="color:var(--text3);font-size:12px">Memuat...</div>
+      </div>
+    </div>
+
     <!-- Objeksi Closing -->
     <div class="chart-card" id="objeksi-card">
       <div class="chart-hdr">
@@ -458,17 +469,26 @@ async function init() {
   const custProdQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
 
   // FU schedules dalam range
-  const [schedules, schedulesAll, customers] = await Promise.all([
+  const [schedules, schedulesAll, customers, convData, products] = await Promise.all([
     sbGet('followup_schedule', `user_id=eq.${userId}${prodQ}&scheduled_date=gte.${sinceISO.slice(0,10)}&scheduled_date=lte.${rangeEnd.toISOString().slice(0,10)}&select=id,status,customer_id,scheduled_date,sent_at`),
-    sbGet('followup_schedule', `user_id=eq.${userId}${prodQ}&select=id,status,sent_at,created_at`),
+    sbGet('followup_schedule', `user_id=eq.${userId}&status=eq.sent&sent_at=gte.${sinceISO}&sent_at=lte.${rangeEnd.toISOString()}&select=product_id,sent_at`),
     sbGet('customers', `user_id=eq.${userId}${custProdQ}&select=id,status,last_fu_at`),
+    sbGet('conversations', `user_id=eq.${userId}${prodFilter ? '&product_id=eq.'+prodFilter : ''}&created_at=gte.${sinceISO}&created_at=lte.${rangeEnd.toISOString()}&select=id,product_id,close_fu_count`),
+    sbGet('products', `user_id=eq.${userId}&select=id,nama,persona_cs_nama`),
   ]);
 
   const fuSent       = schedules.filter(s => s.status === 'sent').length;
   const fuPending    = schedules.filter(s => s.status === 'pending').length;
   const repeatOrder  = customers.filter(c => c.status === 'repeat_order').length;
-  const fuAktif      = customers.filter(c => c.status === 'fu_aktif').length;
   const totalCust    = customers.length;
+
+  // Biaya AI — estimasi berdasarkan Claude Haiku pricing ($0.80/M input, $4.00/M output)
+  const COST_FU      = (300 * 0.80 + 150 * 4.00) / 1_000_000; // rephrase per FU
+  const COST_CLOSING = (500 * 0.80 + 200 * 4.00) / 1_000_000; // closing FU generation
+  const COST_CHAT    = (800 * 0.80 + 150 * 4.00) / 1_000_000; // AI chat reply
+
+  const closingFuTotal = convData.reduce((s, c) => s + (c.close_fu_count || 0), 0);
+  const totalAICost    = fuSent * COST_FU + closingFuTotal * COST_CLOSING;
 
   // Spark data — FU terkirim per hari 7 hari
   const sparkData = [];
@@ -476,7 +496,7 @@ async function init() {
     const d = new Date(Date.now()-i*864e5);
     const start = new Date(d); start.setHours(0,0,0,0);
     const end   = new Date(d); end.setHours(23,59,59,999);
-    sparkData.push(schedulesAll.filter(s => s.status==='sent' && s.sent_at && new Date(s.sent_at)>=start && new Date(s.sent_at)<=end).length);
+    sparkData.push(schedulesAll.filter(s => s.sent_at && new Date(s.sent_at)>=start && new Date(s.sent_at)<=end).length);
   }
 
   // Render stat cards
@@ -506,18 +526,28 @@ async function init() {
       <div class="s-spark"><canvas id="spark-repeat" height="36"></canvas></div>
     </div>
     <div class="stat-box purple">
-      <div class="s-lbl">🤝 FU Aktif</div>
-      <div class="s-num">${fuAktif}</div>
-      <div class="s-sub">sedang dalam FU</div>
-      <div class="s-spark"><canvas id="spark-aktif" height="36"></canvas></div>
+      <div class="s-lbl">💸 Biaya AI</div>
+      <div class="s-num">$${totalAICost.toFixed(3)}</div>
+      <div class="s-sub">${fuSent} FU + ${closingFuTotal} closing · est.</div>
+      <div class="s-spark"><canvas id="spark-cost" height="36"></canvas></div>
     </div>`;
+
+  // Spark cost per hari (7 hari)
+  const sparkCostData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now()-i*864e5);
+    const s = new Date(d); s.setHours(0,0,0,0);
+    const e = new Date(d); e.setHours(23,59,59,999);
+    const daySent = schedulesAll.filter(sc => sc.sent_at && new Date(sc.sent_at) >= s && new Date(sc.sent_at) <= e).length;
+    sparkCostData.push(+(daySent * COST_FU * 1000).toFixed(2)); // dalam milli-dollar untuk spark
+  }
 
   setTimeout(() => {
     renderSpark('spark-cust',    [0,0,0,0,0,0,totalCust], 'rgb(59,130,246)');
     renderSpark('spark-fu',      sparkData, 'rgb(34,197,94)');
     renderSpark('spark-pending', [0,0,0,0,0,0,fuPending], 'rgb(245,158,11)');
     renderSpark('spark-repeat',  [0,0,0,0,0,0,repeatOrder], 'rgb(34,197,94)');
-    renderSpark('spark-aktif',   [0,0,0,0,0,0,fuAktif], 'rgb(167,139,250)');
+    renderSpark('spark-cost',    sparkCostData, 'rgb(167,139,250)');
   }, 100);
 
   // Bar chart FU sesuai range
@@ -530,7 +560,7 @@ async function init() {
     const d=new Date(rangeEnd.getTime()-i*864e5);
     days.push(d.toLocaleDateString('id-ID',{day:'numeric',month:'short'}));
     const s=new Date(d);s.setHours(0,0,0,0);const e=new Date(d);e.setHours(23,59,59,999);
-    fuCounts.push(schedulesAll.filter(sc=>sc.status==='sent'&&sc.sent_at&&new Date(sc.sent_at)>=s&&new Date(sc.sent_at)<=e).length);
+    fuCounts.push(schedulesAll.filter(sc=>sc.sent_at&&new Date(sc.sent_at)>=s&&new Date(sc.sent_at)<=e).length);
   }
   const totalFU = fuCounts.reduce((a,b)=>a+b,0);
   document.getElementById('chart-total-num').textContent = totalFU;
@@ -561,11 +591,101 @@ async function init() {
 
   document.getElementById('resolusi-badge').textContent = `✓ ${fuSent} FU terkirim`;
 
+  // ── Biaya AI per produk ──────────────────────────────────
+  renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU, COST_CLOSING);
+
   // Objeksi closing
   loadObjeksi(userId, prodFilter, sinceISO.slice(0,10), rangeEnd.toISOString().slice(0,10));
 
   // Load closing insights dari cache produk (tanpa analisis ulang)
   if (prodFilter) loadClosingInsightsCache(prodFilter);
+}
+
+function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU, COST_CLOSING) {
+  const el = document.getElementById('ai-cost-body');
+  if (!el) return;
+
+  // Group FU sent per product_id
+  const fuByProd = {};
+  schedulesAll.forEach(s => {
+    const pid = s.product_id || '_unknown';
+    fuByProd[pid] = (fuByProd[pid] || 0) + 1;
+  });
+
+  // Group closing FU per product_id
+  const closingByProd = {};
+  convData.forEach(c => {
+    const pid = c.product_id || '_unknown';
+    closingByProd[pid] = (closingByProd[pid] || 0) + (c.close_fu_count || 0);
+  });
+
+  // Build per-product rows
+  const prodMap = {};
+  products.forEach(p => { prodMap[p.id] = p; });
+
+  // Kumpulkan semua product_id yang ada aktivitas
+  const allPids = new Set([...Object.keys(fuByProd), ...Object.keys(closingByProd)]);
+
+  // Kalau ada filter produk, hanya tampilkan 1 produk
+  const pids = prodFilter ? [prodFilter] : [...allPids].filter(p => p !== '_unknown');
+
+  if (!pids.length) {
+    el.innerHTML = `<div style="color:var(--text3);font-size:12px">Belum ada aktivitas AI dalam periode ini.</div>`;
+    return;
+  }
+
+  const rows = pids.map(pid => {
+    const prod = prodMap[pid];
+    const nama = prod ? `${prod.nama}${prod.persona_cs_nama ? ' · ' + prod.persona_cs_nama : ''}` : pid.slice(0,8);
+    const fu   = fuByProd[pid] || 0;
+    const cls  = closingByProd[pid] || 0;
+    const cost = fu * COST_FU + cls * COST_CLOSING;
+    return { nama, fu, cls, cost };
+  }).sort((a, b) => b.cost - a.cost);
+
+  const totalCost = rows.reduce((s, r) => s + r.cost, 0);
+
+  el.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+          <th style="text-align:left;padding:6px 8px;font-weight:600">Produk</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:600">FU Kirim</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:600">Closing FU</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:600">Est. Biaya</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:600;width:120px">Proporsi</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => {
+          const pct = totalCost > 0 ? Math.round(r.cost / totalCost * 100) : 0;
+          return `<tr style="border-top:1px solid var(--border)">
+            <td style="padding:8px 8px;color:var(--text);font-weight:500">${r.nama}</td>
+            <td style="padding:8px 8px;text-align:right;color:var(--text2)">${r.fu}</td>
+            <td style="padding:8px 8px;text-align:right;color:var(--text2)">${r.cls}</td>
+            <td style="padding:8px 8px;text-align:right;color:var(--text);font-weight:600;font-variant-numeric:tabular-nums">$${r.cost.toFixed(3)}</td>
+            <td style="padding:8px 8px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;height:6px;border-radius:3px;background:var(--bg3)">
+                  <div style="height:100%;border-radius:3px;background:rgba(167,139,250,.8);width:${pct}%"></div>
+                </div>
+                <span style="font-size:11px;color:var(--text3);width:28px;text-align:right">${pct}%</span>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+        <tr style="border-top:2px solid var(--border)">
+          <td style="padding:8px 8px;font-weight:700;color:var(--text)">Total</td>
+          <td style="padding:8px 8px;text-align:right;font-weight:600;color:var(--text)">${rows.reduce((s,r)=>s+r.fu,0)}</td>
+          <td style="padding:8px 8px;text-align:right;font-weight:600;color:var(--text)">${rows.reduce((s,r)=>s+r.cls,0)}</td>
+          <td style="padding:8px 8px;text-align:right;font-weight:700;color:#a78bfa">$${totalCost.toFixed(3)}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:10px;font-size:11px;color:var(--text3)">
+      ℹ️ Estimasi berdasarkan rata-rata token: FU rephrase ~450 tok, Closing FU ~700 tok. Tidak termasuk AI chat reply.
+    </div>`;
 }
 
 let objeksiChart = null;
