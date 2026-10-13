@@ -71,8 +71,9 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
     const realStatus = waStatusCache[p.wa_session_id];
     if (realStatus === 'connected') return { label: '● WA terhubung', color: '#22c55e' };
     if (realStatus === 'offline')   return { label: '● WA terputus', color: '#f59e0b' };
-    // Belum ada data real-time → tampil loading ringan, akan di-update setelah checkBotStatus
-    return { label: '● Mengecek...', color: '#64748b' };
+    // Belum ada cek real-time → pakai wa_status dari DB sebagai fallback
+    if (p.wa_status === 'connected') return { label: '● WA terhubung', color: '#22c55e' };
+    return { label: '● WA terputus', color: '#f59e0b' };
   }
 
   // Dipanggil dari app.js checkBotStatus setelah dapat status real dari Baileys
@@ -107,7 +108,9 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
       ? `<div class="prod-sw-av" style="background:${color}">${initials(active.nama)}</div>`
       : `<div class="prod-sw-av all">📋</div>`;
 
-    const nameHtml = active ? active.nama : (showAll ? 'Semua Produk' : (allUserProducts[0]?.nama || 'Produk'));
+    const nameHtml = active
+      ? active.nama + (active.persona_cs_nama ? `<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:5px">${active.persona_cs_nama}</span>` : '')
+      : (showAll ? 'Semua Produk' : (allUserProducts[0]?.nama || 'Produk'));
     const st       = active ? getProdStatus(active) : null;
     const subHtml  = active
       ? `<span style="color:${st.color}">${st.label}</span>`
@@ -158,7 +161,7 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
         <div class="prod-sw-opt ${isActive?'active':''}" onclick="window.__switchProd('${p.id}')">
           <div class="prod-sw-opt-av" style="background:${color}">${initials(p.nama)}</div>
           <div class="prod-sw-opt-info">
-            <div class="prod-sw-opt-name">${p.nama}</div>
+            <div class="prod-sw-opt-name">${p.nama}${p.persona_cs_nama ? `<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:5px">${p.persona_cs_nama}</span>` : ''}</div>
             <div class="prod-sw-opt-sub" style="color:${getProdStatus(p).color}">${getProdStatus(p).label}</div>
           </div>
           ${isActive ? '<div class="prod-sw-opt-check">✓</div>' : ''}
@@ -246,7 +249,7 @@ body.light .prod-sw-divider{background:rgba(0,0,0,.07)}
     // Fetch fresh di background
     try {
       let r = await fetch(
-        `${window.__SB_URL}/rest/v1/products?user_id=eq.${userId}&aktif=eq.true&order=created_at.asc&select=id,nama,wa_status,wa_session_id,aktif`,
+        `${window.__SB_URL}/rest/v1/products?user_id=eq.${userId}&aktif=eq.true&order=created_at.asc&select=id,nama,persona_cs_nama,wa_status,wa_session_id,aktif`,
         { headers: { apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY } }
       );
       if (r.ok) {
