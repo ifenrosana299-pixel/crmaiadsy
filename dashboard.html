@@ -1177,17 +1177,17 @@ async function updateCaseBoard() {
   if (activeCustomer?.id) {
     try {
       const fuData = await _sbGet('followup_schedule',
-        `?customer_id=eq.${activeCustomer.id}&order=tanggal_kirim.asc&limit=10`);
+        `?customer_id=eq.${activeCustomer.id}&order=scheduled_date.asc&limit=10`);
       if (fuData.length === 0) {
         fuList.innerHTML = '<div style="font-size:12px;color:#475569;text-align:center;padding:12px 0">Belum ada jadwal FU</div>';
       } else {
         const today = new Date().toISOString().slice(0,10);
         fuList.innerHTML = fuData.map(f => {
-          const isToday = f.tanggal_kirim === today;
+          const isToday = f.scheduled_date === today;
           const isSent  = f.status === 'sent' || f.status === 'terkirim';
           const badgeCls = isSent ? 'done' : isToday ? 'today' : 'pending';
           const badgeTxt = isSent ? '✓ Terkirim' : isToday ? '🔔 Hari Ini' : 'Terjadwal';
-          const tgl = f.tanggal_kirim ? new Date(f.tanggal_kirim).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '—';
+          const tgl = f.scheduled_date ? new Date(f.scheduled_date).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '—';
           return `<div class="fu-item">
             <div class="fu-icon">${isSent ? '✅' : isToday ? '🔔' : '📅'}</div>
             <div class="fu-info">
