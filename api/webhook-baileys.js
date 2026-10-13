@@ -217,6 +217,7 @@ async function findOrCreateConversation(userId, customerId, sumber, productId) {
     product_id: productId || null,
     status: 'baru',
     prioritas,
+    last_msg_at: new Date().toISOString(),
     state: { tahap: 'sambut', produk_locked: !!productId, is_form_lead: sumber === 'form' },
   });
   return rows[0];
