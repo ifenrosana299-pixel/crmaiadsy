@@ -390,7 +390,7 @@ async function loadWAStatus() {
 
   let prods = [];
   try {
-    const r = await fetch(`${window.__SB_URL}/rest/v1/products?user_id=eq.${waUserId}&aktif=eq.true&order=created_at.asc&select=id,nama,wa_session_id,wa_phone,wa_status`, {
+    const r = await fetch(`${window.__SB_URL}/rest/v1/products?user_id=eq.${waUserId}&aktif=eq.true&order=created_at.asc&select=id,nama,persona_cs_nama,wa_session_id,wa_phone,wa_status`, {
       headers: { 'Content-Type':'application/json', apikey: window.__SB_KEY, Authorization: 'Bearer ' + window.__SB_KEY }
     });
     if (r.ok) prods = await r.json();
@@ -418,7 +418,7 @@ async function loadWAStatus() {
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:44px;height:44px;border-radius:10px;background:${color};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">${ini(p.nama)}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px;color:#f1f5f9">${p.nama}</div>
+          <div style="font-weight:600;font-size:14px;color:#f1f5f9">${p.nama}${p.persona_cs_nama ? `<span style="font-size:11px;font-weight:400;color:#94a3b8;margin-left:6px">${p.persona_cs_nama}</span>` : ''}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
             <span class="wa-dot ${dotCls}"></span>
             <span style="font-size:12px;color:#94a3b8">${isConn ? '+'+status.waNumber : statusLabel}</span>
