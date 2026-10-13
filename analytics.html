@@ -482,13 +482,34 @@ async function init() {
   const repeatOrder  = customers.filter(c => c.status === 'repeat_order').length;
   const totalCust    = customers.length;
 
-  // Biaya AI — estimasi berdasarkan Claude Haiku pricing ($0.80/M input, $4.00/M output)
-  const COST_FU      = (300 * 0.80 + 150 * 4.00) / 1_000_000; // rephrase per FU
-  const COST_CLOSING = (500 * 0.80 + 200 * 4.00) / 1_000_000; // closing FU generation
-  const COST_CHAT    = (800 * 0.80 + 150 * 4.00) / 1_000_000; // AI chat reply
+  // Count AI chat replies (bot messages) dari conv_messages
+  // Query per conversation ID — dibatasi 200 conv ID agar URL tidak terlalu panjang
+  const convIds = convData.map(c => c.id).slice(0, 200);
+  let botMsgs = [];
+  if (convIds.length > 0) {
+    botMsgs = await sbGet('conv_messages',
+      `conversation_id=in.(${convIds.join(',')})&role=eq.bot&created_at=gte.${sinceISO}&created_at=lte.${rangeEnd.toISOString()}&select=id,conversation_id`
+    ).catch(() => []);
+  }
+
+  // Map bot messages ke product_id via convData
+  const convProdMap = {};
+  convData.forEach(c => { convProdMap[c.id] = c.product_id; });
+  const botMsgsByProd = {};
+  botMsgs.forEach(m => {
+    const pid = convProdMap[m.conversation_id] || '_unknown';
+    botMsgsByProd[pid] = (botMsgsByProd[pid] || 0) + 1;
+  });
+  const totalBotMsgs = botMsgs.length;
+
+  // Biaya AI — Claude Haiku ($0.80/M input, $4.00/M output)
+  // Token actuals lebih besar dari perkiraan awal karena system prompt webhook panjang (persona + product knowledge + history)
+  const COST_FU      = (400  * 0.80 + 200 * 4.00) / 1_000_000; // rephrase per FU ~$0.0011
+  const COST_CLOSING = (600  * 0.80 + 250 * 4.00) / 1_000_000; // closing FU ~$0.0015
+  const COST_CHAT    = (2000 * 0.80 + 250 * 4.00) / 1_000_000; // AI chat (system prompt panjang) ~$0.0026
 
   const closingFuTotal = convData.reduce((s, c) => s + (c.close_fu_count || 0), 0);
-  const totalAICost    = fuSent * COST_FU + closingFuTotal * COST_CLOSING;
+  const totalAICost    = fuSent * COST_FU + closingFuTotal * COST_CLOSING + totalBotMsgs * COST_CHAT;
 
   // Spark data — FU terkirim per hari 7 hari
   const sparkData = [];
@@ -528,7 +549,7 @@ async function init() {
     <div class="stat-box purple">
       <div class="s-lbl">💸 Biaya AI</div>
       <div class="s-num">$${totalAICost.toFixed(3)}</div>
-      <div class="s-sub">${fuSent} FU + ${closingFuTotal} closing · est.</div>
+      <div class="s-sub">${fuSent} FU · ${totalBotMsgs} chat · ${closingFuTotal} closing</div>
       <div class="s-spark"><canvas id="spark-cost" height="36"></canvas></div>
     </div>`;
 
@@ -592,7 +613,7 @@ async function init() {
   document.getElementById('resolusi-badge').textContent = `✓ ${fuSent} FU terkirim`;
 
   // ── Biaya AI per produk ──────────────────────────────────
-  renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU, COST_CLOSING);
+  renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU, COST_CLOSING, COST_CHAT, botMsgsByProd);
 
   // Objeksi closing
   loadObjeksi(userId, prodFilter, sinceISO.slice(0,10), rangeEnd.toISOString().slice(0,10));
@@ -601,7 +622,7 @@ async function init() {
   if (prodFilter) loadClosingInsightsCache(prodFilter);
 }
 
-function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU, COST_CLOSING) {
+function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU, COST_CLOSING, COST_CHAT, botMsgsByProd) {
   const el = document.getElementById('ai-cost-body');
   if (!el) return;
 
@@ -619,14 +640,10 @@ function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU
     closingByProd[pid] = (closingByProd[pid] || 0) + (c.close_fu_count || 0);
   });
 
-  // Build per-product rows
   const prodMap = {};
   products.forEach(p => { prodMap[p.id] = p; });
 
-  // Kumpulkan semua product_id yang ada aktivitas
-  const allPids = new Set([...Object.keys(fuByProd), ...Object.keys(closingByProd)]);
-
-  // Kalau ada filter produk, hanya tampilkan 1 produk
+  const allPids = new Set([...Object.keys(fuByProd), ...Object.keys(closingByProd), ...Object.keys(botMsgsByProd || {})]);
   const pids = prodFilter ? [prodFilter] : [...allPids].filter(p => p !== '_unknown');
 
   if (!pids.length) {
@@ -635,12 +652,13 @@ function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU
   }
 
   const rows = pids.map(pid => {
-    const prod = prodMap[pid];
-    const nama = prod ? `${prod.nama}${prod.persona_cs_nama ? ' · ' + prod.persona_cs_nama : ''}` : pid.slice(0,8);
-    const fu   = fuByProd[pid] || 0;
-    const cls  = closingByProd[pid] || 0;
-    const cost = fu * COST_FU + cls * COST_CLOSING;
-    return { nama, fu, cls, cost };
+    const prod  = prodMap[pid];
+    const nama  = prod ? `${prod.nama}${prod.persona_cs_nama ? ' · ' + prod.persona_cs_nama : ''}` : pid.slice(0,8);
+    const fu    = fuByProd[pid] || 0;
+    const cls   = closingByProd[pid] || 0;
+    const chat  = (botMsgsByProd || {})[pid] || 0;
+    const cost  = fu * COST_FU + cls * COST_CLOSING + chat * COST_CHAT;
+    return { nama, fu, cls, chat, cost };
   }).sort((a, b) => b.cost - a.cost);
 
   const totalCost = rows.reduce((s, r) => s + r.cost, 0);
@@ -650,10 +668,11 @@ function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU
       <thead>
         <tr style="color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
           <th style="text-align:left;padding:6px 8px;font-weight:600">Produk</th>
-          <th style="text-align:right;padding:6px 8px;font-weight:600">FU Kirim</th>
-          <th style="text-align:right;padding:6px 8px;font-weight:600">Closing FU</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:600">FU</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:600">Chat AI</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:600">Closing</th>
           <th style="text-align:right;padding:6px 8px;font-weight:600">Est. Biaya</th>
-          <th style="text-align:right;padding:6px 8px;font-weight:600;width:120px">Proporsi</th>
+          <th style="padding:6px 8px;width:110px"></th>
         </tr>
       </thead>
       <tbody>
@@ -662,6 +681,7 @@ function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU
           return `<tr style="border-top:1px solid var(--border)">
             <td style="padding:8px 8px;color:var(--text);font-weight:500">${r.nama}</td>
             <td style="padding:8px 8px;text-align:right;color:var(--text2)">${r.fu}</td>
+            <td style="padding:8px 8px;text-align:right;color:var(--text2)">${r.chat}</td>
             <td style="padding:8px 8px;text-align:right;color:var(--text2)">${r.cls}</td>
             <td style="padding:8px 8px;text-align:right;color:var(--text);font-weight:600;font-variant-numeric:tabular-nums">$${r.cost.toFixed(3)}</td>
             <td style="padding:8px 8px">
@@ -677,6 +697,7 @@ function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU
         <tr style="border-top:2px solid var(--border)">
           <td style="padding:8px 8px;font-weight:700;color:var(--text)">Total</td>
           <td style="padding:8px 8px;text-align:right;font-weight:600;color:var(--text)">${rows.reduce((s,r)=>s+r.fu,0)}</td>
+          <td style="padding:8px 8px;text-align:right;font-weight:600;color:var(--text)">${rows.reduce((s,r)=>s+r.chat,0)}</td>
           <td style="padding:8px 8px;text-align:right;font-weight:600;color:var(--text)">${rows.reduce((s,r)=>s+r.cls,0)}</td>
           <td style="padding:8px 8px;text-align:right;font-weight:700;color:#a78bfa">$${totalCost.toFixed(3)}</td>
           <td></td>
@@ -684,7 +705,7 @@ function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU
       </tbody>
     </table>
     <div style="margin-top:10px;font-size:11px;color:var(--text3)">
-      ℹ️ Estimasi berdasarkan rata-rata token: FU rephrase ~450 tok, Closing FU ~700 tok. Tidak termasuk AI chat reply.
+      ℹ️ Estimasi token: FU rephrase ~600 tok, Chat AI ~2.250 tok, Closing FU ~850 tok. Harga Haiku: $0.80/M input · $4.00/M output.
     </div>`;
 }
 
