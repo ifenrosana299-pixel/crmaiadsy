@@ -473,7 +473,8 @@ async function init() {
     sbGet('followup_schedule', `user_id=eq.${userId}${prodQ}&scheduled_date=gte.${sinceISO.slice(0,10)}&scheduled_date=lte.${rangeEnd.toISOString().slice(0,10)}&select=id,status,customer_id,scheduled_date,sent_at`),
     sbGet('followup_schedule', `user_id=eq.${userId}&status=eq.sent&sent_at=gte.${sinceISO}&sent_at=lte.${rangeEnd.toISOString()}&select=product_id,sent_at`),
     sbGet('customers', `user_id=eq.${userId}${custProdQ}&select=id,status,last_fu_at`),
-    sbGet('conversations', `user_id=eq.${userId}${prodFilter ? '&product_id=eq.'+prodFilter : ''}&created_at=gte.${sinceISO}&created_at=lte.${rangeEnd.toISOString()}&select=id,product_id,close_fu_count`),
+    // Semua conversations (tanpa date filter) agar tidak miss chat AI dari conv lama yang masih aktif
+    sbGet('conversations', `user_id=eq.${userId}${prodFilter ? '&product_id=eq.'+prodFilter : ''}&select=id,product_id,close_fu_count`),
     sbGet('products', `user_id=eq.${userId}&select=id,nama,persona_cs_nama`),
   ]);
 
@@ -482,9 +483,8 @@ async function init() {
   const repeatOrder  = customers.filter(c => c.status === 'repeat_order').length;
   const totalCust    = customers.length;
 
-  // Count AI chat replies (bot messages) dari conv_messages
-  // Query per conversation ID — dibatasi 200 conv ID agar URL tidak terlalu panjang
-  const convIds = convData.map(c => c.id).slice(0, 200);
+  // Count AI chat replies (bot messages) via conv_messages — filter by date, bukan conversation date
+  const convIds = convData.map(c => c.id).slice(0, 300);
   let botMsgs = [];
   if (convIds.length > 0) {
     botMsgs = await sbGet('conv_messages',
@@ -503,10 +503,10 @@ async function init() {
   const totalBotMsgs = botMsgs.length;
 
   // Biaya AI — Claude Haiku ($0.80/M input, $4.00/M output)
-  // Token actuals lebih besar dari perkiraan awal karena system prompt webhook panjang (persona + product knowledge + history)
-  const COST_FU      = (400  * 0.80 + 200 * 4.00) / 1_000_000; // rephrase per FU ~$0.0011
-  const COST_CLOSING = (600  * 0.80 + 250 * 4.00) / 1_000_000; // closing FU ~$0.0015
-  const COST_CHAT    = (2000 * 0.80 + 250 * 4.00) / 1_000_000; // AI chat (system prompt panjang) ~$0.0026
+  // System prompt webhook-baileys sangat panjang: persona + product knowledge + cara pakai + keluhan + history → ~5000 token input
+  const COST_FU      = (600  * 0.80 + 200 * 4.00) / 1_000_000; // rephrase FU ~$0.0013
+  const COST_CLOSING = (800  * 0.80 + 300 * 4.00) / 1_000_000; // closing FU generation ~$0.0019
+  const COST_CHAT    = (5000 * 0.80 + 400 * 4.00) / 1_000_000; // AI chat reply (system prompt besar) ~$0.0056
 
   const closingFuTotal = convData.reduce((s, c) => s + (c.close_fu_count || 0), 0);
   const totalAICost    = fuSent * COST_FU + closingFuTotal * COST_CLOSING + totalBotMsgs * COST_CHAT;
@@ -705,7 +705,7 @@ function renderAICostTable(schedulesAll, convData, products, prodFilter, COST_FU
       </tbody>
     </table>
     <div style="margin-top:10px;font-size:11px;color:var(--text3)">
-      ℹ️ Estimasi token: FU rephrase ~600 tok, Chat AI ~2.250 tok, Closing FU ~850 tok. Harga Haiku: $0.80/M input · $4.00/M output.
+      ℹ️ Estimasi token per panggilan: Chat AI ~5.400 tok (system prompt besar), FU rephrase ~800 tok, Closing FU ~1.100 tok. Harga Haiku: $0.80/M input · $4.00/M output. Angka bisa sedikit berbeda dari Anthropic Console.
     </div>`;
 }
 
