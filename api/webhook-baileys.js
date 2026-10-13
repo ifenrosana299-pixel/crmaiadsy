@@ -1882,6 +1882,12 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
         if (latestOrder.alamat)         ctx += `\n- Alamat kirim : ${latestOrder.alamat}`;
         ctx += `\n\nGunakan semua data di atas saat customer bertanya. JANGAN pura-pura tidak tahu kalau datanya ada di sini.`;
 
+        // Guard: paket belum sampai → JANGAN tanya pengalaman/kesan pakai produk
+        const statusResi = latestOrder.status_resi;
+        if (statusResi && statusResi !== 'SAMPAI') {
+          ctx += `\n\n⚠️ PENTING: Paket BELUM SAMPAI (status saat ini: ${statusResi}). JANGAN tanya pengalaman memakai produk, JANGAN tanya "udah dicoba?", JANGAN minta feedback/testimoni. Fokus hanya pada update pengiriman dan bantu kalau customer ada pertanyaan soal paket.`;
+        }
+
         if (realtimeTracking) {
           ctx += `\n\nINFO RESI REAL-TIME (baru dicek barusan):\n${realtimeTracking}\nGunakan info ini untuk jawab pertanyaan customer soal posisi/status paket. Sampaikan dengan bahasa natural dan ramah.`;
         }
