@@ -948,8 +948,17 @@ async function renderChat() {
   lastMsgCount = msgs.length;
   lastMsgTimestamp = msgs.length ? msgs[msgs.length - 1].created_at : null;
 
-  area.innerHTML = '<div class="day-divider">Hari ini</div>';
+  area.innerHTML = '';
+  let lastDateLabel = null;
+  const todayStr = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric', timeZone:'Asia/Jakarta' });
   msgs.forEach(m => {
+    const msgDate = new Date(m.created_at);
+    const dateLabel = msgDate.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric', timeZone:'Asia/Jakarta' });
+    const label = dateLabel === todayStr ? 'Hari ini' : dateLabel;
+    if (label !== lastDateLabel) {
+      area.insertAdjacentHTML('beforeend', `<div class="day-divider">${label}</div>`);
+      lastDateLabel = label;
+    }
     if (m.role === 'system') appendSystemNote(m.isi, m.created_at);
     else appendBubble(m.role === 'customer' ? 'customer' : 'bot', m.isi, false, m.created_at, m.role, m.id, m.wamid);
   });
