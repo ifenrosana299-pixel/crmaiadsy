@@ -1680,6 +1680,23 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
       }).catch(() => {});
     }
 
+    // ── Fetch order terakhir customer (untuk close-intent check & system prompt) ──
+    let latestOrder = null;
+    try {
+      const normalized = normalizeWA(wa_number);
+      let orderRows = await sbGet('orders',
+        `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(normalized)}&order=tanggal.desc,created_at.desc&limit=1`
+      ).catch(() => []);
+      if (!orderRows.length) {
+        const altHp = normalized.startsWith('62') ? '0' + normalized.slice(2) : normalized;
+        orderRows = await sbGet('orders',
+          `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(altHp)}&order=tanggal.desc,created_at.desc&limit=1`
+        ).catch(() => []);
+      }
+      if (orderRows.length) latestOrder = orderRows[0];
+      console.log(`[order] found=${!!latestOrder} resi=${latestOrder?.nomer_resi}`);
+    } catch(e) { console.log('[order] fetch error', e.message); }
+
     // ── Deteksi sinyal kuat intent beli → flag close_intent_at ──
     // Aktif untuk 2 scenario:
     // 1. New/prospect customer (belum ada order SAMPAI) → langsung flag
@@ -1787,25 +1804,6 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
       console.log(`[CRM] No order found for ${wa_number} — skip (biarkan BotWA handle)`);
       return res.status(200).json({ ok: true, skipped: 'no_order_crm' });
     }
-
-    // ── Fetch order terakhir customer (untuk inject ke system prompt) ──
-    let latestOrder = null;
-    try {
-      const normalized = normalizeWA(wa_number);
-      // Cari by nomer_hp + user_id, ambil order terbaru
-      let orderRows = await sbGet('orders',
-        `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(normalized)}&order=tanggal.desc,created_at.desc&limit=1`
-      ).catch(() => []);
-      // Fallback: cari by nomer_hp saja (tanpa prefix 62)
-      if (!orderRows.length) {
-        const altHp = normalized.startsWith('62') ? '0' + normalized.slice(2) : normalized;
-        orderRows = await sbGet('orders',
-          `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(altHp)}&order=tanggal.desc,created_at.desc&limit=1`
-        ).catch(() => []);
-      }
-      if (orderRows.length) latestOrder = orderRows[0];
-      console.log(`[order] found=${!!latestOrder} resi=${latestOrder?.nomer_resi}`);
-    } catch(e) { console.log('[order] fetch error', e.message); }
 
     // ── Real-time tracking: inject kalau customer tanya soal resi/paket ──
     let realtimeTracking = null;
