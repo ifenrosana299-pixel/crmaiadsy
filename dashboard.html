@@ -767,12 +767,6 @@ async function loadStats() {
   const unread = convs.filter(c=>c.status==='baru').length;
   if (badge) { badge.textContent = unread; badge.style.display = unread ? '' : 'none'; }
 
-  // Badge Pipeline FU — tampilkan jumlah FU pending hari ini
-  const pipelineBadge = document.getElementById('pipeline-badge');
-  if (pipelineBadge) {
-    pipelineBadge.textContent = fuToday;
-    pipelineBadge.style.display = fuToday ? '' : 'none';
-  }
 }
 
 /* ── RENDER INBOX ── */
