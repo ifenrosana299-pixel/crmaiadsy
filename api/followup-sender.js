@@ -1,13 +1,12 @@
-// api/followup-sender.js — cron job: kirim FU otomatis tiap 15 menit
-// Setup cron VPS: */15 * * * * curl POST /api/followup-sender
-// Header: x-cron-secret: adsysukses2026
+// api/followup-sender.js — cron job: kirim FU otomatis tiap 5 menit
+// Setup cron VPS: */5 * * * * node followup-sender.js
 //
 // Anti-ban features:
 // 1. Smart timing     — tiap customer punya jam kirim optimal (belajar dari response, aktif dari bales pertama)
 // 2. Spread window    — tiap customer dapat slot menit random → tidak barengan
 // 3. AI auto-vary     — Claude Haiku rephrase template → tiap pesan unik, tidak mirip
 // 4. Random delay     — 5-15 detik antar kirim → tidak kelihatan bot
-// 5. Max per run      — maks 20 pesan per 15 menit → tidak blasting massal
+// 5. Per-product rate — adaptive: queue>60→3, 21-60→2, ≤20→1 per produk per 5 menit → tidak blasting massal
 // 6. Auto-label       — customer yang tidak balas 3x FU → label tidak_responsif, di-skip otomatis
 
 const SB_URL      = process.env.SUPABASE_URL;
@@ -17,11 +16,18 @@ const SECRET      = process.env.WEBHOOK_SECRET || 'adsysukses2026';
 const CRON_SECRET = process.env.CRON_SECRET || 'adsysukses2026';
 
 const DEFAULT_SEND_HOUR  = 9;   // jam 9 WIB default kalau belum ada history balas
-const SPREAD_WINDOW_H    = 2;   // spread dalam 2 jam dari jam target
-const MAX_PER_RUN        = 20;  // maks kirim per 15 menit
+const SPREAD_WINDOW_H    = 12;  // spread dalam 12 jam dari jam target (9 pagi - 9 malam)
 const DELAY_MIN_MS       = 5000;  // delay min antar pesan (5 detik)
 const DELAY_MAX_MS       = 15000; // delay max antar pesan (15 detik)
 const MAX_NO_REPLY       = 3;   // maks FU berturut-turut tanpa balas → auto tidak_responsif
+
+// Per-product adaptive rate: setiap 10 order = +1 customer per 5 menit, max 3
+// 1-10  order → 1 per run
+// 11-20 order → 2 per run
+// 21+   order → 3 per run
+function maxPerProduct(queueSize) {
+  return Math.min(Math.ceil(queueSize / 10), 3);
+}
 
 async function sb(table, params = '', opts = {}) {
   const r = await fetch(`${SB_URL}/rest/v1/${table}${params ? '?' + params : ''}`, {
@@ -123,8 +129,18 @@ async function generatePesan(rule, customer, order, apiKey, reEngage = false) {
     const rawText   = (typeof tmpl === 'object' && tmpl) ? (tmpl.text || '') : (tmpl || '');
     const image_url = (typeof tmpl === 'object' && tmpl) ? (tmpl.image_url || null) : null;
 
-    // Isi variabel dulu
-    const filled = rawText
+    // Rephrase dulu sebelum isi variabel — supaya AI tidak mangle nilai spesifik seperti Rp{total_cod}
+    let rephrased;
+    if (reEngage && rawText.length > 20) {
+      rephrased = await reEngageWithAI(rawText, customer, customer.fu_no_reply_count || MAX_NO_REPLY, apiKey);
+    } else if (rawText.length > 20) {
+      rephrased = await rephraseWithAI(rawText, apiKey);
+    } else {
+      rephrased = rawText;
+    }
+
+    // Isi variabel setelah rephrase
+    const text = rephrased
       .replace(/{nama}/g,        customer.nama         || 'Kak')
       .replace(/{produk}/g,      customer.produk       || order?.produk || 'produk')
       .replace(/{hari}/g,        hari)
@@ -134,16 +150,6 @@ async function generatePesan(rule, customer, order, apiKey, reEngage = false) {
       .replace(/{alamat}/g,      order?.alamat         || '-')
       .replace(/{total_cod}/g,   order?.jumlah_cod ? `Rp${Number(order.jumlah_cod).toLocaleString('id-ID')}` : '-');
 
-    // Re-engagement mode: gunakan strategi khusus memancing balasan
-    // Fallback ke rephrase biasa kalau tidak ada API key
-    let text;
-    if (reEngage && filled.length > 20) {
-      text = await reEngageWithAI(filled, customer, customer.fu_no_reply_count || MAX_NO_REPLY, apiKey);
-    } else if (filled.length > 20) {
-      text = await rephraseWithAI(filled, apiKey);
-    } else {
-      text = filled;
-    }
     return { text, image_url };
   }
 
@@ -177,20 +183,23 @@ function getSpreadSlot(customer) {
   return Math.floor(Math.random() * SPREAD_WINDOW_H * 60);
 }
 
-function shouldSendNow(customer, scheduledDate, today) {
+function shouldSendNow(schedule, customer) {
   const currentHour = nowWIBHour();
+  // Jangan kirim di luar jam 07:00–21:00 WIB
+  if (currentHour < 7 || currentHour >= 21) return false;
 
-  // Semua jadwal pakai smart timing — kirim di jam optimal customer
+  // Kalau jadwal punya send_after → pakai itu (sistem baru, lebih akurat)
+  if (schedule.send_after) {
+    return new Date() >= new Date(schedule.send_after);
+  }
+
+  // Legacy fallback: jadwal lama tanpa send_after → pakai slot timing
   const targetHour = customer.optimal_send_hour != null
     ? customer.optimal_send_hour
     : DEFAULT_SEND_HOUR;
-
-  // Spread: tiap customer dapat slot menit berbeda supaya tidak barengan
   const slot     = getSpreadSlot(customer);
-  // Minimum jam 7 pagi (optimal_send_hour sudah termasuk -10 menit dari webhook-baileys)
   const sendHour = Math.max(targetHour + (slot / 60), 7);
-
-  return currentHour >= sendHour && currentHour < 21;
+  return currentHour >= sendHour;
 }
 
 function randomDelay() {
@@ -218,7 +227,7 @@ export default async function handler(req, res) {
 
     const schedules = await sb('followup_schedule',
       `scheduled_date=lte.${today}&status=eq.pending` +
-      `&select=*,customers(nama,wa_number,produk,product_id,optimal_send_hour,response_count,send_minute_slot,fu_status,fu_no_reply_count,fu_sent_count)` +
+      `&select=*,send_after,customers(nama,wa_number,produk,product_id,optimal_send_hour,response_count,send_minute_slot,fu_status,fu_no_reply_count,fu_sent_count)` +
       `,followup_rules(nama,templates,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,tipe)` +
       `,products(templates_reorder,wa_session_id)`);
 
@@ -229,11 +238,20 @@ export default async function handler(req, res) {
     // Shuffle supaya tiap run tidak selalu customer yang sama duluan
     const shuffled = schedules.sort(() => Math.random() - 0.5);
 
-    let sentCount = 0;
+    // Per-product queue count (untuk adaptive rate)
+    const productQueueCount = {};
+    for (const s of schedules) {
+      const pid = s.product_id || 'default';
+      productQueueCount[pid] = (productQueueCount[pid] || 0) + 1;
+    }
+    // Per-product sent counter untuk run ini
+    const productSentCount = {};
 
     for (const s of shuffled) {
-      // Maks per run
-      if (sentCount >= MAX_PER_RUN) break;
+      // Per-product rate limit
+      const pid = s.product_id || 'default';
+      const maxThisProduct = maxPerProduct(productQueueCount[pid] || 0);
+      if ((productSentCount[pid] || 0) >= maxThisProduct) continue;
 
       const customer = s.customers;
       // Handle reorder_auto: rule_id=null, templates come from products.templates_reorder
@@ -270,8 +288,8 @@ export default async function handler(req, res) {
         // Reorder rule → lanjut tapi tandai sebagai re-engagement
       }
 
-      // Smart timing + spread: skip kalau belum waktunya (bypass kalau force mode)
-      if (!forceMode && !shouldSendNow(customer, s.scheduled_date, today)) {
+      // Cek waktu kirim — pakai send_after kalau ada, fallback ke slot timing
+      if (!forceMode && !shouldSendNow(s, customer)) {
         results.skipped_timing++;
         continue;
       }
@@ -380,8 +398,8 @@ export default async function handler(req, res) {
         ]);
 
         results.sent++;
-        sentCount++;
-        results.details.push({ customer: customer.nama, status: 'sent' });
+        productSentCount[pid] = (productSentCount[pid] || 0) + 1;
+        results.details.push({ customer: customer.nama, status: 'sent', product_id: pid });
       } catch(e) {
         await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'failed' } });
         results.failed++;
@@ -396,6 +414,19 @@ export default async function handler(req, res) {
   } catch(e) {
     return res.status(500).json({ error: e.message, ...results });
   }
+}
+
+// Standalone VPS runner — dipanggil langsung: node followup-sender.js [--mode=closing] [--force]
+if (typeof process !== 'undefined' && process.argv[1] && process.argv[1].endsWith('followup-sender.js')) {
+  const args  = process.argv.slice(2);
+  const mode  = (args.find(a => a.startsWith('--mode=')) || '').replace('--mode=', '') || 'followup';
+  const force = args.includes('--force');
+  const req   = { method: 'POST', query: { mode, force: force ? 'true' : 'false' }, body: { mode, force }, headers: { 'x-cron-secret': process.env.CRON_SECRET || 'adsysukses2026' } };
+  const res   = {
+    json:   (data) => { process.stdout.write(JSON.stringify(data) + '\n'); },
+    status: (code) => ({ json: (data) => { process.stderr.write(JSON.stringify({ code, ...data }) + '\n'); } }),
+  };
+  handler(req, res).catch(e => process.stderr.write(JSON.stringify({ error: e.message }) + '\n'));
 }
 
 /* ── AUTO REORDER SCHEDULE CREATOR ─────────────────────────

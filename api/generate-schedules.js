@@ -87,7 +87,7 @@ export default async function handler(req, res) {
           product_id: o.product_id || product_id || null,
           source: 'import',
           status: 'baru',
-          send_minute_slot: Math.floor(Math.random() * 120) // 0-120 menit, langsung fix dari awal
+          send_minute_slot: Math.floor(Math.random() * 720) // 0-720 menit (12 jam: jam 9 pagi - 9 malam)
         });
       }
 
@@ -236,11 +236,31 @@ export default async function handler(req, res) {
       }
     }
 
-    // 6. Insert jadwal batch
+    // 6. Assign send_after untuk jadwal hari ini — sequential per produk
+    // Rate: setiap 10 order = +1 customer per 5 menit, max 3
+    // Contoh: 10 order → 1/5mnt, 20 order → 2/5mnt, 30+ → 3/5mnt
+    const todayByProduct = {};
+    for (const s of toInsert) {
+      if (s.scheduled_date === today && s.status === 'pending') {
+        const pid = s.product_id || 'default';
+        if (!todayByProduct[pid]) todayByProduct[pid] = [];
+        todayByProduct[pid].push(s);
+      }
+    }
+    const now = new Date();
+    for (const schedules of Object.values(todayByProduct)) {
+      const rate = Math.min(Math.ceil(schedules.length / 10), 3);
+      schedules.forEach((s, idx) => {
+        const slotIndex = Math.floor(idx / rate) + 1; // slot ke-1, ke-2, dst
+        s.send_after = new Date(now.getTime() + slotIndex * 5 * 60 * 1000).toISOString();
+      });
+    }
+
+    // 7. Insert jadwal batch
     let created = 0;
     for (let i = 0; i < toInsert.length; i += 200) {
       await sb('followup_schedule', '', {
-        method: 'POST', prefer: 'return=minimal',
+        method: 'POST', prefer: 'return=minimal,resolution=ignore-duplicates',
         body: toInsert.slice(i, i + 200)
       });
       created += Math.min(200, toInsert.length - i);
