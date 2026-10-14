@@ -346,7 +346,7 @@ function renderPipeline() {
           <div class="pipe-card-name" title="${nama}">${nama}</div>
           <div class="pipe-card-sub" title="${waFmt}${prod?' · '+prod:''}">${waFmt}${prod?' · '+prod:''}</div>
           <div style="display:flex;align-items:center;gap:4px;margin:6px 0 2px">${progressDots}</div>
-          <div class="pipe-card-date ${dateCls}">${dateIcon} ${tglLabel}${isToday?' · Hari ini':isOverdue?' · Terlambat':''}</div>
+          <div class="pipe-card-date ${dateCls}">${dateIcon} ${tglLabel}${isToday?' · Hari ini':isOverdue?' · Terlambat':''}${isToday && s.send_after ? ' · ⏰ ' + new Date(s.send_after).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}) + ' WIB' : ''}</div>
           <div class="pipe-card-foot">
             <button class="btn btn-primary btn-sm" style="flex:1" onclick="openSendModal('${s.id}','${s.customer_id}','${namaCust}','${wa}','${s.rule_id}')">📤 Kirim</button>
             <button class="btn btn-ghost btn-sm" onclick="skipSchedule('${s.id}')">Skip</button>

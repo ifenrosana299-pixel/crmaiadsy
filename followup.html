@@ -613,6 +613,7 @@ function renderSchedule() {
             <div class="cfu-rule-date">
               ${tglLabel}
               ${isToday ? '<span style="color:#3b82f6;font-weight:600"> · Hari ini</span>' : ''}
+              ${isToday && r.send_after ? '<span style="color:#f59e0b;font-weight:600"> · ⏰ ' + new Date(r.send_after).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}) + ' WIB</span>' : ''}
               ${isOverdue ? '<span style="color:#ef4444;font-weight:600"> · Terlambat</span>' : ''}
               ${isDone && r.sent_at ? ' · Terkirim ' + fmtDateTime(r.sent_at) : ''}
               ${isSkipped ? ' · Di-skip' : ''}
