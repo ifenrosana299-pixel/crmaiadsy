@@ -230,7 +230,8 @@ export default async function handler(req, res) {
           rule_id: rule.id,
           rule_nama: rule.nama,
           scheduled_date: scheduledDate,
-          status: isPast ? 'skipped' : 'pending'
+          status: isPast ? 'skipped' : 'pending',
+          send_after: null  // default null, di-override untuk jadwal hari ini di step 6
         });
         existSet.add(key);
       }
