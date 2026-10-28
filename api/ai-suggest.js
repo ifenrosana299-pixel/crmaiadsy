@@ -224,7 +224,7 @@ Tulis pesannya langsung, tanpa penjelasan.`;
     try {
       // Fetch semua conversations untuk statistik akurat (tanpa limit)
       const conversations = await sbGet2('conversations',
-        `?user_id=eq.${userId}&product_id=eq.${productId}&select=id,status&limit=2000`
+        `?user_id=eq.${userId}&product_id=eq.${productId}&select=id,status,customers(nama,id)&limit=2000`
       );
       if (!conversations.length) return res.status(200).json({ ok: true, message: 'Belum ada percakapan' });
 
@@ -236,7 +236,8 @@ Tulis pesannya langsung, tanpa penjelasan.`;
 
       // Ambil sampel 10 closed + 10 unclosed untuk dikirim ke Claude
       const closedSample = conversations.filter(c => closedIds.has(c.id)).slice(0, 10).map(c => c.id);
-      const unclosedSample = conversations.filter(c => !closedIds.has(c.id)).slice(0, 10).map(c => c.id);
+      const unclosedConvs = conversations.filter(c => !closedIds.has(c.id)).slice(0, 30);
+      const unclosedSample = unclosedConvs.slice(0, 10).map(c => c.id);
       const sampleIds = [...closedSample, ...unclosedSample];
       const sampleIdsQ = sampleIds.map(id => `"${id}"`).join(',');
 
@@ -301,7 +302,15 @@ Balas HANYA JSON:
       insights.closed_count = totalClosed;
 
       await sbPatch2('products', `?id=eq.${productId}`, { closing_insights_cache: insights });
-      return res.status(200).json({ ok: true, insights, cr: crPct, total: totalConv, closed: totalClosed });
+
+      // Data customer yang tidak jadi beli (untuk ditampilkan di UI)
+      const unclosedList = unclosedConvs.map(c => ({
+        conv_id: c.id,
+        nama: c.customers?.nama || 'Customer',
+        customer_id: c.customers?.id || null,
+      }));
+
+      return res.status(200).json({ ok: true, insights, cr: crPct, total: totalConv, closed: totalClosed, unclosed_convs: unclosedList });
     } catch(e) {
       return res.status(500).json({ error: e.message });
     }
