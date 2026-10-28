@@ -470,9 +470,9 @@ async function autoCreateReorderSchedules(today) {
     `&limit=500`).catch(() => []);
   if (!orders.length) return;
 
-  // 3. Existing reorder_auto schedules (cegah duplikat)
+  // 3. Existing reorder_auto schedules (cegah duplikat) — include failed supaya tidak re-create
   const existRaw = await sb('followup_schedule',
-    `rule_nama=eq.reorder_auto&status=in.(pending,sent)&select=customer_id,product_id`).catch(() => []);
+    `rule_nama=eq.reorder_auto&status=in.(pending,sent,failed)&select=customer_id,product_id`).catch(() => []);
   const existSet = new Set(existRaw.map(e => `${e.customer_id}__${e.product_id}`));
 
   // 4. Customers untuk lookup customer_id by wa_number
