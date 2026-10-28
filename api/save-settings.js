@@ -156,8 +156,22 @@ Balas HANYA teks pesan WA-nya saja (tidak perlu penjelasan).`
 
     // ---- AI SUGGEST (in-chat) ----
     if (action === 'ai-suggest') {
-      const { conv_id, user_id } = body;
+      const { conv_id, user_id, prompt: directPrompt } = body;
       const apiKey = await getAnthropicKey(user_id);
+      const client = new Anthropic({ apiKey });
+
+      // Kalau ada prompt langsung (dari analytics), pakai itu
+      if (directPrompt) {
+        const msg = await client.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 512,
+          messages: [{ role: 'user', content: directPrompt }]
+        });
+        return res.json({ text: msg.content[0].text.trim() });
+      }
+
+      // Kalau ada conv_id (dari dashboard), fetch conversation dulu
+      if (!conv_id) return res.status(400).json({ error: 'conv_id atau prompt wajib' });
 
       const [msgs, convData] = await Promise.all([
         sb('conv_messages', `conversation_id=eq.${conv_id}&order=created_at.desc&limit=10`),
@@ -167,7 +181,6 @@ Balas HANYA teks pesan WA-nya saja (tidak perlu penjelasan).`
       const customer = convData[0]?.customers || {};
       const history = msgs.reverse().map(m => `${m.role === 'customer' ? 'Customer' : 'CS/AI'}: ${m.isi}`).join('\n');
 
-      const client = new Anthropic({ apiKey });
       const msg = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 256,
