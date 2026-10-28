@@ -761,9 +761,9 @@ async function loadStats() {
   document.getElementById('st-aktif-sub').textContent = responsif + ' customer sudah balas';
   document.getElementById('st-unik-sub').textContent  = selesai + ' percakapan selesai';
 
-  // Reorder: customer yang sudah masuk stage reorder_auto (sent/pending/failed = sudah dijadwalkan)
+  // Reorder: customer yang sudah dapat FU reorder (status=sent saja)
   const reorderSchedules = await _sbGet('followup_schedule',
-    `?user_id=eq.${userId}&rule_nama=eq.reorder_auto&status=in.(sent,pending,failed)&select=customer_id`
+    `?user_id=eq.${userId}&rule_nama=eq.reorder_auto&status=eq.sent&select=customer_id`
   ).catch(()=>[]);
   window._reorderCustomerIds = new Set(reorderSchedules.map(s => s.customer_id).filter(Boolean));
   const reorderCount = convs.filter(c => window._reorderCustomerIds.has(c.customer_id)).length;
