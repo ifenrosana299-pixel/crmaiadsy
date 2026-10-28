@@ -789,7 +789,7 @@ async function loadClosingInsightsCache(productId) {
       body.innerHTML = `<div style="color:var(--text3);font-size:12px">Belum ada analisis — bot akan analisis otomatis setelah ada percakapan masuk, atau klik Refresh.</div>`;
       return;
     }
-    renderClosingInsights(ci, ci.sample_size||0, ci.closed_count||0);
+    renderClosingInsights(ci, ci.sample_size||0, ci.closed_count||0, ci.unclosed_convs);
   } catch(e) {
     body.innerHTML = `<div style="color:var(--text3);font-size:12px">Gagal memuat insights.</div>`;
   }
