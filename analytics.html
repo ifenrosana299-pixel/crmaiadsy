@@ -824,7 +824,7 @@ function renderClosingInsights(ci, total, closedCount) {
 async function runClosingAnalysis() {
   const btn  = document.getElementById('analyze-btn');
   const body = document.getElementById('closing-optimizer-body');
-  const prodId = document.getElementById('prod-filter')?.value || '';
+  const prodId = window.__activeProductFilter || document.getElementById('prod-filter')?.value || '';
   if (!prodId) {
     body.innerHTML = `<div style="color:#f87171;font-size:13px">Pilih produk dulu ya kak sebelum analisis 🙏</div>`;
     return;
