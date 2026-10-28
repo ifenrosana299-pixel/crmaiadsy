@@ -728,17 +728,20 @@ let objeksiChart = null;
 async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
   try {
     const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
-    const rows = await sbGet('closing_objections', `user_id=eq.${userId}${prodQ}&created_at=gte.${dateFrom}&created_at=lte.${dateTo}T23:59:59&select=tipe,conversation_id`);
+    const rows = await sbGet('closing_objections', `user_id=eq.${userId}${prodQ}&created_at=gte.${dateFrom}&created_at=lte.${dateTo}T23:59:59&select=tipe,conversation_id,customer_id`);
 
     const labels = { harga: 'Harga Mahal', marketplace: 'Mau ke Marketplace', nanti: 'Pikir-pikir / Nanti', cancel: 'Batal / Tidak Jadi' };
     const colors = { harga: '#f87171', marketplace: '#fb923c', nanti: '#facc15', cancel: '#94a3b8' };
     const counts = { harga: 0, marketplace: 0, nanti: 0, cancel: 0 };
-    // Group conv_ids per tipe
-    const convsByTipe = { harga: [], marketplace: [], nanti: [], cancel: [] };
+
+    // Group customer unik per tipe (deduplikasi — 1 customer hanya muncul 1x per tipe)
+    const custByTipe = { harga: new Map(), marketplace: new Map(), nanti: new Map(), cancel: new Map() };
     rows.forEach(r => {
       if (counts[r.tipe] !== undefined) {
         counts[r.tipe]++;
-        if (r.conversation_id) convsByTipe[r.tipe].push(r.conversation_id);
+        if (r.customer_id && !custByTipe[r.tipe].has(r.customer_id)) {
+          custByTipe[r.tipe].set(r.customer_id, r.conversation_id);
+        }
       }
     });
 
@@ -750,13 +753,13 @@ async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
       return;
     }
 
-    // Fetch nama customer untuk semua conv_id yang ada
-    const allConvIds = [...new Set(rows.map(r => r.conversation_id).filter(Boolean))];
-    let namaByConv = {};
-    if (allConvIds.length) {
-      const convQ = allConvIds.map(id => `"${id}"`).join(',');
-      const convRows = await sbGet('conversations', `id=in.(${convQ})&select=id,customers(nama)`).catch(() => []);
-      convRows.forEach(c => { namaByConv[c.id] = c.customers?.nama || 'Customer'; });
+    // Fetch nama customer langsung dari customers table via customer_id
+    const allCustIds = [...new Set(rows.map(r => r.customer_id).filter(Boolean))];
+    let namaById = {};
+    if (allCustIds.length) {
+      const custQ = allCustIds.map(id => `"${id}"`).join(',');
+      const custRows = await sbGet('customers', `id=in.(${custQ})&select=id,nama`).catch(() => []);
+      custRows.forEach(c => { namaById[c.id] = c.nama; });
     }
 
     const isDark = !document.body.classList.contains('light');
@@ -766,9 +769,10 @@ async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
       <canvas id="objeksi-chart" width="110" height="110" style="flex-shrink:0;width:110px;height:110px;align-self:flex-start;margin-top:4px"></canvas>
       <div style="flex:1;display:flex;flex-direction:column;gap:10px">
         ${entries.map(([tipe, cnt]) => {
-          const chips = convsByTipe[tipe].slice(0, 20).map(cid => {
-            const nama = (namaByConv[cid] || 'Customer').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            return `<span class="co-cust-chip" style="font-size:11px;padding:2px 9px" onclick="openConvModal('${cid}','${nama.replace(/'/g, "\\'")}')">${namaByConv[cid] || 'Customer'}</span>`;
+          const chips = [...custByTipe[tipe].entries()].slice(0, 20).map(([custId, convId]) => {
+            const nama = namaById[custId] || 'Customer';
+            const namaSafe = nama.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            return `<span class="co-cust-chip" style="font-size:11px;padding:2px 9px" onclick="openConvModal('${convId}','${namaSafe}')">${nama}</span>`;
           }).join('');
           return `
           <div>
