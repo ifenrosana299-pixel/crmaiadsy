@@ -763,9 +763,15 @@ async function loadStats() {
 
   // Reorder: customer yang punya jadwal reorder pending & sudah waktunya
   const today = new Date().toISOString().slice(0,10);
-  const reorderSchedules = await _sbGet('followup_schedule',
-    `?user_id=eq.${userId}&status=eq.pending&scheduled_date=lte.${today}&rule_nama=ilike.*reorder*&select=customer_id`
-  ).catch(()=>[]);
+  // Ambil rule_id yang tipe='reorder' dari followup_rules
+  const reorderRules = await _sbGet('followup_rules', `?user_id=eq.${userId}&tipe=eq.reorder&select=id`).catch(()=>[]);
+  const reorderRuleIds = reorderRules.map(r => r.id);
+  // Query schedules: auto-reorder (rule_nama) ATAU manual reorder (rule_id)
+  let reorderSchedules = [];
+  const rFilter = reorderRuleIds.length
+    ? `?user_id=eq.${userId}&status=eq.pending&scheduled_date=lte.${today}&or=(rule_nama.ilike.*reorder*,rule_id.in.(${reorderRuleIds.join(',')}))`
+    : `?user_id=eq.${userId}&status=eq.pending&scheduled_date=lte.${today}&rule_nama=ilike.*reorder*`;
+  reorderSchedules = await _sbGet('followup_schedule', rFilter + '&select=customer_id').catch(()=>[]);
   window._reorderCustomerIds = new Set(reorderSchedules.map(s => s.customer_id).filter(Boolean));
   const reorderCount = convs.filter(c => window._reorderCustomerIds.has(c.customer_id)).length;
 
