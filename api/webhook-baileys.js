@@ -1668,9 +1668,10 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
     const savedMsg = await saveMessage(conversation.id, 'customer', msgText, msgId);
     const savedMsgId = savedMsg?.[0]?.id;
 
-    // Log objeksi closing secara async (non-blocking)
+    // Log objeksi closing — hanya kalau customer sudah pernah tunjukkan intent beli (close_intent_at set)
+    // Supaya pesan casual yang kebetulan match pattern tidak ikut terhitung
     const objTipe = detectObjeksi(message);
-    if (objTipe) {
+    if (objTipe && conversation.close_intent_at) {
       sbPost('closing_objections', {
         user_id:         userId,
         product_id:      product?.id || null,
