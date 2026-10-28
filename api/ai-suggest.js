@@ -301,16 +301,16 @@ Balas HANYA JSON:
       insights.sample_size = totalConv;
       insights.closed_count = totalClosed;
 
-      await sbPatch2('products', `?id=eq.${productId}`, { closing_insights_cache: insights });
-
-      // Data customer yang tidak jadi beli (untuk ditampilkan di UI)
-      const unclosedList = unclosedConvs.map(c => ({
+      // Simpan daftar customer tidak jadi beli ke dalam cache
+      insights.unclosed_convs = unclosedConvs.map(c => ({
         conv_id: c.id,
         nama: c.customers?.nama || 'Customer',
         customer_id: c.customers?.id || null,
       }));
 
-      return res.status(200).json({ ok: true, insights, cr: crPct, total: totalConv, closed: totalClosed, unclosed_convs: unclosedList });
+      await sbPatch2('products', `?id=eq.${productId}`, { closing_insights_cache: insights });
+
+      return res.status(200).json({ ok: true, insights, cr: crPct, total: totalConv, closed: totalClosed, unclosed_convs: insights.unclosed_convs });
     } catch(e) {
       return res.status(500).json({ error: e.message });
     }
