@@ -223,14 +223,13 @@ Tulis pesannya langsung, tanpa penjelasan.`;
 
     try {
       const conversations = await sbGet2('conversations',
-        `?user_id=eq.${userId}&product_id=eq.${productId}&order=created_at.desc&limit=60&select=id,status,created_at`
+        `?user_id=eq.${userId}&product_id=eq.${productId}&order=created_at.desc&limit=60&select=id,status,created_at,close_fu_count`
       );
       if (!conversations.length) return res.status(200).json({ ok: true, message: 'Belum ada percakapan' });
 
       const convIds = conversations.map(c => `"${c.id}"`).join(',');
-      const [allMessages, allOrders, allObjeksi] = await Promise.all([
+      const [allMessages, allObjeksi] = await Promise.all([
         sbGet2('conv_messages', `?conversation_id=in.(${convIds})&order=created_at.asc&select=conversation_id,role,content`),
-        sbGet2('orders', `?user_id=eq.${userId}&product_id=eq.${productId}&select=conversation_id`),
         sbGet2('closing_objections', `?user_id=eq.${userId}&product_id=eq.${productId}&select=tipe`),
       ]);
 
@@ -239,7 +238,8 @@ Tulis pesannya langsung, tanpa penjelasan.`;
         if (!msgByConv[m.conversation_id]) msgByConv[m.conversation_id] = [];
         msgByConv[m.conversation_id].push(m);
       }
-      const closedIds = new Set(allOrders.map(o => o.conversation_id).filter(Boolean));
+      // Pakai status='selesai' sebagai penanda closing berhasil
+      const closedIds = new Set(conversations.filter(c => c.status === 'selesai').map(c => c.id));
       const closed = [], unclosed = [];
       for (const conv of conversations) {
         const msgs = msgByConv[conv.id] || [];
