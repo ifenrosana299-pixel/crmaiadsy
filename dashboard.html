@@ -761,13 +761,10 @@ async function loadStats() {
   document.getElementById('st-aktif-sub').textContent = responsif + ' customer sudah balas';
   document.getElementById('st-unik-sub').textContent  = selesai + ' percakapan selesai';
 
-  // Reorder: customer yang sudah dapat follow-up reorder (status=sent)
-  const reorderRules = await _sbGet('followup_rules', `?user_id=eq.${userId}&tipe=eq.reorder&select=id`).catch(()=>[]);
-  const reorderRuleIds = reorderRules.map(r => r.id);
-  const rFilter = reorderRuleIds.length
-    ? `?user_id=eq.${userId}&status=eq.sent&or=(rule_nama.ilike.*reorder*,rule_id.in.(${reorderRuleIds.join(',')}))`
-    : `?user_id=eq.${userId}&status=eq.sent&rule_nama=ilike.*reorder*`;
-  const reorderSchedules = await _sbGet('followup_schedule', rFilter + '&select=customer_id').catch(()=>[]);
+  // Reorder: customer yang sudah masuk stage reorder_auto (sent/pending/failed = sudah dijadwalkan)
+  const reorderSchedules = await _sbGet('followup_schedule',
+    `?user_id=eq.${userId}&rule_nama=eq.reorder_auto&status=in.(sent,pending,failed)&select=customer_id`
+  ).catch(()=>[]);
   window._reorderCustomerIds = new Set(reorderSchedules.map(s => s.customer_id).filter(Boolean));
   const reorderCount = convs.filter(c => window._reorderCustomerIds.has(c.customer_id)).length;
 
