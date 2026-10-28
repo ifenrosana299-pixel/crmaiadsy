@@ -229,7 +229,7 @@ Tulis pesannya langsung, tanpa penjelasan.`;
 
       const convIds = conversations.map(c => `"${c.id}"`).join(',');
       const [allMessages, allObjeksi] = await Promise.all([
-        sbGet2('conv_messages', `?conversation_id=in.(${convIds})&order=created_at.asc&select=conversation_id,role,content`),
+        sbGet2('conv_messages', `?conversation_id=in.(${convIds})&order=created_at.asc&select=conversation_id,role,isi`),
         sbGet2('closing_objections', `?user_id=eq.${userId}&product_id=eq.${productId}&select=tipe`),
       ]);
 
@@ -247,7 +247,7 @@ Tulis pesannya langsung, tanpa penjelasan.`;
         const isC = closedIds.has(conv.id);
         const bucket = isC ? closed : unclosed;
         if (bucket.length < 8) {
-          bucket.push(msgs.slice(0, 15).map(m => `[${m.role === 'assistant' ? 'CS' : 'Customer'}]: ${m.content}`).join('\n'));
+          bucket.push(msgs.slice(0, 15).map(m => `[${m.role === 'assistant' ? 'CS' : 'Customer'}]: ${m.isi}`).join('\n'));
         }
       }
 
