@@ -144,6 +144,21 @@ body.light .drp-dropdown{box-shadow:0 8px 32px rgba(0,0,0,.12)}
 .co-spinner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:100px;color:var(--text3);font-size:13px}
 .co-spinner svg{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.co-cust-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.co-cust-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid rgba(239,68,68,.25);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s}
+.co-cust-chip:hover{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.5);color:var(--text)}
+/* Modal percakapan */
+#conv-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
+#conv-modal.open{display:flex}
+#conv-modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(520px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+#conv-modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+#conv-modal-title{font-size:14px;font-weight:600;color:var(--text)}
+#conv-modal-close{width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+#conv-modal-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.cm-bubble{max-width:80%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5}
+.cm-bubble.cs{align-self:flex-end;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.2);color:var(--text)}
+.cm-bubble.customer{align-self:flex-start;background:var(--bg);border:1px solid var(--border);color:var(--text2)}
+.cm-role{font-size:10px;color:var(--text3);margin-bottom:2px}
 
 /* ── INSIGHTS CARD ── */
 .resolusi-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;margin-bottom:16px}
@@ -780,7 +795,7 @@ async function loadClosingInsightsCache(productId) {
   }
 }
 
-function renderClosingInsights(ci, total, closedCount) {
+function renderClosingInsights(ci, total, closedCount, unclosedConvs) {
   const body = document.getElementById('closing-optimizer-body');
   const crColor = ci.cr_saat_ini >= 30 ? '#22c55e' : ci.cr_saat_ini >= 15 ? '#f59e0b' : '#ef4444';
   let html = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
@@ -816,6 +831,21 @@ function renderClosingInsights(ci, total, closedCount) {
     </div>`);
     html += `</div>`;
   }
+  // Daftar customer yang tidak jadi beli
+  if (Array.isArray(unclosedConvs) && unclosedConvs.length) {
+    html += `<div class="co-section">
+      <div class="co-section-title">👤 Customer yang Tidak Jadi Beli (${unclosedConvs.length} terbaru)</div>
+      <div class="co-cust-list">`;
+    unclosedConvs.forEach(c => {
+      const nama = (c.nama || 'Customer').replace(/"/g, '&quot;');
+      html += `<span class="co-cust-chip" onclick="openConvModal('${c.conv_id}','${nama}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        ${nama}
+      </span>`;
+    });
+    html += `</div></div>`;
+  }
+
   const analyzedAt = new Date(ci.analyzed_at).toLocaleString('id-ID');
   html += `<div class="co-meta">🔄 Auto-update tiap 24 jam · Terakhir dianalisis: ${analyzedAt}</div>`;
   body.innerHTML = html;
@@ -843,7 +873,7 @@ async function runClosingAnalysis() {
     });
     const data = await r.json();
     if (!r.ok || !data.ok) throw new Error(data.error || 'Gagal analisis');
-    renderClosingInsights(data.insights, data.total, data.closed);
+    renderClosingInsights(data.insights, data.total, data.closed, data.unclosed_convs);
   } catch(e) {
     body.innerHTML = `<div style="color:#f87171;font-size:13px">Gagal analisis: ${e.message}</div>`;
   } finally {
@@ -910,6 +940,48 @@ Format: poin-poin singkat, langsung ke intinya. Maksimal 150 kata.`;
 }
 
 window.addEventListener('load', init);
+
+/* ── CONV MODAL ── */
+async function openConvModal(convId, nama) {
+  const modal = document.getElementById('conv-modal');
+  const title = document.getElementById('conv-modal-title');
+  const body  = document.getElementById('conv-modal-body');
+  title.textContent = `Percakapan — ${nama}`;
+  body.innerHTML = `<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">Memuat percakapan...</div>`;
+  modal.classList.add('open');
+
+  try {
+    const msgs = await sbGet('conv_messages', `conversation_id=eq.${convId}&order=created_at.asc&select=role,isi,created_at&limit=80`);
+    if (!msgs.length) {
+      body.innerHTML = `<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">Tidak ada pesan</div>`;
+      return;
+    }
+    body.innerHTML = msgs.map(m => {
+      const isCS = m.role === 'assistant' || m.role === 'cs';
+      const time = m.created_at ? new Date(m.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      return `<div style="display:flex;flex-direction:column;align-items:${isCS?'flex-end':'flex-start'}">
+        <div class="cm-role">${isCS ? 'CS/AI' : nama} · ${time}</div>
+        <div class="cm-bubble ${isCS?'cs':'customer'}">${(m.isi||'').replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    body.innerHTML = `<div style="color:#f87171;font-size:12px;text-align:center;padding:20px">Gagal memuat: ${e.message}</div>`;
+  }
+}
+function closeConvModal() {
+  document.getElementById('conv-modal').classList.remove('open');
+}
 </script>
+
+<!-- Modal Percakapan -->
+<div id="conv-modal" onclick="if(event.target===this)closeConvModal()">
+  <div id="conv-modal-box">
+    <div id="conv-modal-hdr">
+      <span id="conv-modal-title">Percakapan</span>
+      <button id="conv-modal-close" onclick="closeConvModal()">✕</button>
+    </div>
+    <div id="conv-modal-body"></div>
+  </div>
+</div>
 </body>
 </html>
