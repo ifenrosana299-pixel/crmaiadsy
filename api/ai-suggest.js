@@ -222,14 +222,28 @@ Tulis pesannya langsung, tanpa penjelasan.`;
     };
 
     try {
+      // Fetch semua conversations untuk statistik akurat (tanpa limit)
       const conversations = await sbGet2('conversations',
-        `?user_id=eq.${userId}&product_id=eq.${productId}&order=created_at.desc&limit=60&select=id,status,created_at,close_fu_count`
+        `?user_id=eq.${userId}&product_id=eq.${productId}&select=id,status&limit=2000`
       );
       if (!conversations.length) return res.status(200).json({ ok: true, message: 'Belum ada percakapan' });
 
-      const convIds = conversations.map(c => `"${c.id}"`).join(',');
+      // Pakai status='selesai' sebagai penanda closing berhasil
+      const closedIds = new Set(conversations.filter(c => c.status === 'selesai').map(c => c.id));
+      const totalConv = conversations.length;
+      const totalClosed = closedIds.size;
+      const crPct = totalConv > 0 ? Math.round((totalClosed/totalConv)*100) : 0;
+
+      // Ambil sampel 10 closed + 10 unclosed untuk dikirim ke Claude
+      const closedSample = conversations.filter(c => closedIds.has(c.id)).slice(0, 10).map(c => c.id);
+      const unclosedSample = conversations.filter(c => !closedIds.has(c.id)).slice(0, 10).map(c => c.id);
+      const sampleIds = [...closedSample, ...unclosedSample];
+      const sampleIdsQ = sampleIds.map(id => `"${id}"`).join(',');
+
       const [allMessages, allObjeksi] = await Promise.all([
-        sbGet2('conv_messages', `?conversation_id=in.(${convIds})&order=created_at.asc&select=conversation_id,role,isi`),
+        sampleIds.length
+          ? sbGet2('conv_messages', `?conversation_id=in.(${sampleIdsQ})&order=created_at.asc&select=conversation_id,role,isi`)
+          : Promise.resolve([]),
         sbGet2('closing_objections', `?user_id=eq.${userId}&product_id=eq.${productId}&select=tipe`),
       ]);
 
@@ -238,30 +252,28 @@ Tulis pesannya langsung, tanpa penjelasan.`;
         if (!msgByConv[m.conversation_id]) msgByConv[m.conversation_id] = [];
         msgByConv[m.conversation_id].push(m);
       }
-      // Pakai status='selesai' sebagai penanda closing berhasil
-      const closedIds = new Set(conversations.filter(c => c.status === 'selesai').map(c => c.id));
+
       const closed = [], unclosed = [];
-      for (const conv of conversations) {
-        const msgs = msgByConv[conv.id] || [];
+      for (const id of closedSample) {
+        const msgs = msgByConv[id] || [];
         if (!msgs.length) continue;
-        const isC = closedIds.has(conv.id);
-        const bucket = isC ? closed : unclosed;
-        if (bucket.length < 8) {
-          bucket.push(msgs.slice(0, 15).map(m => `[${m.role === 'assistant' ? 'CS' : 'Customer'}]: ${m.isi}`).join('\n'));
-        }
+        if (closed.length < 10) closed.push(msgs.slice(0, 15).map(m => `[${m.role === 'assistant' ? 'CS' : 'Customer'}]: ${m.isi}`).join('\n'));
+      }
+      for (const id of unclosedSample) {
+        const msgs = msgByConv[id] || [];
+        if (!msgs.length) continue;
+        if (unclosed.length < 10) unclosed.push(msgs.slice(0, 15).map(m => `[${m.role === 'assistant' ? 'CS' : 'Customer'}]: ${m.isi}`).join('\n'));
       }
 
       const objStats = {};
       for (const o of allObjeksi) objStats[o.tipe] = (objStats[o.tipe] || 0) + 1;
       const objText = Object.entries(objStats).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`- "${t}": ${n}x`).join('\n');
-      const totalConv = conversations.length;
-      const totalClosed = closedIds.size;
-      const crPct = totalConv > 0 ? Math.round((totalClosed/totalConv)*100) : 0;
 
       const prompt = `Kamu analis closing rate untuk AI CS WhatsApp (CRM post-purchase).
 Analisis percakapan berikut dan temukan pola konkret apa yang membuat closing berhasil vs gagal.
 
-STATISTIK: ${totalConv} percakapan · ${totalClosed} closing · CR ${crPct}%
+STATISTIK TOTAL: ${totalConv} percakapan · ${totalClosed} closing · CR ${crPct}%
+(Sampel percakapan yang dianalisis: ${closed.length} berhasil + ${unclosed.length} gagal dari total ${totalConv})
 Objeksi sering: ${objText || '(belum ada)'}
 
 BERHASIL CLOSING (${closed.length} sampel):
