@@ -728,12 +728,19 @@ let objeksiChart = null;
 async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
   try {
     const prodQ = prodFilter ? `&product_id=eq.${prodFilter}` : '';
-    const rows = await sbGet('closing_objections', `user_id=eq.${userId}${prodQ}&created_at=gte.${dateFrom}&created_at=lte.${dateTo}T23:59:59&select=tipe`);
+    const rows = await sbGet('closing_objections', `user_id=eq.${userId}${prodQ}&created_at=gte.${dateFrom}&created_at=lte.${dateTo}T23:59:59&select=tipe,conversation_id`);
 
     const labels = { harga: 'Harga Mahal', marketplace: 'Mau ke Marketplace', nanti: 'Pikir-pikir / Nanti', cancel: 'Batal / Tidak Jadi' };
     const colors = { harga: '#f87171', marketplace: '#fb923c', nanti: '#facc15', cancel: '#94a3b8' };
     const counts = { harga: 0, marketplace: 0, nanti: 0, cancel: 0 };
-    rows.forEach(r => { if (counts[r.tipe] !== undefined) counts[r.tipe]++; });
+    // Group conv_ids per tipe
+    const convsByTipe = { harga: [], marketplace: [], nanti: [], cancel: [] };
+    rows.forEach(r => {
+      if (counts[r.tipe] !== undefined) {
+        counts[r.tipe]++;
+        if (r.conversation_id) convsByTipe[r.tipe].push(r.conversation_id);
+      }
+    });
 
     const total = rows.length;
     document.getElementById('objeksi-total').textContent = total;
@@ -743,22 +750,40 @@ async function loadObjeksi(userId, prodFilter, dateFrom, dateTo) {
       return;
     }
 
+    // Fetch nama customer untuk semua conv_id yang ada
+    const allConvIds = [...new Set(rows.map(r => r.conversation_id).filter(Boolean))];
+    let namaByConv = {};
+    if (allConvIds.length) {
+      const convQ = allConvIds.map(id => `"${id}"`).join(',');
+      const convRows = await sbGet('conversations', `id=in.(${convQ})&select=id,customers(nama)`).catch(() => []);
+      convRows.forEach(c => { namaByConv[c.id] = c.customers?.nama || 'Customer'; });
+    }
+
     const isDark = !document.body.classList.contains('light');
     const entries = Object.entries(counts).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
 
     document.getElementById('objeksi-body').innerHTML = `
-      <canvas id="objeksi-chart" width="110" height="110" style="flex-shrink:0;width:110px;height:110px"></canvas>
-      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-        ${entries.map(([tipe, cnt]) => `
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:10px;height:10px;border-radius:50%;background:${colors[tipe]};flex-shrink:0"></div>
-            <div style="flex:1;font-size:13px;color:var(--text2)">${labels[tipe]}</div>
-            <div style="font-size:13px;font-weight:700;color:var(--text)">${cnt}</div>
-            <div style="font-size:11px;color:var(--text3);width:36px;text-align:right">${Math.round(cnt/total*100)}%</div>
-            <div style="width:80px;height:6px;border-radius:3px;background:var(--bg3)">
-              <div style="height:100%;border-radius:3px;background:${colors[tipe]};width:${Math.round(cnt/total*100)}%"></div>
+      <canvas id="objeksi-chart" width="110" height="110" style="flex-shrink:0;width:110px;height:110px;align-self:flex-start;margin-top:4px"></canvas>
+      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+        ${entries.map(([tipe, cnt]) => {
+          const chips = convsByTipe[tipe].slice(0, 20).map(cid => {
+            const nama = (namaByConv[cid] || 'Customer').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            return `<span class="co-cust-chip" style="font-size:11px;padding:2px 9px" onclick="openConvModal('${cid}','${nama.replace(/'/g, "\\'")}')">${namaByConv[cid] || 'Customer'}</span>`;
+          }).join('');
+          return `
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips?'5px':'0'}">
+              <div style="width:10px;height:10px;border-radius:50%;background:${colors[tipe]};flex-shrink:0"></div>
+              <div style="flex:1;font-size:13px;color:var(--text2)">${labels[tipe]}</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">${cnt}</div>
+              <div style="font-size:11px;color:var(--text3);width:36px;text-align:right">${Math.round(cnt/total*100)}%</div>
+              <div style="width:80px;height:6px;border-radius:3px;background:var(--bg3)">
+                <div style="height:100%;border-radius:3px;background:${colors[tipe]};width:${Math.round(cnt/total*100)}%"></div>
+              </div>
             </div>
-          </div>`).join('')}
+            ${chips ? `<div class="co-cust-list" style="padding-left:20px">${chips}</div>` : ''}
+          </div>`;
+        }).join('')}
       </div>`;
 
     if (objeksiChart) objeksiChart.destroy();
@@ -789,13 +814,13 @@ async function loadClosingInsightsCache(productId) {
       body.innerHTML = `<div style="color:var(--text3);font-size:12px">Belum ada analisis — bot akan analisis otomatis setelah ada percakapan masuk, atau klik Refresh.</div>`;
       return;
     }
-    renderClosingInsights(ci, ci.sample_size||0, ci.closed_count||0, ci.unclosed_convs);
+    renderClosingInsights(ci, ci.sample_size||0, ci.closed_count||0);
   } catch(e) {
     body.innerHTML = `<div style="color:var(--text3);font-size:12px">Gagal memuat insights.</div>`;
   }
 }
 
-function renderClosingInsights(ci, total, closedCount, unclosedConvs) {
+function renderClosingInsights(ci, total, closedCount) {
   const body = document.getElementById('closing-optimizer-body');
   const crColor = ci.cr_saat_ini >= 30 ? '#22c55e' : ci.cr_saat_ini >= 15 ? '#f59e0b' : '#ef4444';
   let html = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
@@ -831,21 +856,6 @@ function renderClosingInsights(ci, total, closedCount, unclosedConvs) {
     </div>`);
     html += `</div>`;
   }
-  // Daftar customer yang tidak jadi beli
-  if (Array.isArray(unclosedConvs) && unclosedConvs.length) {
-    html += `<div class="co-section">
-      <div class="co-section-title">👤 Customer yang Tidak Jadi Beli (${unclosedConvs.length} terbaru)</div>
-      <div class="co-cust-list">`;
-    unclosedConvs.forEach(c => {
-      const nama = (c.nama || 'Customer').replace(/"/g, '&quot;');
-      html += `<span class="co-cust-chip" onclick="openConvModal('${c.conv_id}','${nama}')">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        ${nama}
-      </span>`;
-    });
-    html += `</div></div>`;
-  }
-
   const analyzedAt = new Date(ci.analyzed_at).toLocaleString('id-ID');
   html += `<div class="co-meta">🔄 Auto-update tiap 24 jam · Terakhir dianalisis: ${analyzedAt}</div>`;
   body.innerHTML = html;
@@ -873,7 +883,7 @@ async function runClosingAnalysis() {
     });
     const data = await r.json();
     if (!r.ok || !data.ok) throw new Error(data.error || 'Gagal analisis');
-    renderClosingInsights(data.insights, data.total, data.closed, data.unclosed_convs);
+    renderClosingInsights(data.insights, data.total, data.closed);
   } catch(e) {
     body.innerHTML = `<div style="color:#f87171;font-size:13px">Gagal analisis: ${e.message}</div>`;
   } finally {
