@@ -385,7 +385,11 @@ Kalau customer bilang mau order lagi / beli lagi / repeat / tanya harga untuk be
    - Kalau customer mau GANTI EKSPEDISI → output marker [CEK_ONGKIR:ekspedisi=NAMA_EKSPEDISI] di akhir reply, sistem akan hitung ulang
    - Kalau alamat beda → minta alamat baru dulu sebelum konfirmasi
 3. Setelah customer konfirmasi (oke/siap + pilih transfer/COD) → tulis marker:
-   [REPEAT_ORDER_CONFIRMED:qty=N]
+   [REPEAT_ORDER_CONFIRMED:qty=N,bayar=transfer/cod,total=ANGKA_TANPA_TITIK]
+   Contoh: [REPEAT_ORDER_CONFIRMED:qty=2,bayar=transfer,total=146700]
+   Contoh: [REPEAT_ORDER_CONFIRMED:qty=1,bayar=cod,total=115500]
+   PENTING: total dalam angka bulat tanpa titik/koma. bayar harus "transfer" atau "cod".
+   Setelah marker ini, sistem akan OTOMATIS kirim rekap pesanan ke customer — kamu TIDAK perlu kirim rekap lagi.
 4. Kasih info rekening: ${rekeningInfo}
 
 PENTING: Selalu tampilkan KEDUA opsi (Transfer dan COD). JANGAN tampilkan harga normal tanpa dicoret kalau ada diskon — harus ada format ~coret~.
@@ -2025,11 +2029,25 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
     const rawReply = await callClaude(systemPrompt, history, chatModel, userAnthropicKey);
     if (!rawReply) return res.status(200).json({ ok: true, skipped: 'no_reply' });
 
-    // ── Handle [REPEAT_ORDER_CONFIRMED:qty=N] ─────────────────
-    const repeatMatch = rawReply.match(/\[REPEAT_ORDER_CONFIRMED:qty=(\d+)\]/i);
+    // ── Handle [REPEAT_ORDER_CONFIRMED:qty=N,bayar=X,total=Y] ─────────────────
+    const repeatMatch = rawReply.match(/\[REPEAT_ORDER_CONFIRMED:qty=(\d+)(?:,bayar=(transfer|cod))?(?:,total=(\d+))?\]/i);
     if (repeatMatch) {
-      const qty = parseInt(repeatMatch[1]) || 1;
+      const qty   = parseInt(repeatMatch[1]) || 1;
+      const bayar = (repeatMatch[2] || '').toLowerCase() || null;
+      const total = repeatMatch[3] ? parseInt(repeatMatch[3]) : null;
       try {
+        // Ambil data order terakhir untuk alamat + ekspedisi
+        const lastOrders = await sbGet('orders', `?nomer_hp=eq.${wa_number}&user_id=eq.${userId}&order=created_at.desc&limit=1&select=alamat,ekspedisi`);
+        const lastOrder = lastOrders[0] || {};
+        const alamatDB    = lastOrder.alamat || '';
+        const ekspedisiDB = lastOrder.ekspedisi || '';
+
+        // Alamat: pakai dari customer object (structured) atau dari orders (string)
+        const alamatObj = customer.alamat || {};
+        const alamatStr = alamatObj.jalan
+          ? [alamatObj.jalan, alamatObj.kelurahan, alamatObj.kecamatan, alamatObj.kabupaten, alamatObj.provinsi].filter(Boolean).join(', ')
+          : alamatDB;
+
         await sbPost('repeat_orders', {
           user_id:         userId,
           customer_id:     customer.id,
@@ -2049,14 +2067,26 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
         });
         console.log(`[REPEAT_ORDER] Saved: ${customer.nama} × ${qty}`);
 
+        // ── Kirim rekap pesanan ke customer ──
+        const bayarLabel = bayar === 'cod' ? `COD via ${ekspedisiDB || '-'}` : bayar === 'transfer' ? 'Transfer' : '-';
+        const totalStr   = total ? `Rp ${total.toLocaleString('id-ID')}` : '-';
+        const rekap = `*Nama:* ${customer.nama || wa_number}\n*No HP:* ${wa_number}\n*Alamat Lengkap:* ${alamatStr || '-'}\n\n*Produk:* ${product?.nama || '-'}\n*Jumlah Pesanan:* ${qty} pcs\n*Pembayaran:* ${bayarLabel}\n*Total Pembayaran:* ${totalStr}\n\nTerima kasih kak sudah berbelanja lagi 😊🙏\nPesanan akan segera kami proses ya kak!`;
+
+        await sendWA(waSession, wa_number, rekap, true).catch(e => {
+          console.error('[REPEAT_ORDER] Gagal kirim rekap:', e.message);
+        });
+
+        // Log rekap ke conv_messages
+        await sbPost('conv_messages', {
+          conversation_id: conversation.id,
+          isi: rekap,
+          role: 'ai',
+        }).catch(() => {});
+
         // Notif ke grup WA
         if (userGroupJid) {
           const tgl = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
-          const alamatStr = customer.alamat
-            ? [customer.alamat.jalan, customer.alamat.kelurahan, customer.alamat.kecamatan,
-               customer.alamat.kabupaten, customer.alamat.provinsi].filter(Boolean).join(', ')
-            : '-';
-          const notif = `🔄 *REPEAT ORDER*\n\n👤 ${customer.nama || wa_number}\n📦 ${product?.nama || '-'} × ${qty}\n📍 ${alamatStr}\n📞 ${wa_number}\n📅 ${tgl}`;
+          const notif = `🔄 *REPEAT ORDER*\n\n👤 ${customer.nama || wa_number}\n📦 ${product?.nama || '-'} × ${qty}\n📍 ${alamatStr || '-'}\n💳 ${bayarLabel}\n💰 ${totalStr}\n📞 ${wa_number}\n📅 ${tgl}`;
           await sendWA(waSession, userGroupJid, notif, true).catch(() => {});
         }
       } catch(e) {
