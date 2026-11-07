@@ -1196,13 +1196,15 @@ async function updateCaseBoard() {
       } else {
         const today = new Date().toISOString().slice(0,10);
         fuList.innerHTML = fuData.map(f => {
-          const isToday = f.scheduled_date === today;
-          const isSent  = f.status === 'sent' || f.status === 'terkirim';
-          const badgeCls = isSent ? 'done' : isToday ? 'today' : 'pending';
-          const badgeTxt = isSent ? '✓ Terkirim' : isToday ? '🔔 Hari Ini' : 'Terjadwal';
+          const isToday   = f.scheduled_date === today;
+          const isSent    = f.status === 'sent' || f.status === 'terkirim';
+          const isSkipped = f.status === 'skipped';
+          const isFailed  = f.status === 'failed';
+          const badgeCls = isSent ? 'done' : isSkipped ? 'skip' : isFailed ? 'fail' : isToday ? 'today' : 'pending';
+          const badgeTxt = isSent ? '✓ Terkirim' : isSkipped ? '⏭ Dilewati' : isFailed ? '✗ Gagal' : isToday ? '🔔 Hari Ini' : 'Terjadwal';
           const tgl = f.scheduled_date ? new Date(f.scheduled_date).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '—';
           return `<div class="fu-item">
-            <div class="fu-icon">${isSent ? '✅' : isToday ? '🔔' : '📅'}</div>
+            <div class="fu-icon">${isSent ? '✅' : isSkipped ? '⏭' : isFailed ? '❌' : isToday ? '🔔' : '📅'}</div>
             <div class="fu-info">
               <div class="fu-label">${esc(f.rule_nama || 'Follow-up')}</div>
               <div class="fu-value">${tgl}</div>

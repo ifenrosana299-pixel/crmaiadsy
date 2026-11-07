@@ -1208,27 +1208,32 @@ async function saveRule() {
     const editId = document.getElementById('rule-edit-id').value;
     let ruleId;
     if (editId) {
-      // Hapus jadwal pending untuk rule ini dulu supaya bersih
-      await sbDelete('followup_schedule', `rule_id=eq.${editId}&status=eq.pending`);
+      // Edit rule: hanya update isi template, jadwal pending tetap jalan
+      // (sender selalu ambil template terbaru dari rule saat kirim)
       await sbPatch('followup_rules', `id=eq.${editId}`, payload);
       ruleId = editId;
     } else {
       const created = await sbPost('followup_rules', payload, { prefer: 'return=representation' });
       ruleId = created?.[0]?.id || null;
     }
-    toast('Rule disimpan! Sinkronisasi jadwal...', 'success');
     closeRuleModal();
     await loadRules();
-    // Auto-generate jadwal — per rule kalau ada ruleId (lebih efisien)
-    const body = { user_id: currentUser.id };
-    if (ruleId) body.rule_id = ruleId;
-    const r2 = await fetch('/api/generate-schedules', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const d2 = await r2.json();
-    if (d2.created > 0) toast(`✅ ${d2.created} jadwal disinkronkan`, 'success');
+    // Hanya generate jadwal untuk rule BARU — edit template tidak perlu generate ulang
+    // karena sender ambil template dari rule saat kirim (selalu pakai versi terbaru)
+    if (!editId) {
+      toast('Rule baru disimpan! Sinkronisasi jadwal...', 'success');
+      const body = { user_id: currentUser.id };
+      if (ruleId) body.rule_id = ruleId;
+      const r2 = await fetch('/api/generate-schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d2 = await r2.json();
+      if (d2.created > 0) toast(`✅ ${d2.created} jadwal disinkronkan`, 'success');
+    } else {
+      toast('Template diperbarui ✅', 'success');
+    }
     await loadSchedules();
   } catch(e) {
     document.getElementById('rule-err').textContent = e.message;
