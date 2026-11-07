@@ -1540,8 +1540,30 @@ module.exports = async function handler(req, res) {
       console.log(`[form lead] detected — nama: ${namaFromForm || '(tidak terdeteksi)'}`);
     }
 
-    // ── Find/create customer & conversation ───────────────────
-    const customer = await findOrCreateCustomer(userId, wa_number, namaFromForm || pushName, reply_jid);
+    // ── Guard: CRM hanya balas kalau customer SUDAH ADA di tabel customers ──
+    // Customer masuk via import order / generate-schedules, bukan dari chat masuk
+    const normalizedGuard = normalizeWA(wa_number);
+    let existingCustomer = await sbGet('customers',
+      `?user_id=eq.${userId}&wa_number=eq.${encodeURIComponent(normalizedGuard)}&limit=1`
+    ).catch(() => []);
+    // Fallback: cek by reply_jid (handle LID)
+    if (!existingCustomer.length && reply_jid) {
+      existingCustomer = await sbGet('customers',
+        `?user_id=eq.${userId}&reply_jid=eq.${encodeURIComponent(reply_jid)}&limit=1`
+      ).catch(() => []);
+    }
+    if (!existingCustomer.length) {
+      console.log(`[CRM] Customer ${wa_number} belum ada di tabel customers — skip, AI diam`);
+      return res.status(200).json({ ok: true, skipped: 'not_crm_customer' });
+    }
+
+    const customer = existingCustomer[0];
+
+    // Update reply_jid kalau belum ada
+    if (reply_jid && !customer.reply_jid) {
+      await sbPatch('customers', `?id=eq.${customer.id}`, { reply_jid }).catch(() => {});
+      customer.reply_jid = reply_jid;
+    }
 
     // Update nama dari form kalau lebih lengkap dari push_name
     if (namaFromForm && namaFromForm !== customer.nama) {
@@ -1785,31 +1807,6 @@ Field "ktp" hanya diisi jika tipe = "ktp", selainnya null.`,
 
     // ── State conversation ────────────────────────────────────
     const convState = conversation.state || {};
-
-    // ── Guard: CRM hanya balas kalau customer sudah punya order ──
-    // Kalau belum ada order, skip (biarkan BotWA yang handle sebagai CS pre-purchase)
-    const normalizedForGuard = normalizeWA(wa_number);
-    let hasOrder = false;
-    try {
-      const guardRows = await sbGet('orders',
-        `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(normalizedForGuard)}&limit=1`
-      ).catch(() => []);
-      if (!guardRows.length) {
-        // Fallback cek dengan format 08xx
-        const altHp = normalizedForGuard.startsWith('62') ? '0' + normalizedForGuard.slice(2) : normalizedForGuard;
-        const guardAlt = await sbGet('orders',
-          `?user_id=eq.${userId}&nomer_hp=eq.${encodeURIComponent(altHp)}&limit=1`
-        ).catch(() => []);
-        hasOrder = guardAlt.length > 0;
-      } else {
-        hasOrder = true;
-      }
-    } catch(e) {}
-
-    if (!hasOrder) {
-      console.log(`[CRM] No order found for ${wa_number} — skip (biarkan BotWA handle)`);
-      return res.status(200).json({ ok: true, skipped: 'no_order_crm' });
-    }
 
     // ── Real-time tracking: inject kalau customer tanya soal resi/paket ──
     let realtimeTracking = null;
