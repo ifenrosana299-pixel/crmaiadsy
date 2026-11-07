@@ -148,7 +148,8 @@ async function generatePesan(rule, customer, order, apiKey, reEngage = false) {
       .replace(/{ekspedisi}/g,   order?.ekspedisi      || '-')
       .replace(/{status_resi}/g, order?.status_resi    || '-')
       .replace(/{alamat}/g,      order?.alamat         || '-')
-      .replace(/{total_cod}/g,   order?.jumlah_cod ? `Rp${Number(order.jumlah_cod).toLocaleString('id-ID')}` : '-');
+      .replace(/{total_cod}/g,   order?.jumlah_cod ? `Rp${Number(order.jumlah_cod).toLocaleString('id-ID')}` : '-')
+      .replace(/{qty}/g,         order?.qty || order?.jumlah_produk || '1');
 
     return { text, image_url };
   }
