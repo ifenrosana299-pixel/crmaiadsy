@@ -440,6 +440,155 @@ export default async function handler(req, res) {
       await randomDelay();
     }
 
+    // ── PELANGGAN: proses followup_schedule_pelanggan (repeat customers) ──
+    try {
+      const pelangganSchedules = await sb('followup_schedule_pelanggan',
+        `scheduled_date=lte.${today}&status=eq.pending` +
+        `&select=*,send_after,customers(nama,wa_number,produk,product_id,optimal_send_hour,response_count,send_minute_slot,fu_status,fu_no_reply_count,fu_sent_count)` +
+        `,followup_rules_pelanggan(nama,templates,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,tipe)` +
+        `,products(wa_session_id)`);
+
+      if (pelangganSchedules.length) {
+        // Dedup pelanggan
+        const pSentSet = new Set();
+        const pExistSent = await sb('followup_schedule_pelanggan',
+          `status=eq.sent&select=customer_id,rule_nama&limit=10000`);
+        for (const e of pExistSent) pSentSet.add(`${e.customer_id}__${e.rule_nama}`);
+
+        const pActive = pelangganSchedules.filter(s => {
+          const k = `${s.customer_id}__${s.rule_nama}`;
+          if (pSentSet.has(k)) {
+            sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } }).catch(() => {});
+            results.skipped++;
+            return false;
+          }
+          pSentSet.add(k);
+          return true;
+        });
+
+        const pShuffled = pActive.sort(() => Math.random() - 0.5);
+        const pProductSent = {};
+
+        for (const s of pShuffled) {
+          const pid = s.product_id || 'default';
+          const maxP = maxPerProduct(pActive.filter(x => (x.product_id || 'default') === pid).length);
+          if ((pProductSent[pid] || 0) >= maxP) continue;
+
+          const customer = s.customers;
+          const rule = s.followup_rules_pelanggan || {};
+
+          if (!customer?.wa_number) {
+            await sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+            results.skipped++;
+            continue;
+          }
+
+          if (customer.fu_status === 'blacklist') {
+            await sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+            results.skipped++;
+            continue;
+          }
+
+          if (!forceMode && !shouldSendNow(s, customer)) {
+            results.skipped_timing++;
+            continue;
+          }
+
+          try {
+            const apiKey = await getAnthropicKey(s.user_id);
+
+            const orders = await sb('orders',
+              `nomer_hp=eq.${customer.wa_number}&user_id=eq.${s.user_id}&order=created_at.desc&limit=1&select=produk,nomer_resi,ekspedisi,status_resi,alamat,jumlah_cod`
+            ).catch(() => []);
+            const order = orders[0] || null;
+
+            if (rule?.tipe === 'sebelum_deliv' && order?.status_resi === 'SAMPAI') {
+              await sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+              results.skipped++;
+              continue;
+            }
+
+            const reEngage = customer.fu_status === 'tidak_responsif';
+            const hasil = await generatePesan(rule, customer, order, apiKey, reEngage);
+            if (!hasil) {
+              await sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+              results.skipped++;
+              continue;
+            }
+            const { text: pesan, image_url: pesanImage } = hasil;
+
+            let sessionId = s.user_id;
+            const joinedWaSession = s.products?.wa_session_id;
+            if (joinedWaSession) {
+              sessionId = joinedWaSession;
+            } else if (customer.product_id) {
+              const prod = await sb('products', `id=eq.${customer.product_id}&select=wa_session_id`);
+              sessionId = prod[0]?.wa_session_id || s.user_id;
+            }
+
+            await sendWA(sessionId, customer.wa_number, pesan, pesanImage || null);
+
+            // Conversation
+            let convs = await sb('conversations',
+              `user_id=eq.${s.user_id}&customer_id=eq.${s.customer_id}&status=neq.selesai&limit=1`);
+            let convId;
+            const fuContext = {
+              fu_rule_nama: rule.nama || s.rule_nama || null,
+              fu_tipe:      rule.tipe || 'setelah_deliv',
+              fu_hari:      rule.hari_setelah_delivered ?? rule.hari_sebelum_deliv ?? null,
+              fu_sent_at:   new Date().toISOString(),
+              fu_source:    'pelanggan',
+            };
+            const nowIso = new Date().toISOString();
+            if (convs.length) {
+              convId = convs[0].id;
+              const prevState = convs[0].state || {};
+              await sb('conversations', `id=eq.${convId}`, {
+                method: 'PATCH',
+                body: { updated_at: nowIso, last_msg_at: nowIso, state: { ...prevState, ...fuContext } }
+              });
+            } else {
+              const newConv = await sb('conversations', '', {
+                method: 'POST',
+                body: { user_id: s.user_id, customer_id: s.customer_id, product_id: customer.product_id || null, status: 'baru', sumber: 'fu', state: fuContext, last_msg_at: nowIso }
+              });
+              convId = newConv[0].id;
+            }
+
+            const isiLog = pesanImage ? `[Gambar] ${pesan}` : pesan;
+            await sb('conv_messages', '', {
+              method: 'POST', prefer: 'return=minimal',
+              body: { conversation_id: convId, isi: isiLog, role: 'ai' }
+            });
+
+            await Promise.all([
+              sb('followup_schedule_pelanggan', `id=eq.${s.id}`, {
+                method: 'PATCH', body: { status: 'sent', sent_at: new Date().toISOString() }
+              }),
+              sb('customers', `id=eq.${s.customer_id}`, {
+                method: 'PATCH', body: {
+                  last_fu_at: new Date().toISOString(),
+                  status: 'fu_aktif',
+                }
+              })
+            ]);
+
+            results.sent++;
+            pProductSent[pid] = (pProductSent[pid] || 0) + 1;
+            results.details.push({ customer: customer.nama, status: 'sent', source: 'pelanggan' });
+          } catch(e) {
+            await sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'failed' } });
+            results.failed++;
+            results.details.push({ customer: customer?.nama, status: 'failed', source: 'pelanggan', error: e.message });
+          }
+
+          await randomDelay();
+        }
+      }
+    } catch(e) {
+      console.error('[followup-sender] pelanggan error:', e.message);
+    }
+
     return res.json(results);
   } catch(e) {
     return res.status(500).json({ error: e.message, ...results });
