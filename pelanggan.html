@@ -236,30 +236,18 @@ function renderTable() {
   }
 
   document.getElementById('table-wrap').innerHTML = `
-    <table style="table-layout:fixed;width:100%">
-      <colgroup>
-        <col style="width:40px">
-        <col style="width:160px">
-        <col style="width:130px">
-        <col style="width:60px">
-        <col style="width:45px">
-        <col style="width:80px">
-        <col style="width:110px">
-        <col style="width:180px">
-        <col style="width:95px">
-        <col style="width:90px">
-      </colgroup>
+    <table style="width:100%">
       <thead><tr>
-        <th>#</th>
-        <th>Nama</th>
-        <th>Produk</th>
-        <th>RO</th>
-        <th>Qty</th>
-        <th>Bayar</th>
-        <th>Total</th>
-        <th>Resi</th>
-        <th>Status</th>
-        <th>Aksi</th>
+        <th style="width:36px">#</th>
+        <th style="width:14%">Nama</th>
+        <th style="width:12%">Produk</th>
+        <th style="width:55px;text-align:center">RO</th>
+        <th style="width:45px;text-align:center">Qty</th>
+        <th style="width:8%">Bayar</th>
+        <th style="width:10%">Total</th>
+        <th style="min-width:160px">Resi</th>
+        <th style="width:90px;text-align:center">Status</th>
+        <th style="width:85px;text-align:center">Aksi</th>
       </tr></thead>
       <tbody>${pageData.map((o, i) => buildRow(o, start + i + 1)).join('')}</tbody>
     </table>`;
@@ -331,13 +319,13 @@ function buildRow(o, num) {
       </div>
     </td>
     <td class="text-sm">${escH(o.product_nama || '-')}</td>
-    <td class="fw-600 text-center" title="Repeat Order ke-${roNum}">RO-${roNum}</td>
-    <td class="fw-600 text-center">${o.qty || '-'}</td>
+    <td class="fw-600" style="text-align:center">RO-${roNum}</td>
+    <td class="fw-600" style="text-align:center">${o.qty || '-'}</td>
     <td class="text-sm">${escH(bayar)}</td>
     <td class="fw-600">${total ? fmtRupiah(total) : '-'}</td>
     <td>${resiHtml}</td>
-    <td>${statusHtml}</td>
-    <td>${aksiHtml}</td>
+    <td style="text-align:center">${statusHtml}</td>
+    <td style="text-align:center">${aksiHtml}</td>
   </tr>`;
 }
 
