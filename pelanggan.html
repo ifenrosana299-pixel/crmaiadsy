@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pelanggan — AI CRM Adsy</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ── Status Badges ── */
+.bdg { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
+.bdg-gray   { background:rgba(100,116,139,.1); color:#94a3b8; border:1px solid rgba(100,116,139,.2); }
+.bdg-blue   { background:rgba(59,130,246,.1);  color:#60a5fa; border:1px solid rgba(59,130,246,.2); }
+.bdg-green  { background:rgba(16,185,129,.1);  color:#34d399; border:1px solid rgba(16,185,129,.2); }
+.bdg-amber  { background:rgba(245,158,11,.1);  color:#fbbf24; border:1px solid rgba(245,158,11,.2); }
+
+body.light .bdg-gray  { background:rgba(100,116,139,.08); color:#64748b; }
+body.light .bdg-blue  { background:rgba(59,130,246,.08);  color:#2563eb; }
+body.light .bdg-green { background:rgba(16,185,129,.08);  color:#059669; }
+body.light .bdg-amber { background:rgba(245,158,11,.08);  color:#d97706; }
+
+/* ── Table adjustments ── */
+.cust-cell   { display:flex; flex-direction:column; }
+.cust-name   { font-weight:600; color:var(--text); font-size:13px; }
+.cust-hp     { font-size:11px; color:var(--text-2); margin-top:1px; }
+.resi-cell   { font-family:monospace; font-size:12px; color:var(--text); }
+.addr-cell   { font-size:12px; color:var(--text-2); max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ── Resi input inline ── */
+.resi-input-wrap { display:flex; gap:5px; align-items:center; min-width:160px; }
+.resi-input {
+  flex:1; padding:5px 9px;
+  border:1px solid var(--border); border-radius:6px;
+  font-size:12px; font-family:monospace;
+  background:var(--bg); color:var(--text);
+  outline:none; transition:border-color .15s;
+}
+.resi-input:focus { border-color:rgba(59,130,246,.4); box-shadow:0 0 0 2px rgba(59,130,246,.08); }
+body.light .resi-input { background:#fff; border-color:#e2e8f0; }
+
+.ekspedisi-select {
+  padding:5px 8px;
+  border:1px solid var(--border); border-radius:6px;
+  font-size:12px; background:var(--bg); color:var(--text);
+  outline:none; cursor:pointer;
+}
+.ekspedisi-select:focus { border-color:rgba(59,130,246,.4); }
+body.light .ekspedisi-select { background:#fff; border-color:#e2e8f0; }
+
+/* ── Spinner ── */
+.bdg-spin { width:10px; height:10px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Sidebar styles (mirror from customers.html) ── */
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo{width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px}
+.sb-subtitle{font-size:10px;color:#64748b;margin-top:1px}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-size:10px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px 4px;margin-top:4px}
+.bot-online{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#22c55e;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;margin:8px 14px}
+.bot-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 8px;border-radius:8px;font-size:13px;font-weight:500;color:#cbd5e1;text-decoration:none;transition:all .12s}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#e2e8f0}
+.sb-item.active{background:rgba(59,130,246,.12);color:#93c5fd}
+.sb-item .si{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-item .si svg{width:16px;height:16px;display:block}
+.sb-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 8px}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* ── Sidebar light overrides ── */
+body.light #sidebar{background:#f8fafc;border-right-color:rgba(0,0,0,.08)}
+body.light .sb-title{color:#0f172a}
+body.light .sb-item{color:#475569!important}
+body.light .sb-item:hover{background:rgba(0,0,0,.04)!important;color:#0f172a!important}
+body.light .sb-item.active{background:rgba(59,130,246,.1)!important;color:#2563eb!important}
+body.light .sb-divider{background:rgba(0,0,0,.07)}
+body.light .bot-online{background:rgba(34,197,94,.06)}
+
+/* ── CSS extras ── */
+:root { --red:#ef4444; --accent:#3b82f6; }
+body.light { --red:#dc2626; }
+
+.btn-xs { padding:3px 8px !important; font-size:11px !important; border-radius:5px !important; }
+.saving-row td { opacity:.6; pointer-events:none; }
+</style>
+</head>
+<body>
+<script>if(localStorage.getItem('cs_theme')!=='dark')document.body.classList.add('light');</script>
+<div class="app-layout">
+  <div id="sidebar"></div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔁 Pelanggan</div>
+        <div class="page-sub">Repeat order dari pelanggan via AI chat · Input resi untuk kirim</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" class="search-input" id="search-inp" placeholder="🔍 Cari nama pelanggan..." oninput="renderTable()" style="width:220px">
+        <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- STATS -->
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Repeat Order</div><div class="stat-val" id="st-total">-</div></div>
+        <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-val" id="st-pending" style="color:#f59e0b">-</div></div>
+        <div class="stat-card"><div class="stat-label">Dikirim</div><div class="stat-val" id="st-dikirim" style="color:#60a5fa">-</div></div>
+        <div class="stat-card"><div class="stat-label">Selesai</div><div class="stat-val" id="st-selesai" style="color:#34d399">-</div></div>
+      </div>
+
+      <!-- TABLE WRAP -->
+      <div class="table-wrap" id="table-wrap">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat data pelanggan...</div>
+      </div>
+
+      <!-- PAGINATION -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+        <div class="text-dim text-sm" id="page-info">-</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" id="btn-prev" onclick="changePage(-1)">← Prev</button>
+          <button class="btn btn-ghost btn-sm" id="btn-next" onclick="changePage(1)">Next →</button>
+        </div>
+      </div>
+
+    </div><!-- /page-body -->
+  </div><!-- /main-content -->
+</div><!-- /app-layout -->
+
+<div id="toast"></div>
+
+<script>
+/* ── Helpers (inline, before app.js) ── */
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+}
+function fmtRupiah(n) {
+  if (!n && n !== 0) return '-';
+  return 'Rp ' + Number(n).toLocaleString('id-ID');
+}
+function fmtHp(raw) {
+  let n = String(raw||'').replace(/\D/g,'');
+  if (!n) return '-';
+  if (n.startsWith('62')) n = '0' + n.slice(2);
+  return n.replace(/^(\d{4})(\d{4})(\d+)$/, '$1-$2-$3');
+}
+function todayISO() { return new Date().toISOString().slice(0,10); }
+</script>
+<script src="js/app.js"></script>
+<script src="js/prod-switcher.js"></script>
+<script>
+// ── State ─────────────────────────────────────────────────────────────
+let currentUser  = null;
+let allOrders    = [];
+let filteredOrders = [];
+let currentPage  = 1;
+const PAGE_SIZE  = 20;
+
+// Track mana row yang sedang saving (disable double-submit)
+const savingIds = new Set();
+
+// ── Init ──────────────────────────────────────────────────────────────
+async function init() {
+  await initConfig();
+  currentUser = requireAuth();
+  if (!currentUser) return;
+  renderSidebar('pelanggan');
+  checkBotStatus();
+  await loadOrders();
+}
+
+// ── Load orders ───────────────────────────────────────────────────────
+async function loadOrders() {
+  document.getElementById('table-wrap').innerHTML =
+    '<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat data pelanggan...</div>';
+  try {
+    const prodId = window.__activeProductFilter;
+    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+    allOrders = await sbGet(
+      'repeat_orders',
+      `user_id=eq.${currentUser.id}${prodQ}&order=created_at.desc&select=*`
+    );
+    updateStats();
+    renderTable();
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="empty-state"><div class="text-red">Gagal memuat: ${escH(e.message)}</div></div>`;
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('st-total').textContent   = allOrders.length;
+  document.getElementById('st-pending').textContent = allOrders.filter(x => x.status === 'pending').length;
+  document.getElementById('st-dikirim').textContent = allOrders.filter(x => x.status === 'dikirim').length;
+  document.getElementById('st-selesai').textContent = allOrders.filter(x => x.status === 'selesai').length;
+}
+
+// ── Render table ──────────────────────────────────────────────────────
+function renderTable() {
+  const search = document.getElementById('search-inp').value.toLowerCase();
+
+  filteredOrders = allOrders.filter(o => {
+    if (!search) return true;
+    const hay = `${o.customer_nama} ${o.customer_phone} ${o.product_nama}`.toLowerCase();
+    return hay.includes(search);
+  });
+
+  const total      = filteredOrders.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = 1;
+  const start    = (currentPage - 1) * PAGE_SIZE;
+  const pageData = filteredOrders.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('page-info').textContent = `Halaman ${currentPage} / ${totalPages} · ${total} order`;
+  document.getElementById('btn-prev').disabled = currentPage <= 1;
+  document.getElementById('btn-next').disabled = currentPage >= totalPages;
+
+  if (!pageData.length) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">🔁</div><div class="empty-title">Belum ada repeat order</div><div class="empty-sub">Repeat order muncul saat pelanggan memesan ulang lewat AI chat</div></div>`;
+    return;
+  }
+
+  document.getElementById('table-wrap').innerHTML = `
+    <table>
+      <thead><tr>
+        <th style="width:36px">#</th>
+        <th>Nama</th>
+        <th>Produk</th>
+        <th>Qty</th>
+        <th>Pembayaran</th>
+        <th>Total</th>
+        <th>Alamat</th>
+        <th>Resi</th>
+        <th>Ekspedisi</th>
+        <th>Status</th>
+        <th>Aksi</th>
+      </tr></thead>
+      <tbody>${pageData.map((o, i) => buildRow(o, start + i + 1)).join('')}</tbody>
+    </table>`;
+}
+
+// ── Build single row HTML ─────────────────────────────────────────────
+function buildRow(o, num) {
+  const isSaving  = savingIds.has(o.id);
+  const isPending = o.status === 'pending';
+  const alamat    = formatAlamat(o.alamat);
+
+  // Bayar & total dari data order
+  const bayar = o.bayar || o.payment || '-';
+  const total = o.total_harga || o.total || null;
+
+  // Status badge
+  let statusHtml;
+  if (o.status === 'selesai') {
+    statusHtml = `<span class="bdg bdg-green">✅ Selesai</span>`;
+  } else if (o.status === 'dikirim') {
+    statusHtml = `<span class="bdg bdg-blue">📦 Dikirim</span>`;
+  } else {
+    statusHtml = `<span class="bdg bdg-amber">⏳ Pending</span>`;
+  }
+
+  // Resi column: input if pending, text if filled
+  let resiHtml;
+  if (isPending) {
+    resiHtml = `<div class="resi-input-wrap">
+      <input
+        type="text"
+        class="resi-input"
+        id="resi-${o.id}"
+        placeholder="Nomor resi..."
+        value="${escH(o.nomer_resi || '')}"
+        oninput="syncSaveBtn('${o.id}')"
+      >
+    </div>`;
+  } else {
+    resiHtml = o.nomer_resi
+      ? `<span class="resi-cell">${escH(o.nomer_resi)}</span>`
+      : `<span class="text-dim">-</span>`;
+  }
+
+  // Ekspedisi column: dropdown if pending, text if already set
+  const ekspedisiOptions = ['JNE','J&T','SiCepat','Anteraja','Ninja Xpress','Pos Indonesia','Lion Parcel','Tiki','SAP','Wahana'];
+  let ekspedisiHtml;
+  if (isPending) {
+    ekspedisiHtml = `<select class="ekspedisi-select" id="ekspedisi-${o.id}">
+      <option value="">Pilih...</option>
+      ${ekspedisiOptions.map(e => `<option value="${e}" ${o.ekspedisi === e ? 'selected' : ''}>${e}</option>`).join('')}
+    </select>`;
+  } else {
+    ekspedisiHtml = escH(o.ekspedisi || '-');
+  }
+
+  // Aksi column
+  let aksiHtml;
+  if (isPending) {
+    aksiHtml = `<button
+      class="btn btn-primary btn-xs"
+      id="btn-save-${o.id}"
+      onclick="saveResi('${o.id}')"
+      ${isSaving ? 'disabled' : ''}
+      style="white-space:nowrap"
+    >${isSaving ? '<span class="bdg-spin"></span>' : '💾 Simpan'}</button>`;
+  } else if (o.status === 'dikirim') {
+    aksiHtml = `<span class="text-dim text-xs">📦 Dalam pengiriman</span>`;
+  } else {
+    aksiHtml = `<span class="text-dim text-xs">✅ Selesai</span>`;
+  }
+
+  return `<tr id="row-${o.id}" ${isSaving ? 'class="saving-row"' : ''}>
+    <td class="text-dim">${num}</td>
+    <td>
+      <div class="cust-cell">
+        <div class="cust-name">${escH(o.customer_nama || '-')}</div>
+        <div class="cust-hp">${fmtHp(o.customer_phone)}</div>
+      </div>
+    </td>
+    <td class="text-sm">${escH(o.product_nama || '-')}</td>
+    <td class="fw-600 text-center">${o.qty || '-'}</td>
+    <td class="text-sm">${escH(bayar)}</td>
+    <td class="fw-600">${total ? fmtRupiah(total) : '-'}</td>
+    <td><div class="addr-cell" title="${escH(alamat)}">${escH(alamat) || '-'}</div></td>
+    <td>${resiHtml}</td>
+    <td>${ekspedisiHtml}</td>
+    <td>${statusHtml}</td>
+    <td>${aksiHtml}</td>
+  </tr>`;
+}
+
+// ── Format alamat (jsonb or string) ───────────────────────────────────
+function formatAlamat(alamat) {
+  if (!alamat) return '';
+  if (typeof alamat === 'string') return alamat;
+  if (typeof alamat === 'object') {
+    // Susunan alamat dari object: jalan, kelurahan, kecamatan, kabupaten, provinsi
+    const parts = [
+      alamat.jalan || alamat.alamat || alamat.street || '',
+      alamat.kelurahan || '',
+      alamat.kecamatan || '',
+      alamat.kabupaten || alamat.kota || alamat.city || '',
+      alamat.provinsi || alamat.province || '',
+    ].filter(Boolean);
+    return parts.join(', ');
+  }
+  return String(alamat);
+}
+
+// ── Sync save button state (enable/disable based on resi input) ───────
+function syncSaveBtn(id) {
+  const resiEl = document.getElementById('resi-' + id);
+  const btnEl  = document.getElementById('btn-save-' + id);
+  if (!resiEl || !btnEl) return;
+  btnEl.disabled = !resiEl.value.trim();
+}
+
+// ── Save Resi ─────────────────────────────────────────────────────────
+async function saveResi(id) {
+  const resiEl     = document.getElementById('resi-' + id);
+  const ekspedisiEl = document.getElementById('ekspedisi-' + id);
+  if (!resiEl) return;
+
+  const nomerResi = resiEl.value.trim();
+  if (!nomerResi) {
+    toast('Nomor resi wajib diisi', 'error');
+    return;
+  }
+
+  const ekspedisi = ekspedisiEl ? ekspedisiEl.value : '';
+  const order = allOrders.find(o => o.id === id);
+  if (!order) return;
+
+  // Prevent double-submit
+  if (savingIds.has(id)) return;
+  savingIds.add(id);
+  renderTable();
+
+  try {
+    // 1. Update repeat_orders: set nomer_resi, ekspedisi, status → 'dikirim'
+    await sbPatch('repeat_orders', `id=eq.${id}`, {
+      nomer_resi: nomerResi,
+      ekspedisi: ekspedisi || null,
+      status: 'dikirim',
+      updated_at: new Date().toISOString(),
+    });
+
+    // 2. Insert ke orders table
+    const alamatStr = formatAlamat(order.alamat);
+    const orderPayload = {
+      user_id:       order.user_id,
+      product_id:    order.product_id || null,
+      nama_customer: order.customer_nama,
+      nomer_hp:      order.customer_phone,
+      produk:        order.product_nama || '',
+      jumlah_produk: order.qty || 1,
+      alamat:        alamatStr,
+      nomer_resi:    nomerResi,
+      ekspedisi:     ekspedisi || null,
+      status_resi:   'DIKIRIM',
+      tanggal:       todayISO(),
+      updated_at:    new Date().toISOString(),
+    };
+    await sbPost('orders', orderPayload, { prefer: 'return=minimal' });
+
+    // 3. Call generate-schedules-pelanggan API (non-blocking)
+    fetch('/api/generate-schedules-pelanggan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id:    order.user_id,
+        product_id: order.product_id || null,
+      }),
+    }).catch(e => console.warn('[generate-schedules-pelanggan]', e));
+
+    // 4. Update local state
+    const idx = allOrders.findIndex(o => o.id === id);
+    if (idx >= 0) {
+      allOrders[idx].nomer_resi = nomerResi;
+      allOrders[idx].ekspedisi  = ekspedisi || null;
+      allOrders[idx].status     = 'dikirim';
+    }
+
+    toast('✅ Resi disimpan & order dibuat', 'ok');
+    updateStats();
+  } catch(e) {
+    toast('Gagal simpan: ' + e.message, 'error');
+    console.error('[saveResi]', e);
+  } finally {
+    savingIds.delete(id);
+    renderTable();
+  }
+}
+
+// ── Pagination ────────────────────────────────────────────────────────
+function changePage(dir) {
+  const tp = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  currentPage = Math.max(1, Math.min(tp, currentPage + dir));
+  renderTable();
+}
+
+// ── Product switch listener ───────────────────────────────────────────
+window.addEventListener('productSwitch', () => {
+  currentPage = 1;
+  loadOrders();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
