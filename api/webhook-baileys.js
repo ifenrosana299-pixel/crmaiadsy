@@ -2051,11 +2051,14 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
           conversation_id: conversation.id,
           product_id:      product?.id || null,
           qty,
+          bayar:           bayar || null,
+          total_harga:     total || null,
           alamat:          customer.alamat || null,
           status:          'pending',
           customer_nama:   customer.nama  || '',
           customer_phone:  wa_number,
           product_nama:    product?.nama  || '',
+          ekspedisi:       ekspedisiDB || null,
         });
         await updateConvState(conversation.id, {
           repeat_order: true,
