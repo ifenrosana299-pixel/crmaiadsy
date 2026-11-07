@@ -2033,6 +2033,19 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
       const bayar = (repeatMatch[2] || '').toLowerCase() || null;
       const total = repeatMatch[3] ? parseInt(repeatMatch[3]) : null;
       try {
+        // Dedup: cek apakah sudah ada repeat_order pending untuk customer+produk ini dalam 24 jam
+        const existRepeat = await sbGet('repeat_orders',
+          `?customer_id=eq.${customer.id}&product_id=eq.${product?.id || ''}&status=eq.pending&order=created_at.desc&limit=1`
+        ).catch(() => []);
+        if (existRepeat.length) {
+          const lastCreated = new Date(existRepeat[0].created_at).getTime();
+          const hoursSince = (Date.now() - lastCreated) / (1000 * 60 * 60);
+          if (hoursSince < 24) {
+            console.log(`[REPEAT_ORDER] Dedup: sudah ada pending repeat_order untuk ${customer.nama} (${hoursSince.toFixed(1)}h lalu), skip`);
+            // Tetap lanjut ke kirim rekap dll, tapi skip insert
+          }
+        }
+
         // Ambil data order terakhir untuk alamat + ekspedisi
         const lastOrders = await sbGet('orders', `?nomer_hp=eq.${wa_number}&user_id=eq.${userId}&order=created_at.desc&limit=1&select=alamat,ekspedisi`);
         const lastOrder = lastOrders[0] || {};
@@ -2045,7 +2058,9 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
           ? [alamatObj.jalan, alamatObj.kelurahan, alamatObj.kecamatan, alamatObj.kabupaten, alamatObj.provinsi].filter(Boolean).join(', ')
           : alamatDB;
 
-        await sbPost('repeat_orders', {
+        // Insert hanya kalau belum ada pending dalam 24 jam
+        const skipInsert = existRepeat.length && ((Date.now() - new Date(existRepeat[0].created_at).getTime()) / 3600000) < 24;
+        if (!skipInsert) await sbPost('repeat_orders', {
           user_id:         userId,
           customer_id:     customer.id,
           conversation_id: conversation.id,
