@@ -77,6 +77,10 @@ body.light { --red:#dc2626; }
 
 .btn-xs { padding:3px 8px !important; font-size:11px !important; border-radius:5px !important; }
 .saving-row td { opacity:.6; pointer-events:none; }
+table { border-collapse:collapse; }
+table th, table td { padding:10px 8px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+table th { font-size:11px; text-transform:uppercase; color:var(--text-2); font-weight:600; letter-spacing:.3px; border-bottom:1px solid var(--border); }
+table td { font-size:13px; border-bottom:1px solid var(--border); }
 </style>
 </head>
 <body>
@@ -232,9 +236,21 @@ function renderTable() {
   }
 
   document.getElementById('table-wrap').innerHTML = `
-    <table>
+    <table style="table-layout:fixed;width:100%">
+      <colgroup>
+        <col style="width:40px">
+        <col style="width:160px">
+        <col style="width:130px">
+        <col style="width:60px">
+        <col style="width:45px">
+        <col style="width:80px">
+        <col style="width:110px">
+        <col style="width:180px">
+        <col style="width:95px">
+        <col style="width:90px">
+      </colgroup>
       <thead><tr>
-        <th style="width:36px">#</th>
+        <th>#</th>
         <th>Nama</th>
         <th>Produk</th>
         <th>RO</th>
