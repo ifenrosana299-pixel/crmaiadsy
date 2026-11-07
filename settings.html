@@ -258,9 +258,12 @@ Segera hubungi customer untuk koordinasi pengiriman ulang sebelum paket dikembal
       <!-- ── GRUP WA RECAP ── -->
       <div class="settings-section" id="sec-group">
         <div class="section-title">Grup WA Recap Follow-up</div>
-        <div class="section-desc">Setiap ada follow-up dikirim atau repeat order masuk, bot akan kirim rekap ke grup WA ini.</div>
+        <div class="section-desc">Atur grup WA untuk tiap produk. Rekap follow-up & repeat order dikirim ke grup masing-masing. Kalau produk tidak punya grup, pakai grup default user.</div>
+
+        <!-- Grup Default User -->
         <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;margin-top:16px">
-          <div id="group-selected-card" style="display:none;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px 16px;margin-bottom:16px;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:10px">📌 Grup Default (semua produk yang belum diatur)</div>
+          <div id="group-selected-card" style="display:none;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px 16px;margin-bottom:12px;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:12px;color:#64748b;margin-bottom:2px">Grup aktif</div>
               <div id="group-selected-nama" style="font-weight:600;color:#e2e8f0;font-size:14px">—</div>
@@ -274,9 +277,17 @@ Segera hubungi customer untuk koordinasi pengiriman ulang sebelum paket dikembal
               style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px;margin-bottom:10px">
             <div id="grup-list" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
           </div>
-          <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
-            <button class="btn-primary" onclick="saveGroupJid()">Simpan</button>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+            <button class="btn-primary" onclick="saveGroupJid()">Simpan Default</button>
             <span id="group-jid-status" style="font-size:12px;color:#22c55e;display:none">✓ Tersimpan!</span>
+          </div>
+        </div>
+
+        <!-- Grup Per Produk -->
+        <div style="margin-top:20px">
+          <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:12px">📦 Grup Per Produk</div>
+          <div id="prod-group-list" style="display:flex;flex-direction:column;gap:8px">
+            <div style="color:#64748b;font-size:13px">Memuat...</div>
           </div>
         </div>
       </div>
@@ -357,7 +368,7 @@ function showSection(name, el) {
   if (name === 'rekening') loadRekening();
   if (name === 'notif')  loadNotifWA();
   if (name === 'ai')     loadAnthropicKey();
-  if (name === 'group')  loadGroupJid();
+  if (name === 'group')  { loadGroupJid(); loadProdGroups(); }
   if (name === 'cs')     loadCSContacts();
 }
 
@@ -873,8 +884,139 @@ async function saveGroupJid() {
     await sbPatch('users', `id=eq.${userId}`, { group_jid: _selectedGroupJid, group_name: document.getElementById('group-selected-nama')?.textContent || null });
     statusEl.style.display = 'inline';
     setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
-    toastLocal('✅ Grup WA tersimpan');
+    toastLocal('✅ Grup default tersimpan');
   } catch(e) { toastLocal('❌ Gagal simpan grup: ' + e.message); }
+}
+
+// ── GRUP PER PRODUK ─────────────────────────────────────────
+let _prodGroups = {}; // { productId: { jid, nama } }
+let _prodGroupsCache = []; // cached groups list per session
+
+async function loadProdGroups() {
+  const userId = getUser()?.id;
+  const container = document.getElementById('prod-group-list');
+  try {
+    const products = await sbGet('products', `user_id=eq.${userId}&aktif=eq.true&order=nama.asc&select=id,nama,persona_cs_nama,wa_session_id,group_jid,group_name`);
+    if (!products.length) {
+      container.innerHTML = '<div style="color:#64748b;font-size:13px">Tidak ada produk aktif</div>';
+      return;
+    }
+    container.innerHTML = products.map(p => {
+      const hasGroup = p.group_jid ? true : false;
+      const groupNama = p.group_name || p.group_jid || '';
+      return `
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px" id="pg-card-${p.id}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:#e2e8f0">${escH(p.nama)}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">CS ${escH(p.persona_cs_nama || '-')}</div>
+          </div>
+          <div style="text-align:right">
+            <div id="pg-nama-${p.id}" style="font-size:12px;color:${hasGroup ? '#4ade80' : '#64748b'};font-weight:500">
+              ${hasGroup ? '✅ ' + escH(groupNama) : '— Pakai default'}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-sm" onclick="pilihGrupProduk('${p.id}','${escH(p.nama)}','${p.wa_session_id || ''}')">Pilih Grup</button>
+          ${hasGroup ? `<button class="btn-danger btn-sm" onclick="hapusGrupProduk('${p.id}')">Hapus</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = `<div style="color:#fca5a5;font-size:13px">${e.message}</div>`;
+  }
+}
+
+async function pilihGrupProduk(productId, prodNama, sessionId) {
+  if (!sessionId) {
+    toastLocal('⚠️ Produk belum punya WA session, hubungkan WA dulu');
+    return;
+  }
+  // Fetch groups dari session produk ini
+  const btn = event.target;
+  btn.textContent = '⏳ Memuat...';
+  btn.disabled = true;
+  try {
+    const res = await baileysFetch(`/groups?secret=${encodeURIComponent(BAILEYS_SECRET)}&session_id=${encodeURIComponent(sessionId)}`);
+    const data = await res.json();
+    const groups = Array.isArray(data.groups) ? data.groups : [];
+    if (!groups.length) {
+      toastLocal('⚠️ Tidak ada grup ditemukan di session WA ini');
+      btn.textContent = 'Pilih Grup';
+      btn.disabled = false;
+      return;
+    }
+    // Tampilkan modal pilih grup
+    showGrupModal(productId, prodNama, groups);
+  } catch(e) {
+    toastLocal('⚠️ Gagal ambil grup: ' + e.message);
+  } finally {
+    btn.textContent = 'Pilih Grup';
+    btn.disabled = false;
+  }
+}
+
+function showGrupModal(productId, prodNama, groups) {
+  // Remove existing modal
+  const old = document.getElementById('grup-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'grup-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:#1e293b;border-radius:16px;width:100%;max-width:420px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(255,255,255,.1)">
+      <div style="padding:20px 20px 12px;border-bottom:1px solid rgba(255,255,255,.06)">
+        <div style="font-size:15px;font-weight:700;color:#e2e8f0">Pilih Grup untuk ${escH(prodNama)}</div>
+        <input type="text" placeholder="Cari grup..." oninput="filterGrupModal(this.value)"
+          style="width:100%;margin-top:12px;background:#0d1117;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px">
+      </div>
+      <div id="grup-modal-list" style="flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px">
+        ${groups.map(g => `
+          <div onclick="saveGrupProduk('${productId}','${g.jid}','${escH((g.nama||g.subject||'').replace(/'/g,"\\'"))}')"
+            style="padding:10px 14px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);transition:background .1s"
+            onmouseover="this.style.background='rgba(59,130,246,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'"
+            data-nama="${escH((g.nama||g.subject||'').toLowerCase())}">
+            <div style="font-weight:500;font-size:13px;color:#e2e8f0">${escH(g.nama||g.subject||g.jid)}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">${g.jid}</div>
+          </div>`).join('')}
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid rgba(255,255,255,.06)">
+        <button class="btn" onclick="document.getElementById('grup-modal').remove()" style="width:100%">Batal</button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+window.filterGrupModal = function(q) {
+  const items = document.querySelectorAll('#grup-modal-list > div');
+  items.forEach(el => {
+    const nama = el.getAttribute('data-nama') || '';
+    el.style.display = nama.includes(q.toLowerCase()) ? '' : 'none';
+  });
+};
+
+async function saveGrupProduk(productId, jid, nama) {
+  try {
+    await sbPatch('products', `id=eq.${productId}`, { group_jid: jid, group_name: nama });
+    toastLocal('✅ Grup produk tersimpan');
+    document.getElementById('grup-modal')?.remove();
+    loadProdGroups();
+  } catch(e) {
+    toastLocal('❌ Gagal simpan: ' + e.message);
+  }
+}
+
+async function hapusGrupProduk(productId) {
+  try {
+    await sbPatch('products', `id=eq.${productId}`, { group_jid: null, group_name: null });
+    toastLocal('✅ Grup produk dihapus, pakai default');
+    loadProdGroups();
+  } catch(e) {
+    toastLocal('❌ Gagal hapus: ' + e.message);
+  }
 }
 </script>
 </body>
