@@ -1474,6 +1474,59 @@ module.exports = async function handler(req, res) {
 
     console.log(`Pesan dari ${pushName} (${wa_number}): ${message.slice(0, 80)}`);
 
+    // ── FROM_ME: pesan dari HP CS — simpan ke DB, skip AI ──────
+    if (body.from_me) {
+      console.log(`[from_me] Pesan keluar dari HP: ${wa_number} — simpan sebagai CS`);
+      const sessionId = body.session_id;
+      // Resolve product + userId dari session_id
+      let fmUserId, fmProduct;
+      const fmProd = await sbGet('products',
+        `?wa_session_id=eq.${encodeURIComponent(sessionId)}&aktif=eq.true&limit=1`
+      ).catch(() => []);
+      if (fmProd.length) {
+        fmProduct = fmProd[0];
+        fmUserId  = fmProduct.user_id;
+      } else {
+        fmUserId = sessionId;
+      }
+      // Cari customer
+      const normalizedFm = normalizeWA(wa_number);
+      let fmCust = await sbGet('customers',
+        `?user_id=eq.${fmUserId}&wa_number=eq.${encodeURIComponent(normalizedFm)}&limit=1`
+      ).catch(() => []);
+      if (!fmCust.length && reply_jid) {
+        fmCust = await sbGet('customers',
+          `?user_id=eq.${fmUserId}&reply_jid=eq.${encodeURIComponent(reply_jid)}&limit=1`
+        ).catch(() => []);
+      }
+      if (!fmCust.length) {
+        console.log(`[from_me] Customer ${wa_number} tidak ditemukan — skip`);
+        return res.status(200).json({ ok: true, skipped: 'from_me_no_customer' });
+      }
+      // Cari conversation aktif
+      const fmConvs = await sbGet('conversations',
+        `?customer_id=eq.${fmCust[0].id}&status=neq.selesai&order=created_at.desc&limit=1`
+      ).catch(() => []);
+      if (!fmConvs.length) {
+        console.log(`[from_me] Tidak ada conversation aktif untuk ${wa_number} — skip`);
+        return res.status(200).json({ ok: true, skipped: 'from_me_no_conv' });
+      }
+      const fmConv = fmConvs[0];
+      // Simpan pesan sebagai CS
+      await sbPost('conv_messages', {
+        conversation_id: fmConv.id,
+        role: 'cs',
+        isi: message,
+        wamid: msgId || null,
+      });
+      // Update last_msg_at
+      await sbPatch('conversations', `?id=eq.${fmConv.id}`, {
+        last_msg_at: new Date().toISOString(),
+      });
+      console.log(`[from_me] Tersimpan di conv ${fmConv.id} sebagai CS`);
+      return res.status(200).json({ ok: true, from_me: true, saved: true });
+    }
+
     // ── Resolve userId + product dari session_id ──────────────
     // Multi-WA: coba cari produk langsung via wa_session_id (1 WA = 1 produk)
     // Fallback: session_id = user_id (backward compat, produk pertama)
