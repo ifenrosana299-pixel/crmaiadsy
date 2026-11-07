@@ -235,12 +235,42 @@ export default async function handler(req, res) {
       return res.json({ ...results, message: 'Tidak ada jadwal hari ini' });
     }
 
+    // Dedup: cek jadwal yang sudah SENT — 1 customer + 1 rule_nama = cuma boleh 1x kirim
+    // Skip duplikat langsung sebelum proses
+    const sentSet = new Set();
+    const dedupSkipIds = [];
+    for (const s of schedules) {
+      const dedupKey = `${s.customer_id}__${s.rule_nama}`;
+      if (s.status === 'pending' && sentSet.has(dedupKey)) {
+        dedupSkipIds.push(s.id);
+        continue;
+      }
+      sentSet.add(dedupKey);
+    }
+    // Juga cek yang sudah sent di DB (dari run sebelumnya)
+    const existSent = await sb('followup_schedule',
+      `status=eq.sent&select=customer_id,rule_nama&limit=10000`);
+    for (const e of existSent) {
+      sentSet.add(`${e.customer_id}__${e.rule_nama}`);
+    }
+    // Mark duplikat pending → skipped
+    const toSkipDedup = schedules.filter(s => {
+      const k = `${s.customer_id}__${s.rule_nama}`;
+      return dedupSkipIds.includes(s.id) ||
+        (existSent.some(e => e.customer_id === s.customer_id && e.rule_nama === s.rule_nama));
+    });
+    for (const s of toSkipDedup) {
+      await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+      results.skipped++;
+    }
+    const activeSchedules = schedules.filter(s => !toSkipDedup.find(d => d.id === s.id));
+
     // Shuffle supaya tiap run tidak selalu customer yang sama duluan
-    const shuffled = schedules.sort(() => Math.random() - 0.5);
+    const shuffled = activeSchedules.sort(() => Math.random() - 0.5);
 
     // Per-product queue count (untuk adaptive rate)
     const productQueueCount = {};
-    for (const s of schedules) {
+    for (const s of activeSchedules) {
       const pid = s.product_id || 'default';
       productQueueCount[pid] = (productQueueCount[pid] || 0) + 1;
     }

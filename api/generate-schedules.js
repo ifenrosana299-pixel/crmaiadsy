@@ -108,11 +108,12 @@ export default async function handler(req, res) {
     }
 
     // 5. Existing schedules (cegah duplikat)
-    // Cek pending by rule_id — cegah double insert dalam satu run
-    // Cek sent/skipped by rule_nama — cegah bikin ulang kalau rule dihapus lalu dibuat baru dengan nama sama
-    const [existPendingRaw, existDone] = await Promise.all([
-      sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending&select=id,customer_id,rule_id`),
-      sb('followup_schedule', `user_id=eq.${user_id}&status=in.(sent,skipped)&select=customer_id,rule_nama`)
+    // Cek SEMUA status (pending/sent/skipped/failed) by customer+rule_nama
+    // → 1 customer + 1 rule = cuma boleh 1 jadwal. Kalau udah ada, jangan bikin lagi.
+    // PENTING: limit=10000 karena Supabase REST default 1000 rows
+    const [existPendingRaw, existAll] = await Promise.all([
+      sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending&select=id,customer_id,rule_id&limit=10000`),
+      sb('followup_schedule', `user_id=eq.${user_id}&select=customer_id,rule_nama&limit=10000`)
     ]);
     let existPending = existPendingRaw;
     const today = new Date().toISOString().slice(0, 10);
@@ -149,7 +150,7 @@ export default async function handler(req, res) {
     }
 
     const existSet     = new Set(existPending.map(e => `${e.customer_id}__${e.rule_id}`));
-    const existDoneSet = new Set(existDone.map(e => `${e.customer_id}__${e.rule_nama}`));
+    const existAllSet  = new Set(existAll.map(e => `${e.customer_id}__${e.rule_nama}`));
 
     for (const rule of rules) {
       const isSblm       = rule.tipe === 'sebelum_deliv';
@@ -168,8 +169,8 @@ export default async function handler(req, res) {
         if (!cust) { skipReasons.no_cust++; continue; }
 
         const key     = `${cust.id}__${rule.id}`;
-        const keyDone = `${cust.id}__${rule.nama}`;
-        if (existSet.has(key) || existDoneSet.has(keyDone)) { skipReasons.duplicate++; continue; }
+        const keyAll  = `${cust.id}__${rule.nama}`;
+        if (existSet.has(key) || existAllSet.has(keyAll)) { skipReasons.duplicate++; continue; }
 
         // Cek produk — hanya skip kalau keduanya ada tapi tidak match
         const orderProd = order.product_id || cust.product_id || null;
