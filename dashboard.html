@@ -730,10 +730,10 @@ setInterval(updateDatetime, 60000);
 /* ── LOAD STATS ── */
 async function loadStats() {
   const userId = getUser()?.id;
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&select=*,customers(product_id,fu_status,response_count)`);
-
   const prodFilter = window.__activeProductFilter;
-  if (prodFilter) convs = convs.filter(c => c.product_id === prodFilter || (!c.product_id && c.customers?.product_id === prodFilter));
+  let statsQ = `?user_id=eq.${userId}&select=*,customers(product_id,fu_status,response_count)`;
+  if (prodFilter) statsQ += `&product_id=eq.${prodFilter}`;
+  let convs = await _sbGet('conversations', statsQ);
 
   const open    = convs.filter(c => c.status !== 'selesai').length;
   const esc     = convs.filter(c => c.status === 'eskalasi').length;
@@ -790,18 +790,12 @@ window.addEventListener('productSwitch', () => {
 
 async function renderInbox() {
   const userId = getUser()?.id;
-  // Sertakan product_id customer agar bisa filter conversation lama yang belum punya product_id
-  let convs = await _sbGet('conversations', `?user_id=eq.${userId}&order=last_msg_at.${sortOrder}.nullslast,created_at.${sortOrder}&limit=300&select=*,customers(product_id,fu_status,response_count)`);
-  allConvs = convs;
-
+  // Filter langsung di Supabase query — jangan download semua baru filter di browser
   const _prodFilter = window.__activeProductFilter;
-  if (_prodFilter) {
-    convs = convs.filter(c => {
-      // Filter by product_id conversation, fallback ke product_id customer
-      if (c.product_id) return c.product_id === _prodFilter;
-      return c.customers?.product_id === _prodFilter;
-    });
-  }
+  let q = `?user_id=eq.${userId}&order=last_msg_at.${sortOrder}.nullslast,created_at.${sortOrder}&limit=300&select=*,customers(product_id,fu_status,response_count)`;
+  if (_prodFilter) q += `&product_id=eq.${_prodFilter}`;
+  let convs = await _sbGet('conversations', q);
+  allConvs = convs;
 
   if (tabFilter === 'eskalasi') convs = convs.filter(c => c.status === 'eskalasi');
   else if (tabFilter === 'live') convs = convs.filter(c => c.status === 'baru' || c.status === 'diproses' || c.status === 'aktif');
