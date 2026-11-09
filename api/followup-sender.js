@@ -223,25 +223,24 @@ export default async function handler(req, res) {
   const results   = { sent: 0, failed: 0, skipped: 0, skipped_timing: 0, details: [], force: forceMode };
 
   try {
-    // Auto-create reorder schedules dari produk templates_reorder (no manual rule needed)
-    await autoCreateReorderSchedules(today).catch(() => {});
+    // Reorder otomatis dihapus — terlalu banyak bug duplikasi, bikin WA kebanned
 
     const schedules = await sb('followup_schedule',
       `scheduled_date=lte.${today}&status=eq.pending` +
       `&select=*,send_after,customers(nama,wa_number,produk,product_id,optimal_send_hour,response_count,send_minute_slot,fu_status,fu_no_reply_count,fu_sent_count)` +
       `,followup_rules(nama,templates,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,tipe)` +
-      `,products(templates_reorder,wa_session_id)`);
+      `,products(templates_reorder,wa_session_id)&limit=5000`);
 
     if (!schedules.length) {
       return res.json({ ...results, message: 'Tidak ada jadwal hari ini' });
     }
 
-    // Dedup: cek jadwal yang sudah SENT — 1 customer + 1 rule_nama = cuma boleh 1x kirim
-    // Skip duplikat langsung sebelum proses
+    // Dedup: cek jadwal yang sudah SENT — 1 customer + 1 rule_nama + product = cuma boleh 1x kirim
+    // Include product_id supaya multi-product reorder tidak salah skip
     const sentSet = new Set();
     const dedupSkipIds = [];
     for (const s of schedules) {
-      const dedupKey = `${s.customer_id}__${s.rule_nama}`;
+      const dedupKey = `${s.customer_id}__${s.rule_nama}__${s.product_id || ''}`;
       if (s.status === 'pending' && sentSet.has(dedupKey)) {
         dedupSkipIds.push(s.id);
         continue;
@@ -250,15 +249,15 @@ export default async function handler(req, res) {
     }
     // Juga cek yang sudah sent di DB (dari run sebelumnya)
     const existSent = await sb('followup_schedule',
-      `status=eq.sent&select=customer_id,rule_nama&limit=10000`);
+      `status=eq.sent&select=customer_id,rule_nama,product_id&limit=50000`);
     for (const e of existSent) {
-      sentSet.add(`${e.customer_id}__${e.rule_nama}`);
+      sentSet.add(`${e.customer_id}__${e.rule_nama}__${e.product_id || ''}`);
     }
     // Mark duplikat pending → skipped
     const toSkipDedup = schedules.filter(s => {
-      const k = `${s.customer_id}__${s.rule_nama}`;
+      const k = `${s.customer_id}__${s.rule_nama}__${s.product_id || ''}`;
       return dedupSkipIds.includes(s.id) ||
-        (existSent.some(e => e.customer_id === s.customer_id && e.rule_nama === s.rule_nama));
+        (existSent.some(e => e.customer_id === s.customer_id && e.rule_nama === s.rule_nama && (e.product_id || '') === (s.product_id || '')));
     });
     for (const s of toSkipDedup) {
       await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
@@ -285,11 +284,12 @@ export default async function handler(req, res) {
       if ((productSentCount[pid] || 0) >= maxThisProduct) continue;
 
       const customer = s.customers;
-      // Handle reorder_auto: rule_id=null, templates come from products.templates_reorder
       let rule = s.followup_rules || {};
-      if (!s.rule_id && s.rule_nama === 'reorder_auto') {
-        const prodTemplates = s.products?.templates_reorder || [];
-        rule = { tipe: 'reorder', templates: prodTemplates, nama: 'Reorder Otomatis' };
+      // Skip reorder_auto (sistem dihapus)
+      if (s.rule_nama === 'reorder_auto') {
+        await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+        results.skipped++;
+        continue;
       }
 
       if (!customer?.wa_number) {
@@ -306,17 +306,12 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // Tidak responsif: kurangi intensitas — skip semua rule KECUALI reorder
-      // Reorder tetap dikirim karena relevan (produk mau habis) tapi pakai pesan re-engagement
+      // Tidak responsif: skip semua FU
       if (customer.fu_status === 'tidak_responsif' && !forceMode) {
-        const ruleType = rule?.tipe || 'setelah_deliv';
-        if (ruleType !== 'reorder') {
-          await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
-          results.skipped++;
-          results.details.push({ customer: customer.nama, status: 'skipped', reason: 'tidak_responsif_reduced' });
-          continue;
-        }
-        // Reorder rule → lanjut tapi tandai sebagai re-engagement
+        await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+        results.skipped++;
+        results.details.push({ customer: customer.nama, status: 'skipped', reason: 'tidak_responsif' });
+        continue;
       }
 
       // Cek waktu kirim — pakai send_after kalau ada, fallback ke slot timing
@@ -351,12 +346,12 @@ export default async function handler(req, res) {
         const { text: pesan, image_url: pesanImage } = hasil;
 
         let sessionId = s.user_id;
-        // For reorder_auto, wa_session_id already joined via products embed
         const joinedWaSession = s.products?.wa_session_id;
         if (joinedWaSession) {
           sessionId = joinedWaSession;
-        } else if (customer.product_id) {
-          const prod = await sb('products', `id=eq.${customer.product_id}&select=wa_session_id`);
+        } else if (s.product_id || customer.product_id) {
+          const lookupPid = s.product_id || customer.product_id;
+          const prod = await sb('products', `id=eq.${lookupPid}&select=wa_session_id`);
           sessionId = prod[0]?.wa_session_id || s.user_id;
         }
 
@@ -447,17 +442,17 @@ export default async function handler(req, res) {
         `scheduled_date=lte.${today}&status=eq.pending` +
         `&select=*,send_after,customers(nama,wa_number,produk,product_id,optimal_send_hour,response_count,send_minute_slot,fu_status,fu_no_reply_count,fu_sent_count)` +
         `,followup_rules_pelanggan(nama,templates,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,tipe)` +
-        `,products(wa_session_id)`);
+        `,products(wa_session_id)&limit=5000`);
 
       if (pelangganSchedules.length) {
         // Dedup pelanggan
         const pSentSet = new Set();
         const pExistSent = await sb('followup_schedule_pelanggan',
-          `status=eq.sent&select=customer_id,rule_nama&limit=10000`);
-        for (const e of pExistSent) pSentSet.add(`${e.customer_id}__${e.rule_nama}`);
+          `status=eq.sent&select=customer_id,rule_nama,product_id&limit=10000`);
+        for (const e of pExistSent) pSentSet.add(`${e.customer_id}__${e.rule_nama}__${e.product_id || ''}`);
 
         const pActive = pelangganSchedules.filter(s => {
-          const k = `${s.customer_id}__${s.rule_nama}`;
+          const k = `${s.customer_id}__${s.rule_nama}__${s.product_id || ''}`;
           if (pSentSet.has(k)) {
             sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } }).catch(() => {});
             results.skipped++;
@@ -522,8 +517,9 @@ export default async function handler(req, res) {
             const joinedWaSession = s.products?.wa_session_id;
             if (joinedWaSession) {
               sessionId = joinedWaSession;
-            } else if (customer.product_id) {
-              const prod = await sb('products', `id=eq.${customer.product_id}&select=wa_session_id`);
+            } else if (s.product_id || customer.product_id) {
+              const lookupPid = s.product_id || customer.product_id;
+              const prod = await sb('products', `id=eq.${lookupPid}&select=wa_session_id`);
               sessionId = prod[0]?.wa_session_id || s.user_id;
             }
 
@@ -609,116 +605,8 @@ if (typeof process !== 'undefined' && process.argv[1] && process.argv[1].endsWit
   handler(req, res).catch(e => process.stderr.write(JSON.stringify({ error: e.message }) + '\n'));
 }
 
-/* ── AUTO REORDER SCHEDULE CREATOR ─────────────────────────
-   Dipanggil otomatis setiap run cron — tidak butuh manual rule.
-   Logic:
-   1. Cari produk yang punya templates_reorder + konsumsi_hari
-   2. Cari order status SAMPAI untuk produk tersebut
-   3. Hitung scheduled_date dari tgl_delivered + (qty×konsumsi_hari - buffer)
-   4. Insert followup_schedule dengan rule_id=null, rule_nama='reorder_auto'
-─────────────────────────────────────────────────────────────*/
-function addDaysStr(dateStr, n) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-function normPhone(p) {
-  if (!p) return '';
-  p = String(p).replace(/\D/g, '');
-  if (p.startsWith('0')) p = '62' + p.slice(1);
-  if (!p.startsWith('62')) p = '62' + p;
-  return p;
-}
-
-async function autoCreateReorderSchedules(today) {
-  // 1. Produk dengan templates_reorder non-empty + konsumsi_hari
-  const products = await sb('products',
-    'konsumsi_hari=not.is.null&templates_reorder=neq.[]&aktif=eq.true' +
-    '&select=id,user_id,konsumsi_hari,buffer_reorder_hari').catch(() => []);
-  if (!products.length) return;
-
-  const productIds = products.map(p => p.id);
-  const productMap = {};
-  products.forEach(p => { productMap[p.id] = p; });
-
-  // 2. Orders SAMPAI untuk produk-produk tersebut
-  // (orders table punya product_id + last_tracked_at sebagai fallback tgl_delivered)
-  const orders = await sb('orders',
-    `status_resi=eq.SAMPAI&product_id=in.(${productIds.join(',')})` +
-    `&select=id,user_id,nomer_hp,product_id,jumlah_produk,tgl_delivered,last_tracked_at,created_at` +
-    `&limit=500`).catch(() => []);
-  if (!orders.length) return;
-
-  // 3. Existing reorder_auto schedules (cegah duplikat) — include failed supaya tidak re-create
-  const existRaw = await sb('followup_schedule',
-    `rule_nama=eq.reorder_auto&status=in.(pending,sent,failed)&select=customer_id,product_id`).catch(() => []);
-  const existSet = new Set(existRaw.map(e => `${e.customer_id}__${e.product_id}`));
-
-  // 4. Customers untuk lookup customer_id by wa_number
-  const allPhones = [...new Set(orders.map(o => normPhone(o.nomer_hp)).filter(Boolean))];
-  if (!allPhones.length) return;
-
-  // Batch fetch customers in chunks
-  const custMap = {};
-  for (let i = 0; i < allPhones.length; i += 100) {
-    const chunk = allPhones.slice(i, i + 100);
-    const custs = await sb('customers',
-      `wa_number=in.(${chunk.map(p => encodeURIComponent(p)).join(',')})&select=id,wa_number,user_id`
-    ).catch(() => []);
-    custs.forEach(c => { custMap[normPhone(c.wa_number)] = c; });
-  }
-
-  // 5. Build schedules to insert
-  const toInsert = [];
-  for (const order of orders) {
-    const prod = productMap[order.product_id];
-    if (!prod) continue;
-
-    const phone = normPhone(order.nomer_hp);
-    const cust  = custMap[phone];
-    if (!cust) continue;
-
-    const key = `${cust.id}__${order.product_id}`;
-    if (existSet.has(key)) continue;
-
-    const qty         = parseInt(order.jumlah_produk) || 1;
-    const buffer      = prod.buffer_reorder_hari ?? 3;
-    const totalDays   = (qty * prod.konsumsi_hari) - buffer;
-    if (totalDays <= 0) continue;
-
-    // tgl_delivered diset oleh auto-track saat SAMPAI; fallback ke last_tracked_at
-    const base = order.tgl_delivered || order.last_tracked_at || order.created_at;
-    if (!base) continue;
-
-    const scheduledDate = addDaysStr(base.slice(0, 10), totalDays);
-
-    // Skip jika jadwal sudah lewat > 5 hari (terlalu lama)
-    const diff = (new Date(today) - new Date(scheduledDate)) / 86400000;
-    if (diff > 5) continue;
-
-    toInsert.push({
-      user_id:        order.user_id,
-      customer_id:    cust.id,
-      product_id:     order.product_id,
-      rule_id:        null,
-      rule_nama:      'reorder_auto',
-      scheduled_date: scheduledDate,
-      status:         'pending'
-    });
-    existSet.add(key); // prevent dupes in same batch
-  }
-
-  if (!toInsert.length) return;
-
-  // Insert in batches
-  for (let i = 0; i < toInsert.length; i += 100) {
-    await sb('followup_schedule', '', {
-      method: 'POST', prefer: 'return=minimal',
-      body: toInsert.slice(i, i + 100)
-    }).catch(() => {});
-  }
-}
+// autoCreateReorderSchedules DIHAPUS — sistem reorder otomatis dimatikan
+// Penyebab: bug duplikasi masif (57K jadwal untuk 346 customer), WA kebanned
 
 /* ── CLOSING FU HANDLER ─────────────────────────────────────
    Dipanggil via: POST /api/followup-sender?mode=closing

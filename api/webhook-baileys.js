@@ -1505,7 +1505,7 @@ module.exports = async function handler(req, res) {
       }
       // Cari conversation aktif
       const fmConvs = await sbGet('conversations',
-        `?customer_id=eq.${fmCust[0].id}&status=neq.selesai&order=created_at.desc&limit=1`
+        `?user_id=eq.${fmUserId}&customer_id=eq.${fmCust[0].id}&status=neq.selesai&order=created_at.desc&limit=1`
       ).catch(() => []);
       if (!fmConvs.length) {
         console.log(`[from_me] Tidak ada conversation aktif untuk ${wa_number} — skip`);
@@ -1692,7 +1692,7 @@ module.exports = async function handler(req, res) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': ANTHROPIC_KEY,
+            'x-api-key': userAnthropicKey || ANTHROPIC_KEY,
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
@@ -2219,7 +2219,7 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
 
     // Bersihkan marker dari reply
     const reply = rawReply
-      .replace(/\[REPEAT_ORDER_CONFIRMED:qty=\d+\]/gi, '')
+      .replace(/\[REPEAT_ORDER_CONFIRMED:[^\]]*\]/gi, '')
       .replace(/\[CEK_ONGKIR:[^\]]*\]/gi, '')
       .replace(/\[SISTEM[^\]]*\]/g, '')
       .trim();

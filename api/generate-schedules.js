@@ -1,5 +1,6 @@
 // api/generate-schedules.js
 // Generate followup_schedule dari orders — auto-create customer kalau belum ada
+// Dedup pakai kolom dedup_key (UNIQUE constraint di DB) → anti double
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -22,8 +23,8 @@ async function sb(table, params = '', opts = {}) {
 function normalizePhone(p) {
   if (!p) return '';
   p = String(p).replace(/\D/g, '');
-  if (p.startsWith('00')) p = p.slice(2);       // 0085714... → 85714...
-  if (p.startsWith('0')) p = '62' + p.slice(1); // 085714... → 6285714...
+  if (p.startsWith('00')) p = p.slice(2);
+  if (p.startsWith('0')) p = '62' + p.slice(1);
   if (!p.startsWith('62')) p = '62' + p;
   return p;
 }
@@ -32,6 +33,11 @@ function addDays(dateStr, n) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
+}
+
+// Generate dedup_key: 1 customer + 1 rule + 1 produk = 1 schedule saja
+function makeDedup(customerId, ruleName, productId) {
+  return `${customerId}:${ruleName}:${productId || 'ALL'}`;
 }
 
 export default async function handler(req, res) {
@@ -43,22 +49,22 @@ export default async function handler(req, res) {
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
 
   try {
-    // 1. Rules aktif — filter by rule_id (edit) atau product (switcher)
+    // 1. Rules aktif
     let ruleQ = `user_id=eq.${user_id}&aktif=eq.true&order=urutan.asc`;
-    if (rule_id)    ruleQ += `&id=eq.${rule_id}`;
+    if (rule_id) ruleQ += `&id=eq.${rule_id}`;
     else if (product_id) ruleQ += `&or=(product_id.eq.${product_id},product_id.is.null)`;
     const rules = await sb('followup_rules', ruleQ);
     if (!rules.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada rule aktif' });
 
-    // 2. Semua orders user (tidak filter by product_id — biar semua masuk)
+    // 2. Semua orders user
     const orders = await sb('orders',
       `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,tgl_delivered,product_id,qty,jumlah_produk&order=created_at.desc&limit=2000`);
     if (!orders.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada order' });
 
-    // 3. Semua customers user + produk untuk konsumsi_hari
+    // 3. Customers + products (limit=10000, Supabase default cuma 1000!)
     const [customers, products] = await Promise.all([
-      sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id`),
-      sb('products',  `user_id=eq.${user_id}&select=id,konsumsi_hari,buffer_reorder_hari`)
+      sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id&limit=10000`),
+      sb('products',  `user_id=eq.${user_id}&select=id,konsumsi_hari,buffer_reorder_hari&limit=1000`)
     ]);
     const productMap = {};
     products.forEach(p => { productMap[p.id] = p; });
@@ -72,7 +78,6 @@ export default async function handler(req, res) {
     });
 
     if (missingOrders.length) {
-      // Deduplicate by phone
       const seen = new Set();
       const toCreate = [];
       for (const o of missingOrders) {
@@ -87,11 +92,9 @@ export default async function handler(req, res) {
           product_id: o.product_id || product_id || null,
           source: 'import',
           status: 'baru',
-          send_minute_slot: Math.floor(Math.random() * 720) // 0-720 menit (12 jam: jam 9 pagi - 9 malam)
+          send_minute_slot: Math.floor(Math.random() * 720)
         });
       }
-
-      // Upsert customers — skip kalau sudah ada (ON CONFLICT DO NOTHING)
       for (let i = 0; i < toCreate.length; i += 200) {
         const created = await sb('customers', '', {
           method: 'POST',
@@ -102,26 +105,35 @@ export default async function handler(req, res) {
           created.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
         }
       }
-      // Re-fetch customers supaya custMap lengkap (termasuk yang sudah ada sebelumnya)
       const freshCusts = await sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id`);
       freshCusts.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
     }
 
-    // 5. Existing schedules (cegah duplikat)
-    // Cek SEMUA status (pending/sent/skipped/failed) by customer+rule_nama
-    // → 1 customer + 1 rule = cuma boleh 1 jadwal. Kalau udah ada, jangan bikin lagi.
-    // PENTING: limit=10000 karena Supabase REST default 1000 rows
-    const [existPendingRaw, existAll] = await Promise.all([
-      sb('followup_schedule', `user_id=eq.${user_id}&status=eq.pending&select=id,customer_id,rule_id&limit=10000`),
-      sb('followup_schedule', `user_id=eq.${user_id}&select=customer_id,rule_nama&limit=10000`)
-    ]);
-    let existPending = existPendingRaw;
+    // 5. Existing dedup_keys — cek yang SUDAH ada di DB
+    // Coba fetch dedup_key dulu; kalau kolom belum ada, fallback ke composite key
+    let existKeys = new Set();
+    let hasDedupCol = false;
+    try {
+      const existRows = await sb('followup_schedule',
+        `user_id=eq.${user_id}&select=dedup_key&limit=50000`);
+      existKeys = new Set(existRows.map(e => e.dedup_key).filter(Boolean));
+      hasDedupCol = true;
+    } catch {
+      // Kolom dedup_key belum ada — fallback: fetch customer_id+rule_nama+product_id
+      const existRows = await sb('followup_schedule',
+        `user_id=eq.${user_id}&select=customer_id,rule_nama,product_id&limit=50000`);
+      existKeys = new Set(existRows.map(e => `${e.customer_id}:${e.rule_nama}:${e.product_id || 'ALL'}`));
+    }
+
+    // 5a. Existing pending untuk auto-skip sebelum_deliv yang paketnya SAMPAI
+    const existPending = await sb('followup_schedule',
+      `user_id=eq.${user_id}&status=eq.pending&select=id,customer_id,rule_id&limit=10000`);
+
     const today = new Date().toISOString().slice(0, 10);
     const toInsert = [];
     const skipReasons = { no_cust: 0, duplicate: 0, prod_mismatch: 0, no_base: 0, not_sampai: 0, too_old: 0, auto_skip_sampai: 0 };
 
-    // 5a. Auto-skip pending sebelum_deliv untuk customer yang paketnya sudah SAMPAI
-    // → cegah customer dapat pesan "paket dalam perjalanan" padahal sudah diterima
+    // 5b. Auto-skip pending sebelum_deliv untuk customer yang paketnya sudah SAMPAI
     const sblmRuleIds = new Set(rules.filter(r => r.tipe === 'sebelum_deliv').map(r => r.id));
     if (sblmRuleIds.size) {
       const sampaiPhones = new Set(
@@ -130,11 +142,8 @@ export default async function handler(req, res) {
       const sampaiCustIds = new Set(
         [...sampaiPhones].map(p => custMap[p]?.id).filter(Boolean)
       );
-
       const toSkip = existPending.filter(e => sampaiCustIds.has(e.customer_id) && sblmRuleIds.has(e.rule_id));
-
       if (toSkip.length) {
-        // Batch PATCH → skip per 50
         for (let i = 0; i < toSkip.length; i += 50) {
           const ids = toSkip.slice(i, i + 50).map(e => e.id);
           await sb('followup_schedule',
@@ -142,25 +151,20 @@ export default async function handler(req, res) {
             { method: 'PATCH', body: { status: 'skipped' } }
           );
         }
-        // Hapus dari existPending supaya tidak blokir generate setelah_deliv
-        const skippedIds = new Set(toSkip.map(e => e.id));
-        existPending = existPending.filter(e => !skippedIds.has(e.id));
-        skipReasons.auto_skip_sampai = (skipReasons.auto_skip_sampai || 0) + toSkip.length;
+        skipReasons.auto_skip_sampai = toSkip.length;
       }
     }
 
-    const existSet     = new Set(existPending.map(e => `${e.customer_id}__${e.rule_id}`));
-    const existAllSet  = new Set(existAll.map(e => `${e.customer_id}__${e.rule_nama}`));
-
+    // 6. Generate schedules
     for (const rule of rules) {
-      const isSblm       = rule.tipe === 'sebelum_deliv';
-      const isReorder    = rule.tipe === 'reorder';
-      const isEventOtw   = rule.tipe === 'event_otw';
+      const isSblm        = rule.tipe === 'sebelum_deliv';
+      const isReorder     = rule.tipe === 'reorder';
+      const isEventOtw    = rule.tipe === 'event_otw';
       const isEventSampai = rule.tipe === 'event_sampai';
-      const isEvent      = isEventOtw || isEventSampai;
+      const isEvent       = isEventOtw || isEventSampai;
       const hari = isSblm
         ? (rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? 0)
-        : (isReorder || isEvent) ? null  // calculated per order
+        : (isReorder || isEvent) ? null
         : (rule.hari_setelah_delivered ?? 1);
 
       for (const order of orders) {
@@ -168,24 +172,23 @@ export default async function handler(req, res) {
         const cust  = custMap[phone];
         if (!cust) { skipReasons.no_cust++; continue; }
 
-        const key     = `${cust.id}__${rule.id}`;
-        const keyAll  = `${cust.id}__${rule.nama}`;
-        if (existSet.has(key) || existAllSet.has(keyAll)) { skipReasons.duplicate++; continue; }
+        const pid = cust.product_id || order.product_id || null;
+        const dk  = makeDedup(cust.id, rule.nama, pid);
 
-        // Cek produk — hanya skip kalau keduanya ada tapi tidak match
-        const orderProd = order.product_id || cust.product_id || null;
-        if (rule.product_id && orderProd && rule.product_id !== orderProd) {
+        // Dedup: sudah ada di DB ATAU sudah ditambahkan di batch ini
+        if (existKeys.has(dk)) { skipReasons.duplicate++; continue; }
+
+        // Cek produk match
+        if (rule.product_id && pid && rule.product_id !== pid) {
           skipReasons.prod_mismatch++; continue;
         }
 
         let scheduledDate = null;
         if (isSblm) {
-          // Pakai created_at (tanggal order masuk) sebagai base — bukan tanggal delivery
           const base = order.created_at ? order.created_at.slice(0, 10) : order.tanggal || null;
           if (!base) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base, hari);
         } else if (isReorder) {
-          // Reorder: hitung dari qty × konsumsi_hari produk − buffer
           if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
           const prod = productMap[order.product_id || cust.product_id];
           if (!prod?.konsumsi_hari) { skipReasons.no_base++; continue; }
@@ -197,20 +200,16 @@ export default async function handler(req, res) {
           if (totalDays <= 0) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base.slice(0, 10), totalDays);
         } else if (isEventOtw) {
-          // Event OTW: jadwal hari ini kalau status = OTW/KOTA_TUJUAN
           const OTW_STATUSES = ['OTW', 'KOTA_TUJUAN'];
           if (!OTW_STATUSES.includes(order.status_resi)) { skipReasons.not_sampai++; continue; }
           scheduledDate = today;
         } else if (isEventSampai) {
-          // Event SAMPAI: jadwal hari yang sama paket tiba (D+0)
           if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
           const base = order.last_tracked_at || order.tanggal || order.created_at;
           if (!base) { skipReasons.no_base++; continue; }
-          scheduledDate = base.slice(0, 10); // hari paket tiba
+          scheduledDate = base.slice(0, 10);
         } else {
-          // setelah_deliv: hanya untuk paket SAMPAI (RETUR otomatis skip)
           if (order.status_resi !== 'SAMPAI') { skipReasons.not_sampai++; continue; }
-          // Pakai tgl_delivered (paling akurat) → fallback last_tracked_at → created_at
           const base = order.tgl_delivered || order.last_tracked_at || order.tanggal || order.created_at;
           if (!base) { skipReasons.no_base++; continue; }
           scheduledDate = addDays(base.slice(0, 10), hari);
@@ -220,27 +219,25 @@ export default async function handler(req, res) {
         const diff = (new Date(today) - new Date(scheduledDate)) / 86400000;
         if (diff > 30) { skipReasons.too_old++; continue; }
 
-        // Kalau jadwal sudah lewat (rule baru ditambah untuk customer lama),
-        // insert sebagai skipped — momentnya sudah tidak relevan
         const isPast = scheduledDate < today;
 
-        toInsert.push({
+        const row = {
           user_id,
           customer_id: cust.id,
-          product_id: cust.product_id || order.product_id || null,
+          product_id: pid,
           rule_id: rule.id,
           rule_nama: rule.nama,
           scheduled_date: scheduledDate,
           status: isPast ? 'skipped' : 'pending',
-          send_after: null  // default null, di-override untuk jadwal hari ini di step 6
-        });
-        existSet.add(key);
+          send_after: null
+        };
+        if (hasDedupCol) row.dedup_key = dk;
+        toInsert.push(row);
+        existKeys.add(dk); // Cegah double dalam batch yang sama
       }
     }
 
-    // 6. Assign send_after untuk jadwal hari ini — sequential per produk
-    // Rate: setiap 10 order = +1 customer per 5 menit, max 3
-    // Contoh: 10 order → 1/5mnt, 20 order → 2/5mnt, 30+ → 3/5mnt
+    // 7. Assign send_after untuk jadwal hari ini
     const todayByProduct = {};
     for (const s of toInsert) {
       if (s.scheduled_date === today && s.status === 'pending') {
@@ -253,12 +250,13 @@ export default async function handler(req, res) {
     for (const schedules of Object.values(todayByProduct)) {
       const rate = Math.min(Math.ceil(schedules.length / 10), 3);
       schedules.forEach((s, idx) => {
-        const slotIndex = Math.floor(idx / rate) + 1; // slot ke-1, ke-2, dst
+        const slotIndex = Math.floor(idx / rate) + 1;
         s.send_after = new Date(now.getTime() + slotIndex * 5 * 60 * 1000).toISOString();
       });
     }
 
-    // 7. Insert jadwal batch
+    // 8. Insert batch — DB UNIQUE constraint on dedup_key prevents duplicates
+    // resolution=ignore-duplicates → kalau dedup_key sudah ada, skip (no error)
     let created = 0;
     for (let i = 0; i < toInsert.length; i += 200) {
       await sb('followup_schedule', '', {
@@ -275,7 +273,6 @@ export default async function handler(req, res) {
       orders_total: orders.length,
       customers_in_db: customers.length,
       custmap_size: Object.keys(custMap).length,
-      existing_schedules: existPendingRaw.length,
       skip_reasons: skipReasons
     });
   } catch(e) {
