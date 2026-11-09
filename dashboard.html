@@ -353,6 +353,15 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
 .fu-badge.pending{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.2)}
 .fu-badge.done{background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.2)}
 .fu-badge.today{background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
+.fu-badge.skip{background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid rgba(148,163,184,.2)}
+.fu-badge.fail{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.2)}
+.fu-badge.reorder{background:rgba(168,85,247,.12);color:#c4b5fd;border:1px solid rgba(168,85,247,.2)}
+.fu-tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.3px;margin-left:4px}
+.fu-tag.reorder{background:rgba(168,85,247,.15);color:#c4b5fd}
+body.light .fu-badge.skip{background:rgba(148,163,184,.1);color:#64748b;border-color:rgba(148,163,184,.25)}
+body.light .fu-badge.fail{background:rgba(239,68,68,.08);color:#dc2626;border-color:rgba(239,68,68,.2)}
+body.light .fu-badge.reorder{background:rgba(168,85,247,.08);color:#7c3aed;border-color:rgba(168,85,247,.2)}
+body.light .fu-tag.reorder{background:rgba(168,85,247,.1);color:#7c3aed}
 body.light .fu-item{background:#f8fafc;border-color:#e2e8f0}
 body.light .fu-value{color:#0f172a}
 body.light .fu-sub{color:#94a3b8}
@@ -1181,15 +1190,17 @@ async function updateCaseBoard() {
           const isSent    = f.status === 'sent' || f.status === 'terkirim';
           const isSkipped = f.status === 'skipped';
           const isFailed  = f.status === 'failed';
-          const badgeCls = isSent ? 'done' : isSkipped ? 'skip' : isFailed ? 'fail' : isToday ? 'today' : 'pending';
-          const badgeTxt = isSent ? '✓ Terkirim' : isSkipped ? '⏭ Dilewati' : isFailed ? '✗ Gagal' : isToday ? '🔔 Hari Ini' : 'Terjadwal';
+          const isReorder = f.rule_nama === 'reorder_auto';
+          const badgeCls = isSent ? 'done' : isSkipped ? 'skip' : isFailed ? 'fail' : isReorder && !isSent && !isSkipped && !isFailed ? 'reorder' : isToday ? 'today' : 'pending';
+          const badgeTxt = isSent ? '✓ Terkirim' : isSkipped ? '⏭ Dilewati' : isFailed ? '✗ Gagal' : isReorder ? '🔄 Reorder' : isToday ? '🔔 Hari Ini' : 'Terjadwal';
           const tgl = f.scheduled_date ? new Date(f.scheduled_date).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '—';
+          const reorderTag = isReorder ? '<span class="fu-tag reorder">REORDER</span>' : '';
           return `<div class="fu-item">
-            <div class="fu-icon">${isSent ? '✅' : isSkipped ? '⏭' : isFailed ? '❌' : isToday ? '🔔' : '📅'}</div>
+            <div class="fu-icon">${isSent ? '✅' : isSkipped ? '⏭' : isFailed ? '❌' : isReorder ? '🔄' : isToday ? '🔔' : '📅'}</div>
             <div class="fu-info">
-              <div class="fu-label">${esc(f.rule_nama || 'Follow-up')}</div>
+              <div class="fu-label">${esc(f.rule_nama || 'Follow-up')}${reorderTag}</div>
               <div class="fu-value">${tgl}</div>
-              <div class="fu-sub">${f.pesan ? esc(f.pesan.slice(0,40))+'...' : 'Template otomatis'}</div>
+              <div class="fu-sub">${f.pesan ? esc(f.pesan.slice(0,40))+'...' : isReorder ? 'Reminder reorder otomatis' : 'Template otomatis'}</div>
             </div>
             <div class="fu-badge ${badgeCls}">${badgeTxt}</div>
           </div>`;
