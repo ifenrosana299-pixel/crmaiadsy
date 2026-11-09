@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     if (rule_id) ruleQ += `&id=eq.${rule_id}`;
     else if (product_id) ruleQ += `&or=(product_id.eq.${product_id},product_id.is.null)`;
     const rules = await sb('followup_rules', ruleQ);
-    if (!rules.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada rule aktif' });
+    // Tidak return early kalau rules kosong — reorder_auto tetap jalan tanpa followup_rules
 
     // 2. Semua orders user
     const orders = await sb('orders',
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
     // 3. Customers + products (limit=10000, Supabase default cuma 1000!)
     const [customers, products] = await Promise.all([
       sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id&limit=10000`),
-      sb('products',  `user_id=eq.${user_id}&select=id,konsumsi_hari,buffer_reorder_hari&limit=1000`)
+      sb('products',  `user_id=eq.${user_id}&select=id,konsumsi_hari,buffer_reorder_hari,templates_reorder&limit=1000`)
     ]);
     const productMap = {};
     products.forEach(p => { productMap[p.id] = p; });
@@ -105,7 +105,7 @@ export default async function handler(req, res) {
           created.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
         }
       }
-      const freshCusts = await sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id`);
+      const freshCusts = await sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id&limit=10000`);
       freshCusts.forEach(c => { custMap[normalizePhone(c.wa_number)] = c; });
     }
 
@@ -194,7 +194,7 @@ export default async function handler(req, res) {
           if (!prod?.konsumsi_hari) { skipReasons.no_base++; continue; }
           const qty    = parseInt(order.jumlah_produk) || parseInt(order.qty) || 1;
           const buffer = rule.buffer_reorder_hari ?? prod.buffer_reorder_hari ?? 5;
-          const base   = order.last_tracked_at || order.tanggal || order.created_at;
+          const base   = order.tgl_delivered || order.last_tracked_at || order.tanggal || order.created_at;
           if (!base) { skipReasons.no_base++; continue; }
           const totalDays = (qty * prod.konsumsi_hari) - buffer;
           if (totalDays <= 0) { skipReasons.no_base++; continue; }
@@ -237,6 +237,69 @@ export default async function handler(req, res) {
       }
     }
 
+    // 6b. REORDER OTOMATIS — dari products.templates_reorder + konsumsi_hari
+    // Hanya untuk order SAMPAI yang produknya punya templates_reorder
+    let reorderCreated = 0;
+    {
+      // Cek repeat_orders existing → skip customer yang sudah reorder
+      let repeatCustIds = new Set();
+      try {
+        const repeats = await sb('repeat_orders',
+          `user_id=eq.${user_id}&select=customer_id&limit=10000`);
+        repeatCustIds = new Set(repeats.map(r => r.customer_id).filter(Boolean));
+      } catch { /* table mungkin belum ada */ }
+
+      const sampaiOrders = orders.filter(o => o.status_resi === 'SAMPAI');
+
+      for (const order of sampaiOrders) {
+        const phone = normalizePhone(order.nomer_hp);
+        const cust = custMap[phone];
+        if (!cust) continue;
+
+        const pid = order.product_id || cust.product_id || null;
+        if (!pid) continue;
+
+        const prod = productMap[pid];
+        if (!prod?.konsumsi_hari || !prod?.templates_reorder?.length) continue;
+
+        // Skip kalau customer sudah repeat order
+        if (repeatCustIds.has(cust.id)) continue;
+
+        const dk = makeDedup(cust.id, 'reorder_auto', pid);
+        if (existKeys.has(dk)) continue;
+
+        const qty = parseInt(order.jumlah_produk) || parseInt(order.qty) || 1;
+        const buffer = prod.buffer_reorder_hari ?? 5;
+        const base = order.tgl_delivered || order.last_tracked_at || order.tanggal || order.created_at;
+        if (!base) continue;
+
+        const totalDays = (qty * prod.konsumsi_hari) - buffer;
+        if (totalDays <= 0) continue;
+
+        const scheduledDate = addDays(base.slice(0, 10), totalDays);
+
+        // Skip jadwal yang sudah lewat >30 hari
+        const diff = (new Date(today) - new Date(scheduledDate)) / 86400000;
+        if (diff > 30) continue;
+
+        const isPast = scheduledDate < today;
+        const row = {
+          user_id,
+          customer_id: cust.id,
+          product_id: pid,
+          rule_id: null,
+          rule_nama: 'reorder_auto',
+          scheduled_date: scheduledDate,
+          status: isPast ? 'skipped' : 'pending',
+          send_after: null
+        };
+        if (hasDedupCol) row.dedup_key = dk;
+        toInsert.push(row);
+        existKeys.add(dk);
+        reorderCreated++;
+      }
+    }
+
     // 7. Assign send_after untuk jadwal hari ini
     const todayByProduct = {};
     for (const s of toInsert) {
@@ -269,7 +332,7 @@ export default async function handler(req, res) {
     const skipped = Object.values(skipReasons).reduce((a, b) => a + b, 0);
     const ruleTypes = rules.map(r => `${r.nama}(${r.tipe||'?'}) H+${r.hari_sebelum_deliv ?? r.hari_setelah_delivered ?? '?'}`).join(', ');
     return res.json({
-      created, skipped, rules: ruleTypes,
+      created, skipped, reorder_auto: reorderCreated, rules: ruleTypes,
       orders_total: orders.length,
       customers_in_db: customers.length,
       custmap_size: Object.keys(custMap).length,

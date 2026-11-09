@@ -285,11 +285,16 @@ export default async function handler(req, res) {
 
       const customer = s.customers;
       let rule = s.followup_rules || {};
-      // Skip reorder_auto (sistem dihapus)
+      // reorder_auto: rule_id null → inject templates dari products.templates_reorder
       if (s.rule_nama === 'reorder_auto') {
-        await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
-        results.skipped++;
-        continue;
+        if (s.products?.templates_reorder) {
+          rule = { nama: 'reorder_auto', tipe: 'reorder', templates: s.products.templates_reorder };
+        } else {
+          // Tidak ada template reorder di product → skip
+          await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
+          results.skipped++;
+          continue;
+        }
       }
 
       if (!customer?.wa_number) {
