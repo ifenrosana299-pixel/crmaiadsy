@@ -2010,7 +2010,18 @@ Kalau customer minta ganti ekspedisi → output [CEK_ONGKIR:ekspedisi=NAMA] di a
       }
 
       if (customer?.catatan) ctx += `\n- Catatan: ${customer.catatan}`;
-      if (convState.repeat_order) ctx += `\n- Sudah melakukan repeat order ✅`;
+      if (convState.repeat_order) {
+        const roQty = convState.repeat_qty || '';
+        const roAt  = convState.repeat_at ? new Date(convState.repeat_at).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+        ctx += `\n\n🔁 PELANGGAN INI SUDAH REPEAT ORDER (beli lagi)${roQty ? ` — ${roQty} pcs` : ''}${roAt ? ` pada ${roAt}` : ''}.`;
+        ctx += `\nINSTRUKSI WAJIB PELANGGAN REPEAT:`;
+        ctx += `\n- Dia BARU SAJA order lagi. Pesanannya sedang diproses.`;
+        ctx += `\n- JANGAN tawarkan produk lagi, JANGAN tanya stok, JANGAN tanya mau beli berapa.`;
+        ctx += `\n- JANGAN ulangi alur repeat order — pesanan sudah tercatat.`;
+        ctx += `\n- Perlakukan sebagai PELANGGAN SETIA: ucapkan terima kasih, tanya kabar, bantu kalau ada pertanyaan tentang pesanannya.`;
+        ctx += `\n- Kalau customer tanya status pesanan repeat → bilang pesanan sedang diproses oleh tim.`;
+        ctx += `\n- Kalau customer mau order LAGI (tambah lagi) → baru ikuti alur REPEAT ORDER.`;
+      }
       systemPrompt += ctx;
     }
 
