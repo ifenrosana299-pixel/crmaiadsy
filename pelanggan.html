@@ -175,10 +175,6 @@ table td { font-size:13px; border-bottom:1px solid var(--border); }
       <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Total Harga (Rp)</label>
       <input type="number" id="ro-total" placeholder="Contoh: 350000" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);outline:none;margin-bottom:14px">
 
-      <!-- Alamat (readonly, dari data terakhir) -->
-      <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Alamat <span style="font-weight:400;color:var(--text-3)">(dari data terakhir)</span></label>
-      <textarea id="ro-alamat" readonly rows="2" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text-2);outline:none;resize:none;margin-bottom:18px"></textarea>
-
       <!-- Submit -->
       <button id="btn-submit-ro" onclick="submitAddRO()" class="btn btn-primary" style="width:100%;padding:10px;font-size:14px;font-weight:600">
         Simpan Repeat Order
@@ -515,7 +511,6 @@ function openAddRO() {
   document.getElementById('ro-qty').value = 1;
   document.getElementById('ro-bayar').value = 'cod';
   document.getElementById('ro-total').value = '';
-  document.getElementById('ro-alamat').value = '';
   document.getElementById('modal-add-ro').style.display = 'flex';
   loadProductsForRO();
 }
@@ -528,11 +523,11 @@ async function loadProductsForRO() {
   const sel = document.getElementById('ro-product');
   sel.innerHTML = '<option value="">-- Pilih Produk --</option>';
   try {
-    _roProducts = await sbGet('products', `user_id=eq.${currentUser.id}&aktif=eq.true&select=id,nama_produk,harga`);
+    _roProducts = await sbGet('products', `user_id=eq.${currentUser.id}&aktif=eq.true&select=id,nama,harga`);
     for (const p of _roProducts) {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.nama_produk + (p.harga ? ` (${fmtRupiah(p.harga)})` : '');
+      opt.textContent = p.nama + (p.harga ? ` (${fmtRupiah(p.harga)})` : '');
       sel.appendChild(opt);
     }
   } catch(e) { console.warn('loadProductsForRO', e); }
@@ -575,10 +570,6 @@ function selectCustomer(custId) {
     `<strong>${escH(_roSelectedCust.nama)}</strong> · ${fmtHp(_roSelectedCust.wa_number)}
      <span style="float:right;cursor:pointer;color:var(--text-3)" onclick="clearSelectedCust()">&times;</span>`;
 
-  // Auto-fill alamat dari data customer
-  const alamat = _roSelectedCust.alamat;
-  document.getElementById('ro-alamat').value = formatAlamat(alamat);
-
   // Auto-select produk kalau customer punya product_id
   if (_roSelectedCust.product_id) {
     document.getElementById('ro-product').value = _roSelectedCust.product_id;
@@ -588,7 +579,6 @@ function selectCustomer(custId) {
 function clearSelectedCust() {
   _roSelectedCust = null;
   document.getElementById('ro-cust-selected').style.display = 'none';
-  document.getElementById('ro-alamat').value = '';
   document.getElementById('ro-cust-search').focus();
 }
 
@@ -625,7 +615,7 @@ async function submitAddRO() {
       status: 'pending',
       customer_nama: _roSelectedCust.nama,
       customer_phone: _roSelectedCust.wa_number,
-      product_nama: prod?.nama_produk || '',
+      product_nama: prod?.nama || '',
       created_at: new Date().toISOString(),
     };
 
