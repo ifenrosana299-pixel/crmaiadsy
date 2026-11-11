@@ -76,6 +76,9 @@ body.light .bot-online{background:rgba(34,197,94,.06)}
 body.light { --red:#dc2626; }
 
 .btn-xs { padding:3px 8px !important; font-size:11px !important; border-radius:5px !important; }
+#modal-add-ro input:focus, #modal-add-ro select:focus { border-color:rgba(59,130,246,.4); box-shadow:0 0 0 2px rgba(59,130,246,.08); }
+body.light #modal-add-ro input, body.light #modal-add-ro select, body.light #modal-add-ro textarea { background:#fff; border-color:#e2e8f0; }
+body.light #modal-add-ro .btn-primary { background:#2563eb; }
 .saving-row td { opacity:.6; pointer-events:none; }
 table { border-collapse:collapse; }
 table th, table td { padding:12px 14px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -97,6 +100,7 @@ table td { font-size:13px; border-bottom:1px solid var(--border); }
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" class="search-input" id="search-inp" placeholder="🔍 Cari nama pelanggan..." oninput="renderTable()" style="width:220px">
         <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↻ Refresh</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddRO()">+ Repeat Order</button>
       </div>
     </div>
 
@@ -127,6 +131,61 @@ table td { font-size:13px; border-bottom:1px solid var(--border); }
     </div><!-- /page-body -->
   </div><!-- /main-content -->
 </div><!-- /app-layout -->
+
+<!-- MODAL: Tambah Repeat Order Manual -->
+<div id="modal-add-ro" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center">
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:16px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:700;color:var(--text)">+ Tambah Repeat Order</div>
+      <button onclick="closeAddRO()" style="background:none;border:none;color:var(--text-2);font-size:18px;cursor:pointer;padding:4px">&times;</button>
+    </div>
+    <div style="padding:20px">
+      <!-- Cari Customer -->
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Customer</label>
+      <div style="position:relative;margin-bottom:14px">
+        <input type="text" id="ro-cust-search" placeholder="Ketik nama atau nomor HP..." autocomplete="off"
+          oninput="searchCustomer(this.value)"
+          style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);outline:none">
+        <div id="ro-cust-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--white);border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.3)"></div>
+      </div>
+      <div id="ro-cust-selected" style="display:none;padding:10px 12px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:8px;margin-bottom:14px;font-size:13px;color:var(--text)"></div>
+
+      <!-- Produk -->
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Produk</label>
+      <select id="ro-product" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:14px">
+        <option value="">-- Pilih Produk --</option>
+      </select>
+
+      <!-- Qty & Bayar -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Qty (pcs)</label>
+          <input type="number" id="ro-qty" value="1" min="1" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);outline:none">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Metode Bayar</label>
+          <select id="ro-bayar" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)">
+            <option value="cod">COD</option>
+            <option value="transfer">Transfer</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Total Harga -->
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Total Harga (Rp)</label>
+      <input type="number" id="ro-total" placeholder="Contoh: 350000" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);outline:none;margin-bottom:14px">
+
+      <!-- Alamat (readonly, dari data terakhir) -->
+      <label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px">Alamat <span style="font-weight:400;color:var(--text-3)">(dari data terakhir)</span></label>
+      <textarea id="ro-alamat" readonly rows="2" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text-2);outline:none;resize:none;margin-bottom:18px"></textarea>
+
+      <!-- Submit -->
+      <button id="btn-submit-ro" onclick="submitAddRO()" class="btn btn-primary" style="width:100%;padding:10px;font-size:14px;font-weight:600">
+        Simpan Repeat Order
+      </button>
+    </div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
@@ -441,6 +500,155 @@ function changePage(dir) {
 window.addEventListener('productSwitch', () => {
   currentPage = 1;
   loadOrders();
+});
+
+// ── ADD REPEAT ORDER MODAL ───────────────────────────────────────────
+let _roSelectedCust = null;
+let _roProducts = [];
+let _roSearchTimer = null;
+
+function openAddRO() {
+  _roSelectedCust = null;
+  document.getElementById('ro-cust-search').value = '';
+  document.getElementById('ro-cust-results').style.display = 'none';
+  document.getElementById('ro-cust-selected').style.display = 'none';
+  document.getElementById('ro-qty').value = 1;
+  document.getElementById('ro-bayar').value = 'cod';
+  document.getElementById('ro-total').value = '';
+  document.getElementById('ro-alamat').value = '';
+  document.getElementById('modal-add-ro').style.display = 'flex';
+  loadProductsForRO();
+}
+
+function closeAddRO() {
+  document.getElementById('modal-add-ro').style.display = 'none';
+}
+
+async function loadProductsForRO() {
+  const sel = document.getElementById('ro-product');
+  sel.innerHTML = '<option value="">-- Pilih Produk --</option>';
+  try {
+    _roProducts = await sbGet('products', `user_id=eq.${currentUser.id}&aktif=eq.true&select=id,nama_produk,harga`);
+    for (const p of _roProducts) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.nama_produk + (p.harga ? ` (${fmtRupiah(p.harga)})` : '');
+      sel.appendChild(opt);
+    }
+  } catch(e) { console.warn('loadProductsForRO', e); }
+}
+
+function searchCustomer(q) {
+  clearTimeout(_roSearchTimer);
+  const resultsEl = document.getElementById('ro-cust-results');
+  if (!q || q.length < 2) { resultsEl.style.display = 'none'; return; }
+  _roSearchTimer = setTimeout(async () => {
+    try {
+      const custs = await sbGet('customers',
+        `user_id=eq.${currentUser.id}&or=(nama.ilike.*${q}*,wa_number.ilike.*${q}*)&limit=10&select=id,nama,wa_number,produk,product_id,alamat`);
+      if (!custs.length) {
+        resultsEl.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--text-3)">Tidak ditemukan</div>';
+        resultsEl.style.display = 'block';
+        return;
+      }
+      resultsEl.innerHTML = custs.map(c => `
+        <div onclick="selectCustomer('${c.id}')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s"
+          onmouseenter="this.style.background='rgba(59,130,246,.06)'" onmouseleave="this.style.background=''"
+          data-cust='${escH(JSON.stringify(c))}'>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${escH(c.nama || '-')}</div>
+          <div style="font-size:11px;color:var(--text-2)">${fmtHp(c.wa_number)} · ${escH(c.produk || '-')}</div>
+        </div>`).join('');
+      resultsEl.style.display = 'block';
+    } catch(e) { console.warn('searchCustomer', e); }
+  }, 300);
+}
+
+function selectCustomer(custId) {
+  const resultsEl = document.getElementById('ro-cust-results');
+  const el = resultsEl.querySelector(`[onclick="selectCustomer('${custId}')"]`);
+  if (!el) return;
+  _roSelectedCust = JSON.parse(el.getAttribute('data-cust'));
+  document.getElementById('ro-cust-search').value = '';
+  resultsEl.style.display = 'none';
+  document.getElementById('ro-cust-selected').style.display = 'block';
+  document.getElementById('ro-cust-selected').innerHTML =
+    `<strong>${escH(_roSelectedCust.nama)}</strong> · ${fmtHp(_roSelectedCust.wa_number)}
+     <span style="float:right;cursor:pointer;color:var(--text-3)" onclick="clearSelectedCust()">&times;</span>`;
+
+  // Auto-fill alamat dari data customer
+  const alamat = _roSelectedCust.alamat;
+  document.getElementById('ro-alamat').value = formatAlamat(alamat);
+
+  // Auto-select produk kalau customer punya product_id
+  if (_roSelectedCust.product_id) {
+    document.getElementById('ro-product').value = _roSelectedCust.product_id;
+  }
+}
+
+function clearSelectedCust() {
+  _roSelectedCust = null;
+  document.getElementById('ro-cust-selected').style.display = 'none';
+  document.getElementById('ro-alamat').value = '';
+  document.getElementById('ro-cust-search').focus();
+}
+
+async function submitAddRO() {
+  if (!_roSelectedCust) { toast('Pilih customer dulu', 'error'); return; }
+  const productId = document.getElementById('ro-product').value;
+  if (!productId) { toast('Pilih produk dulu', 'error'); return; }
+  const qty = parseInt(document.getElementById('ro-qty').value) || 1;
+  const bayar = document.getElementById('ro-bayar').value;
+  const total = parseInt(document.getElementById('ro-total').value) || null;
+  const prod = _roProducts.find(p => p.id === productId);
+
+  const btn = document.getElementById('btn-submit-ro');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+
+  try {
+    // Cek alamat terakhir dari orders table kalau customer.alamat kosong
+    let alamatVal = _roSelectedCust.alamat || null;
+    if (!alamatVal) {
+      const lastOrders = await sbGet('orders',
+        `nomer_hp=eq.${_roSelectedCust.wa_number}&order=created_at.desc&limit=1&select=alamat`).catch(() => []);
+      if (lastOrders.length && lastOrders[0].alamat) alamatVal = lastOrders[0].alamat;
+    }
+
+    const payload = {
+      user_id: currentUser.id,
+      customer_id: _roSelectedCust.id,
+      product_id: productId,
+      qty: qty,
+      bayar: bayar,
+      total_harga: total,
+      alamat: alamatVal,
+      status: 'pending',
+      customer_nama: _roSelectedCust.nama,
+      customer_phone: _roSelectedCust.wa_number,
+      product_nama: prod?.nama_produk || '',
+      created_at: new Date().toISOString(),
+    };
+
+    await sbPost('repeat_orders', payload);
+
+    // Update customer status ke repeat_order
+    await sbPatch('customers', `id=eq.${_roSelectedCust.id}`, { status: 'repeat_order' }).catch(() => {});
+
+    toast('✅ Repeat order berhasil ditambahkan', 'ok');
+    closeAddRO();
+    await loadOrders();
+  } catch(e) {
+    toast('Gagal: ' + e.message, 'error');
+    console.error('[submitAddRO]', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan Repeat Order';
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('modal-add-ro').addEventListener('click', function(e) {
+  if (e.target === this) closeAddRO();
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────
