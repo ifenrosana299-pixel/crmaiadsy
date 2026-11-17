@@ -562,7 +562,7 @@ async function loadOrders() {
     '<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat order...</div>';
   try {
     const prodId = window.__activeProductFilter;
-    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+    const prodQ  = prodId ? `&or=(product_id.eq.${prodId},product_id.is.null)` : '';
     allOrders = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&order=tanggal.desc,created_at.desc&select=*`);
     updateStats();
     loadCsFilter();
@@ -1261,14 +1261,18 @@ async function cleanOrphanCustomers(phones) {
   } catch(e) { console.warn('[cleanOrphanCustomers]', e); }
 }
 
-async function autoGenerateSchedules() {
-  try {
-    await fetch('/api/generate-schedules', {
+// Debounce 3 detik — cegah race condition kalau banyak order SAMPAI sekaligus
+// (misal trackAllPending batch 5 concurrent → semua trigger ini bersamaan → collapse jadi 1 call)
+let _genSchedTimer = null;
+function autoGenerateSchedules() {
+  clearTimeout(_genSchedTimer);
+  _genSchedTimer = setTimeout(() => {
+    fetch('/api/generate-schedules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: currentUser.id, product_id: window.__activeProductFilter || null })
-    });
-  } catch(e) { console.warn('[autoGenerateSchedules]', e); }
+    }).catch(e => console.warn('[autoGenerateSchedules]', e));
+  }, 3000);
 }
 
 init();
