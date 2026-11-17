@@ -483,20 +483,12 @@ async function deleteSelected() {
   if (!confirm(`Hapus ${n} order yang dipilih? Tindakan ini tidak bisa dibatalkan.`)) return;
   try {
     const ids = [...selectedIds];
-    // Kumpulkan nomor HP dari order yang dihapus
-    const phones = [...new Set(ids.map(id => {
-      const o = allOrders.find(x => x.id === id);
-      return o?.nomer_hp;
-    }).filter(Boolean))];
 
-    // Hapus orders batch per 50
+    // Hapus dari customers (data utama sekarang)
     for (let i = 0; i < ids.length; i += 50) {
       const batch = ids.slice(i, i + 50);
-      await sbDelete('orders', `id=in.(${batch.join(',')})&user_id=eq.${currentUser.id}`);
+      await sbDelete('customers', `id=in.(${batch.join(',')})&user_id=eq.${currentUser.id}`);
     }
-
-    // Hapus customers yang tidak punya order lagi (source=import, no conversation)
-    await cleanOrphanCustomers(phones);
 
     toast(`✅ ${n} order berhasil dihapus`, 'success');
     selectedIds.clear();
@@ -510,15 +502,17 @@ async function deleteSelected() {
 async function deleteAll() {
   const total = allOrders.length;
   if (!total) { toast('Tidak ada data untuk dihapus', 'info'); return; }
-  const konfirmasi = prompt(`Ketik "HAPUS SEMUA" untuk menghapus seluruh ${total} order:`);
+  const prodId = window.__activeProductFilter;
+  const prodLabel = prodId ? 'produk ini' : 'semua produk';
+  const konfirmasi = prompt(`Ketik "HAPUS SEMUA" untuk menghapus ${total} order (${prodLabel}):`);
   if (konfirmasi !== 'HAPUS SEMUA') { toast('Dibatalkan', 'info'); return; }
   try {
-    await sbDelete('orders', `user_id=eq.${currentUser.id}`);
-    // Hapus semua customers import yang tidak punya percakapan
+    // Hapus dari customers — hanya produk yang aktif, bukan semua
+    const prodQ = prodId ? `&product_id=eq.${prodId}` : '';
     await sbDelete('customers',
-      `user_id=eq.${currentUser.id}&source=eq.import`
-    ).catch(() => {});
-    toast(`✅ Semua ${total} order berhasil dihapus`, 'success');
+      `user_id=eq.${currentUser.id}&source=eq.import${prodQ}`
+    );
+    toast(`✅ ${total} order berhasil dihapus`, 'success');
     selectedIds.clear();
     updateBulkBar();
     await loadOrders();
@@ -562,8 +556,43 @@ async function loadOrders() {
     '<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Memuat order...</div>';
   try {
     const prodId = window.__activeProductFilter;
-    const prodQ  = prodId ? `&or=(product_id.eq.${prodId},product_id.is.null)` : '';
-    allOrders = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&order=tanggal.desc,created_at.desc&select=*`);
+    const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
+    // Baca dari tabel customers (source=import) — data utama ada di sini
+    const raw = await sbGet('customers', `user_id=eq.${currentUser.id}&source=eq.import${prodQ}&order=created_at.desc&select=*`);
+    // Map kolom customers → format orders supaya renderTable tetap jalan
+    allOrders = raw.map(c => ({
+      id:              c.id,
+      tanggal:         c.tgl_order || (c.created_at ? c.created_at.slice(0,10) : null),
+      nama_customer:   c.nama || '',
+      nomer_hp:        c.wa_number || '',
+      produk:          c.produk || '',
+      jumlah_produk:   c.qty || 1,
+      nomer_resi:      c.no_resi || '',
+      ekspedisi:       c.ekspedisi || '',
+      status_resi:     c.tgl_delivered ? 'SAMPAI' : (c.no_resi ? 'DIKIRIM' : 'MENUNGGU_RESI'),
+      status_resi_step: c.tgl_delivered ? 5 : (c.no_resi ? 2 : 1),
+      harga_produk:    c.harga || 0,
+      jumlah_cod:      c.harga || 0,
+      alamat:          (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.jalan || '') : (c.alamat || ''),
+      kelurahan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kelurahan || '') : '',
+      kecamatan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kecamatan || '') : '',
+      kabupaten:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kabupaten || '') : '',
+      provinsi:        (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.provinsi || '') : '',
+      tgl_delivered:   c.tgl_delivered,
+      last_tracked_at: null,
+      created_at:      c.created_at,
+      updated_at:      c.updated_at,
+      product_id:      c.product_id,
+      cs:              '',
+      ongkir:          0,
+      potongan_ongkir: 0,
+      admin:           0,
+      potongan_admin:  0,
+      payment:         '',
+      promo:           '',
+      keluhan:         c.catatan || '',
+      _source_table:   'customers',  // marker internal
+    }));
     updateStats();
     loadCsFilter();
     renderTable();
@@ -718,15 +747,28 @@ async function trackOne(id) {
     const r = await fetch(`/api/track-resi?resi=${encodeURIComponent(order.nomer_resi)}&ekspedisi=${encodeURIComponent(order.ekspedisi)}`);
     if (!r.ok) throw new Error(await r.text());
     const { stage, step } = await r.json();
-    // Update Supabase
-    await sbPatch('orders', `id=eq.${id}`, {
+    // Update customers table (data utama)
+    const trackUpdate = {
+      no_resi: order.nomer_resi,
+      ekspedisi: order.ekspedisi,
+      updated_at: new Date().toISOString(),
+    };
+    if (stage === 'SAMPAI') trackUpdate.tgl_delivered = new Date().toISOString().slice(0,10);
+    await sbPatch('customers', `id=eq.${id}`, trackUpdate).catch(() => {});
+    // Juga update orders kalau ada
+    await sbPatch('orders', `nomer_resi=eq.${encodeURIComponent(order.nomer_resi)}&user_id=eq.${currentUser.id}`, {
       status_resi: stage,
       status_resi_step: step,
-      last_tracked_at: new Date().toISOString()
-    });
+      last_tracked_at: new Date().toISOString(),
+      ...(stage === 'SAMPAI' ? { tgl_delivered: new Date().toISOString().slice(0,10) } : {})
+    }).catch(() => {});
     // Update local state
     const idx = allOrders.findIndex(o => o.id === id);
-    if (idx >= 0) { allOrders[idx].status_resi = stage; allOrders[idx].status_resi_step = step; }
+    if (idx >= 0) {
+      allOrders[idx].status_resi = stage;
+      allOrders[idx].status_resi_step = step;
+      if (stage === 'SAMPAI') allOrders[idx].tgl_delivered = new Date().toISOString().slice(0,10);
+    }
     toast(`Status: ${STATUS_INFO[stage]?.label || stage}`, 'success');
     // Auto-generate jadwal FU kalau baru sampai
     if (stage === 'SAMPAI') autoGenerateSchedules();
@@ -1038,12 +1080,38 @@ async function saveOrder() {
   };
 
   try {
+    // Map ke format tabel customers
+    const custPayload = {
+      user_id:      currentUser.id,
+      product_id:   window.__activeProductFilter || null,
+      nama:         nama,
+      wa_number:    normalizePhone(hp),
+      produk:       document.getElementById('inp-produk').value.trim(),
+      qty:          parseInt(document.getElementById('inp-jumlah').value) || 1,
+      harga:        parseInt(document.getElementById('inp-harga').value) || 0,
+      no_resi:      resi || null,
+      ekspedisi:    ekspedisi || null,
+      tgl_order:    document.getElementById('inp-tanggal').value || null,
+      alamat:       {
+        jalan:      document.getElementById('inp-alamat').value.trim(),
+        kelurahan:  document.getElementById('inp-kelurahan').value.trim() || null,
+        kecamatan:  document.getElementById('inp-kecamatan').value.trim() || null,
+        kabupaten:  document.getElementById('inp-kabupaten').value.trim() || null,
+        provinsi:   document.getElementById('inp-provinsi').value.trim() || null,
+      },
+      source:       'import',
+      status:       'baru',
+      catatan:      document.getElementById('inp-keluhan').value.trim() || null,
+      updated_at:   new Date().toISOString(),
+    };
     const editId = document.getElementById('edit-id').value;
     if (editId) {
-      await sbPatch('orders', `id=eq.${editId}`, payload);
+      await sbPatch('customers', `id=eq.${editId}`, custPayload);
     } else {
-      await sbPost('orders', payload);
+      await sbPost('customers', custPayload);
     }
+    // Juga simpan ke orders untuk tracking resi
+    await sbPost('orders', payload).catch(() => {});
     toast('Order disimpan!', 'success');
     closeAddModal();
     await loadOrders();
@@ -1224,16 +1292,46 @@ async function doImport() {
   try {
     const prodId   = window.__activeProductFilter || null;
     const prodNama = prodId ? (window.__userProducts?.find(p => p.id === prodId)?.nama || null) : null;
-    const payload  = importData.map(r => ({
+
+    // 1. Insert ke tabel customers (data utama)
+    const custPayload = importData.map(r => ({
+      user_id:     currentUser.id,
+      product_id:  prodId,
+      nama:        r.nama_customer || '',
+      wa_number:   r.nomer_hp || '',
+      produk:      prodNama || r.produk || '',
+      qty:         r.jumlah_produk || 1,
+      harga:       r.harga_produk || 0,
+      no_resi:     r.nomer_resi || null,
+      ekspedisi:   r.ekspedisi || null,
+      tgl_order:   r.tanggal || null,
+      alamat:      {
+        jalan:     r.alamat || '',
+        kelurahan: r.kelurahan || null,
+        kecamatan: r.kecamatan || null,
+        kabupaten: r.kabupaten || null,
+        provinsi:  r.provinsi || null,
+      },
+      source:      'import',
+      status:      'baru',
+      catatan:     r.keluhan || null,
+    }));
+    for (let i = 0; i < custPayload.length; i += 500) {
+      await sbPost('customers', custPayload.slice(i, i+500), { prefer: 'return=minimal,resolution=ignore-duplicates' });
+    }
+
+    // 2. Juga insert ke orders (untuk tracking resi + generate-schedules)
+    const orderPayload = importData.map(r => ({
       ...r,
       user_id:    currentUser.id,
       product_id: prodId,
       ...(prodNama ? { produk: prodNama } : {})
     }));
-    for (let i = 0; i < payload.length; i += 500) {
-      await sbPost('orders', payload.slice(i, i+500), { prefer: 'return=minimal' });
+    for (let i = 0; i < orderPayload.length; i += 500) {
+      await sbPost('orders', orderPayload.slice(i, i+500), { prefer: 'return=minimal' }).catch(() => {});
     }
-    toast(`✅ ${payload.length} order berhasil diimport!`, 'success');
+
+    toast(`✅ ${custPayload.length} order berhasil diimport!`, 'success');
     closeImportModal();
     await loadOrders();
     // Auto-track yang punya resi
