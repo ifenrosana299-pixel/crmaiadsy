@@ -483,10 +483,16 @@ async function deleteSelected() {
   if (!confirm(`Hapus ${n} order yang dipilih? Tindakan ini tidak bisa dibatalkan.`)) return;
   try {
     const ids = [...selectedIds];
+    // Pisah ID per sumber tabel
+    const orderIds = ids.filter(id => { const o = allOrders.find(x => x.id === id); return o?._source_table === 'orders'; });
+    const custIds  = ids.filter(id => { const o = allOrders.find(x => x.id === id); return o?._source_table === 'customers'; });
 
-    // Hapus dari customers (data utama sekarang)
-    for (let i = 0; i < ids.length; i += 50) {
-      const batch = ids.slice(i, i + 50);
+    for (let i = 0; i < orderIds.length; i += 50) {
+      const batch = orderIds.slice(i, i + 50);
+      await sbDelete('orders', `id=in.(${batch.join(',')})&user_id=eq.${currentUser.id}`);
+    }
+    for (let i = 0; i < custIds.length; i += 50) {
+      const batch = custIds.slice(i, i + 50);
       await sbDelete('customers', `id=in.(${batch.join(',')})&user_id=eq.${currentUser.id}`);
     }
 
@@ -507,11 +513,10 @@ async function deleteAll() {
   const konfirmasi = prompt(`Ketik "HAPUS SEMUA" untuk menghapus ${total} order (${prodLabel}):`);
   if (konfirmasi !== 'HAPUS SEMUA') { toast('Dibatalkan', 'info'); return; }
   try {
-    // Hapus dari customers — hanya produk yang aktif, bukan semua
     const prodQ = prodId ? `&product_id=eq.${prodId}` : '';
-    await sbDelete('customers',
-      `user_id=eq.${currentUser.id}&source=eq.import${prodQ}`
-    );
+    // Hapus dari kedua tabel — hanya produk yang aktif
+    await sbDelete('orders', `user_id=eq.${currentUser.id}${prodQ}`).catch(() => {});
+    await sbDelete('customers', `user_id=eq.${currentUser.id}&source=eq.import${prodQ}`).catch(() => {});
     toast(`✅ ${total} order berhasil dihapus`, 'success');
     selectedIds.clear();
     updateBulkBar();
@@ -557,57 +562,65 @@ async function loadOrders() {
   try {
     const prodId = window.__activeProductFilter;
     const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
-    // Baca dari tabel customers (source=import) — data utama ada di sini
-    const raw = await sbGet('customers', `user_id=eq.${currentUser.id}&source=eq.import${prodQ}&order=created_at.desc&select=*`);
 
-    // Ambil data orders untuk enrich resi/tracking/harga (TANPA filter produk — biar match cross-product)
-    const ordersRaw = await sbGet('orders', `user_id=eq.${currentUser.id}&select=nomer_hp,nomer_resi,ekspedisi,status_resi,status_resi_step,last_tracked_at,tgl_delivered,cs,jumlah_cod,harga_produk,ongkir,potongan_ongkir,admin,potongan_admin,payment,promo,adv,keluhan,tanggal,jumlah_produk`).catch(() => []);
-    // Index orders by nomer_hp untuk lookup cepat
+    // 1. Baca orders (data lengkap: CS, ekspedisi, jumlah_cod, dll)
+    const ordersRaw = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&order=tanggal.desc,created_at.desc&select=*`);
+
+    // 2. Baca customers import (untuk data yang ga ada di orders)
+    const custRaw = await sbGet('customers', `user_id=eq.${currentUser.id}&source=eq.import${prodQ}&order=created_at.desc&select=*`);
+
+    // 3. Index orders by nomer_hp
     const orderByPhone = {};
     ordersRaw.forEach(o => { if (o.nomer_hp) orderByPhone[o.nomer_hp] = o; });
 
-    // Map kolom customers → format orders, enrich dari orders table
-    allOrders = raw.map(c => {
-      const o = orderByPhone[c.wa_number] || {}; // data dari orders (kalau ada)
-      const resi = c.no_resi || o.nomer_resi || '';
-      const eksp = c.ekspedisi || o.ekspedisi || '';
-      const delivered = c.tgl_delivered || o.tgl_delivered;
-      const statusResi = o.status_resi || (delivered ? 'SAMPAI' : (resi ? 'DIKIRIM' : 'MENUNGGU_RESI'));
+    // 4. Mulai dari orders (data lengkap)
+    const seenPhones = new Set();
+    const fromOrders = ordersRaw.map(o => {
+      seenPhones.add(o.nomer_hp);
+      return { ...o, _source_table: 'orders' };
+    });
+
+    // 5. Tambah customers yang BELUM ada di orders (by nomer_hp)
+    const fromCust = custRaw.filter(c => !seenPhones.has(c.wa_number)).map(c => {
+      const delivered = c.tgl_delivered;
       return {
         id:              c.id,
-        tanggal:         c.tgl_order || o.tanggal || (c.created_at ? c.created_at.slice(0,10) : null),
+        tanggal:         c.tgl_order || (c.created_at ? c.created_at.slice(0,10) : null),
         nama_customer:   c.nama || '',
         nomer_hp:        c.wa_number || '',
         produk:          c.produk || '',
-        jumlah_produk:   c.qty || o.jumlah_produk || 1,
-        nomer_resi:      resi,
-        ekspedisi:       eksp,
-        status_resi:     statusResi,
-        status_resi_step: o.status_resi_step || (delivered ? 5 : (resi ? 2 : 1)),
-        harga_produk:    c.harga || o.harga_produk || 0,
-        jumlah_cod:      o.jumlah_cod || c.harga || 0,
+        jumlah_produk:   c.qty || 1,
+        nomer_resi:      c.no_resi || '',
+        ekspedisi:       c.ekspedisi || '',
+        status_resi:     delivered ? 'SAMPAI' : (c.no_resi ? 'DIKIRIM' : 'MENUNGGU_RESI'),
+        status_resi_step: delivered ? 5 : (c.no_resi ? 2 : 1),
+        harga_produk:    c.harga || 0,
+        jumlah_cod:      c.harga || 0,
         alamat:          (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.jalan || '') : (c.alamat || ''),
         kelurahan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kelurahan || '') : '',
         kecamatan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kecamatan || '') : '',
         kabupaten:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kabupaten || '') : '',
         provinsi:        (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.provinsi || '') : '',
         tgl_delivered:   delivered,
-        last_tracked_at: o.last_tracked_at || null,
+        last_tracked_at: null,
         created_at:      c.created_at,
         updated_at:      c.updated_at,
         product_id:      c.product_id,
-        cs:              o.cs || '',
-        ongkir:          o.ongkir || 0,
-        potongan_ongkir: o.potongan_ongkir || 0,
-        admin:           o.admin || 0,
-        potongan_admin:  o.potongan_admin || 0,
-        payment:         o.payment || '',
-        promo:           o.promo || '',
-        keluhan:         c.catatan || o.keluhan || '',
-        adv:             o.adv || '',
+        cs:              '',
+        ongkir:          0,
+        potongan_ongkir: 0,
+        admin:           0,
+        potongan_admin:  0,
+        payment:         '',
+        promo:           '',
+        keluhan:         c.catatan || '',
+        adv:             '',
         _source_table:   'customers',
       };
     });
+
+    // 6. Gabung: orders dulu (lengkap), lalu customers sisanya
+    allOrders = [...fromOrders, ...fromCust];
     updateStats();
     loadCsFilter();
     renderTable();
