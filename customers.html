@@ -563,7 +563,58 @@ async function loadOrders() {
   try {
     const prodId = window.__activeProductFilter;
     const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
-    allOrders = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&order=tanggal.desc,created_at.desc&select=*`);
+
+    // 1. Coba baca dari orders (sumber utama, punya detail lengkap)
+    let orders = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&order=tanggal.desc,created_at.desc&select=*`);
+
+    // 2. Baca juga dari customers (fallback kalau orders kosong/sedikit)
+    const custs = await sbGet('customers', `user_id=eq.${currentUser.id}${prodQ}&source=eq.import&order=created_at.desc&select=*`);
+
+    if (orders.length >= custs.length) {
+      // Orders lengkap, pakai orders aja
+      allOrders = orders;
+    } else {
+      // Orders hilang/sedikit — gabungkan: orders sebagai utama, customers sebagai fallback
+      // Buat index nomor HP dari orders yang sudah ada
+      const orderPhones = new Set(orders.map(o => (o.nomer_hp||'').replace(/\D/g,'')));
+
+      // Map customers yang BELUM ada di orders → format mirip orders
+      const custMapped = custs
+        .filter(c => !orderPhones.has((c.wa_number||'').replace(/\D/g,'')))
+        .map(c => {
+          const alamat = c.alamat || {};
+          return {
+            id:            c.id,
+            user_id:       c.user_id,
+            product_id:    c.product_id,
+            tanggal:       c.tgl_order || (c.created_at ? c.created_at.slice(0,10) : null),
+            cs:            null,
+            nama_customer: c.nama || '',
+            nomer_hp:      c.wa_number || '',
+            produk:        c.produk || '',
+            jumlah_produk: c.qty || 1,
+            nomer_resi:    c.no_resi || null,
+            ekspedisi:     c.ekspedisi || null,
+            jumlah_cod:    0,
+            harga_produk:  c.harga || 0,
+            alamat:        alamat.jalan || '',
+            kelurahan:     alamat.kelurahan || null,
+            kecamatan:     alamat.kecamatan || null,
+            kabupaten:     alamat.kabupaten || null,
+            provinsi:      alamat.provinsi || null,
+            status_resi:   c.status_resi || (c.tgl_delivered ? 'SAMPAI' : (c.no_resi ? 'DIKIRIM' : 'MENUNGGU_RESI')),
+            tgl_delivered: c.tgl_delivered || null,
+            created_at:    c.created_at,
+            updated_at:    c.updated_at,
+            _from_customers: true,
+          };
+        });
+
+      allOrders = [...orders, ...custMapped];
+      // Sort by tanggal desc
+      allOrders.sort((a,b) => (b.tanggal||b.created_at||'').localeCompare(a.tanggal||a.created_at||''));
+    }
+
     updateStats();
     loadCsFilter();
     renderTable();
