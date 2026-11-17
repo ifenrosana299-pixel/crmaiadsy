@@ -559,40 +559,55 @@ async function loadOrders() {
     const prodQ  = prodId ? `&product_id=eq.${prodId}` : '';
     // Baca dari tabel customers (source=import) — data utama ada di sini
     const raw = await sbGet('customers', `user_id=eq.${currentUser.id}&source=eq.import${prodQ}&order=created_at.desc&select=*`);
-    // Map kolom customers → format orders supaya renderTable tetap jalan
-    allOrders = raw.map(c => ({
-      id:              c.id,
-      tanggal:         c.tgl_order || (c.created_at ? c.created_at.slice(0,10) : null),
-      nama_customer:   c.nama || '',
-      nomer_hp:        c.wa_number || '',
-      produk:          c.produk || '',
-      jumlah_produk:   c.qty || 1,
-      nomer_resi:      c.no_resi || '',
-      ekspedisi:       c.ekspedisi || '',
-      status_resi:     c.tgl_delivered ? 'SAMPAI' : (c.no_resi ? 'DIKIRIM' : 'MENUNGGU_RESI'),
-      status_resi_step: c.tgl_delivered ? 5 : (c.no_resi ? 2 : 1),
-      harga_produk:    c.harga || 0,
-      jumlah_cod:      c.harga || 0,
-      alamat:          (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.jalan || '') : (c.alamat || ''),
-      kelurahan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kelurahan || '') : '',
-      kecamatan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kecamatan || '') : '',
-      kabupaten:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kabupaten || '') : '',
-      provinsi:        (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.provinsi || '') : '',
-      tgl_delivered:   c.tgl_delivered,
-      last_tracked_at: null,
-      created_at:      c.created_at,
-      updated_at:      c.updated_at,
-      product_id:      c.product_id,
-      cs:              '',
-      ongkir:          0,
-      potongan_ongkir: 0,
-      admin:           0,
-      potongan_admin:  0,
-      payment:         '',
-      promo:           '',
-      keluhan:         c.catatan || '',
-      _source_table:   'customers',  // marker internal
-    }));
+
+    // Ambil data orders untuk enrich resi/tracking/harga
+    const ordersRaw = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&select=nomer_hp,nomer_resi,ekspedisi,status_resi,status_resi_step,last_tracked_at,tgl_delivered,cs,jumlah_cod,harga_produk,ongkir,potongan_ongkir,admin,potongan_admin,payment,promo,adv,keluhan,tanggal,jumlah_produk`).catch(() => []);
+    // Index orders by nomer_hp untuk lookup cepat
+    const orderByPhone = {};
+    ordersRaw.forEach(o => { orderByPhone[o.nomer_hp] = o; });
+
+    // Map kolom customers → format orders, enrich dari orders table
+    allOrders = raw.map(c => {
+      const o = orderByPhone[c.wa_number] || {}; // data dari orders (kalau ada)
+      const resi = c.no_resi || o.nomer_resi || '';
+      const eksp = c.ekspedisi || o.ekspedisi || '';
+      const delivered = c.tgl_delivered || o.tgl_delivered;
+      const statusResi = o.status_resi || (delivered ? 'SAMPAI' : (resi ? 'DIKIRIM' : 'MENUNGGU_RESI'));
+      return {
+        id:              c.id,
+        tanggal:         c.tgl_order || o.tanggal || (c.created_at ? c.created_at.slice(0,10) : null),
+        nama_customer:   c.nama || '',
+        nomer_hp:        c.wa_number || '',
+        produk:          c.produk || '',
+        jumlah_produk:   c.qty || o.jumlah_produk || 1,
+        nomer_resi:      resi,
+        ekspedisi:       eksp,
+        status_resi:     statusResi,
+        status_resi_step: o.status_resi_step || (delivered ? 5 : (resi ? 2 : 1)),
+        harga_produk:    c.harga || o.harga_produk || 0,
+        jumlah_cod:      o.jumlah_cod || c.harga || 0,
+        alamat:          (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.jalan || '') : (c.alamat || ''),
+        kelurahan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kelurahan || '') : '',
+        kecamatan:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kecamatan || '') : '',
+        kabupaten:       (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.kabupaten || '') : '',
+        provinsi:        (typeof c.alamat === 'object' && c.alamat) ? (c.alamat.provinsi || '') : '',
+        tgl_delivered:   delivered,
+        last_tracked_at: o.last_tracked_at || null,
+        created_at:      c.created_at,
+        updated_at:      c.updated_at,
+        product_id:      c.product_id,
+        cs:              o.cs || '',
+        ongkir:          o.ongkir || 0,
+        potongan_ongkir: o.potongan_ongkir || 0,
+        admin:           o.admin || 0,
+        potongan_admin:  o.potongan_admin || 0,
+        payment:         o.payment || '',
+        promo:           o.promo || '',
+        keluhan:         c.catatan || o.keluhan || '',
+        adv:             o.adv || '',
+        _source_table:   'customers',
+      };
+    });
     updateStats();
     loadCsFilter();
     renderTable();
