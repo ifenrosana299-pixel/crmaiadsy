@@ -560,11 +560,11 @@ async function loadOrders() {
     // Baca dari tabel customers (source=import) — data utama ada di sini
     const raw = await sbGet('customers', `user_id=eq.${currentUser.id}&source=eq.import${prodQ}&order=created_at.desc&select=*`);
 
-    // Ambil data orders untuk enrich resi/tracking/harga
-    const ordersRaw = await sbGet('orders', `user_id=eq.${currentUser.id}${prodQ}&select=nomer_hp,nomer_resi,ekspedisi,status_resi,status_resi_step,last_tracked_at,tgl_delivered,cs,jumlah_cod,harga_produk,ongkir,potongan_ongkir,admin,potongan_admin,payment,promo,adv,keluhan,tanggal,jumlah_produk`).catch(() => []);
+    // Ambil data orders untuk enrich resi/tracking/harga (TANPA filter produk — biar match cross-product)
+    const ordersRaw = await sbGet('orders', `user_id=eq.${currentUser.id}&select=nomer_hp,nomer_resi,ekspedisi,status_resi,status_resi_step,last_tracked_at,tgl_delivered,cs,jumlah_cod,harga_produk,ongkir,potongan_ongkir,admin,potongan_admin,payment,promo,adv,keluhan,tanggal,jumlah_produk`).catch(() => []);
     // Index orders by nomer_hp untuk lookup cepat
     const orderByPhone = {};
-    ordersRaw.forEach(o => { orderByPhone[o.nomer_hp] = o; });
+    ordersRaw.forEach(o => { if (o.nomer_hp) orderByPhone[o.nomer_hp] = o; });
 
     // Map kolom customers → format orders, enrich dari orders table
     allOrders = raw.map(c => {
