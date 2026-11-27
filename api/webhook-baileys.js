@@ -585,12 +585,34 @@ async function saveMessage(conversationId, role, isi, wamid = null) {
   return sbPost('conv_messages', payload);
 }
 
+/* ── RESOLVE AI ENDPOINT — product-level → user-level fallback ── */
+const MWAPI_BASE   = 'https://api.mwapi.dev';
+const FABLEAI_BASE = 'https://api.fableaiapi.com';
+const ANTHROPIC_BASE = 'https://api.anthropic.com';
+const PROVIDER_BASE = { mwapi: MWAPI_BASE, fableai: FABLEAI_BASE };
+
+function resolveAI(product, userAnthropicKey) {
+  if (product?.ai_api_key) {
+    const base = PROVIDER_BASE[product.ai_provider] || ANTHROPIC_BASE;
+    return { key: product.ai_api_key, base };
+  }
+  if (product?.anthropic_key) {
+    const base = PROVIDER_BASE[product.ai_provider] || ANTHROPIC_BASE;
+    return { key: product.anthropic_key, base };
+  }
+  if (userAnthropicKey) {
+    return { key: userAnthropicKey, base: ANTHROPIC_BASE };
+  }
+  return { key: ANTHROPIC_KEY, base: ANTHROPIC_BASE };
+}
+
 /* ── CALL CLAUDE ──────────────────────────────────────────── */
-async function callClaude(systemPrompt, messages, model = 'claude-sonnet-4-6', apiKey = null) {
+async function callClaude(systemPrompt, messages, model = 'claude-sonnet-4-6', apiKey = null, baseUrl = null) {
   const key = apiKey || ANTHROPIC_KEY;
   if (!key) throw new Error('ANTHROPIC_KEY belum diset');
+  const base = baseUrl || ANTHROPIC_BASE;
 
-  const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+  const res = await fetchWithTimeout(`${base}/v1/messages`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -677,15 +699,16 @@ function extractProposedWilayah(aiMsg) {
 // extractConfirmedWilayah dihapus — pakai [WILAYAH_OK:] marker saja
 
 /* ── EXTRACT LOKASI PAKAI HAIKU (untuk reply customer setelah AI tanya alamat) ── */
-async function extractLokasiHaiku(text, apiKey) {
+async function extractLokasiHaiku(text, apiKey, baseUrl) {
   const key = apiKey || ANTHROPIC_KEY;
   if (!key) return null;
+  const base = baseUrl || ANTHROPIC_BASE;
   const prompt = `Dari teks berikut, ekstrak nama kelurahan/desa, kecamatan, dan kabupaten/kota di Indonesia jika ada.
 Teks: "${text}"
 Jawab dengan JSON saja tanpa penjelasan: {"kelurahan":"...","kecamatan":"...","kabupaten":"..."} atau null jika tidak ada nama wilayah Indonesia yang jelas.
 Isi field yang ada saja, kosongkan yang tidak disebutkan. Jangan mengarang.`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${base}/v1/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 80, messages: [{ role: 'user', content: prompt }] }),
@@ -1566,7 +1589,7 @@ module.exports = async function handler(req, res) {
     // ── Ambil rekening dari users table ───────────────────────
     const userRows = await sbGet('users', `?id=eq.${userId}&select=rekening,anthropic_key,group_jid,default_sumber&limit=1`).catch(() => []);
     const userRekening      = userRows[0]?.rekening      || null;
-    const userAnthropicKey  = product?.anthropic_key || userRows[0]?.anthropic_key || ANTHROPIC_KEY;
+    const { key: aiKey, base: aiBase } = resolveAI(product, userRows[0]?.anthropic_key);
     const userGroupJid      = product?.group_jid || userRows[0]?.group_jid || WA_GROUP_JID;
     const userDefaultSumber = userRows[0]?.default_sumber || null;
     console.log(`Produk: ${product?.nama || 'tidak diketahui'} (${sumber})`);
@@ -1688,11 +1711,11 @@ module.exports = async function handler(req, res) {
         const mediaType = `image/${imageFormat}`;
         const base64Data = mediaUrl.replace(/^data:image\/[a-z0-9]+;base64,/i, '');
 
-        const visionRes = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+        const visionRes = await fetchWithTimeout(`${aiBase}/v1/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': userAnthropicKey || ANTHROPIC_KEY,
+            'x-api-key': aiKey,
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
@@ -2087,7 +2110,7 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
       history.push({ role: 'user', content: message || '[pesan customer]' });
     }
 
-    const rawReply = await callClaude(systemPrompt, history, chatModel, userAnthropicKey);
+    const rawReply = await callClaude(systemPrompt, history, chatModel, aiKey, aiBase);
     if (!rawReply) return res.status(200).json({ ok: true, skipped: 'no_reply' });
 
     // ── Handle [REPEAT_ORDER_CONFIRMED:qty=N,bayar=X,total=Y] ─────────────────
@@ -2122,51 +2145,55 @@ Lanjutkan percakapan dari konteks FU ini. JANGAN mulai topik baru dari nol. JANG
           ? [alamatObj.jalan, alamatObj.kelurahan, alamatObj.kecamatan, alamatObj.kabupaten, alamatObj.provinsi].filter(Boolean).join(', ')
           : alamatDB;
 
-        // Insert hanya kalau belum ada pending dalam 24 jam
-        const skipInsert = existRepeat.length && ((Date.now() - new Date(existRepeat[0].created_at).getTime()) / 3600000) < 24;
-        if (!skipInsert) await sbPost('repeat_orders', {
-          user_id:         userId,
-          customer_id:     customer.id,
-          conversation_id: conversation.id,
-          product_id:      product?.id || null,
-          qty,
-          bayar:           bayar || null,
-          total_harga:     total || null,
-          alamat:          customer.alamat || null,
-          status:          'pending',
-          customer_nama:   customer.nama  || '',
-          customer_phone:  wa_number,
-          product_nama:    product?.nama  || '',
-          ekspedisi:       ekspedisiDB || null,
-        });
-        await updateConvState(conversation.id, {
-          repeat_order: true,
-          repeat_qty:   qty,
-          repeat_at:    new Date().toISOString(),
-        });
-        console.log(`[REPEAT_ORDER] Saved: ${customer.nama} × ${qty}`);
+        // Dedup: skip semua (insert + rekap + notif) kalau sudah ada pending dalam 24 jam
+        const skipDup = existRepeat.length && ((Date.now() - new Date(existRepeat[0].created_at).getTime()) / 3600000) < 24;
+        if (skipDup) {
+          console.log(`[REPEAT_ORDER] Skip semua (insert+rekap+notif): duplikat dalam 24 jam untuk ${customer.nama}`);
+        } else {
+          await sbPost('repeat_orders', {
+            user_id:         userId,
+            customer_id:     customer.id,
+            conversation_id: conversation.id,
+            product_id:      product?.id || null,
+            qty,
+            bayar:           bayar || null,
+            total_harga:     total || null,
+            alamat:          customer.alamat || null,
+            status:          'pending',
+            customer_nama:   customer.nama  || '',
+            customer_phone:  wa_number,
+            product_nama:    product?.nama  || '',
+            ekspedisi:       ekspedisiDB || null,
+          });
+          await updateConvState(conversation.id, {
+            repeat_order: true,
+            repeat_qty:   qty,
+            repeat_at:    new Date().toISOString(),
+          });
+          console.log(`[REPEAT_ORDER] Saved: ${customer.nama} × ${qty}`);
 
-        // ── Kirim rekap pesanan ke customer ──
-        const bayarLabel = bayar === 'cod' ? `COD via ${ekspedisiDB || '-'}` : bayar === 'transfer' ? 'Transfer' : '-';
-        const totalStr   = total ? `Rp ${total.toLocaleString('id-ID')}` : '-';
-        const rekap = `*Nama:* ${customer.nama || wa_number}\n*No HP:* ${wa_number}\n*Alamat Lengkap:* ${alamatStr || '-'}\n\n*Produk:* ${product?.nama || '-'}\n*Jumlah Pesanan:* ${qty} pcs\n*Pembayaran:* ${bayarLabel}\n*Total Pembayaran:* ${totalStr}\n\nTerima kasih kak sudah berbelanja lagi 😊🙏\nPesanan akan segera kami proses ya kak!`;
+          // ── Kirim rekap pesanan ke customer ──
+          const bayarLabel = bayar === 'cod' ? `COD via ${ekspedisiDB || '-'}` : bayar === 'transfer' ? 'Transfer' : '-';
+          const totalStr   = total ? `Rp ${total.toLocaleString('id-ID')}` : '-';
+          const rekap = `*Nama:* ${customer.nama || wa_number}\n*No HP:* ${wa_number}\n*Alamat Lengkap:* ${alamatStr || '-'}\n\n*Produk:* ${product?.nama || '-'}\n*Jumlah Pesanan:* ${qty} pcs\n*Pembayaran:* ${bayarLabel}\n*Total Pembayaran:* ${totalStr}\n\nTerima kasih kak sudah berbelanja lagi 😊🙏\nPesanan akan segera kami proses ya kak!`;
 
-        await sendWA(waSession, wa_number, rekap, true).catch(e => {
-          console.error('[REPEAT_ORDER] Gagal kirim rekap:', e.message);
-        });
+          await sendWA(waSession, wa_number, rekap, true).catch(e => {
+            console.error('[REPEAT_ORDER] Gagal kirim rekap:', e.message);
+          });
 
-        // Log rekap ke conv_messages
-        await sbPost('conv_messages', {
-          conversation_id: conversation.id,
-          isi: rekap,
-          role: 'ai',
-        }).catch(() => {});
+          // Log rekap ke conv_messages
+          await sbPost('conv_messages', {
+            conversation_id: conversation.id,
+            isi: rekap,
+            role: 'ai',
+          }).catch(() => {});
 
-        // Notif ke grup WA
-        if (userGroupJid) {
-          const tgl = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
-          const notif = `🔄 *REPEAT ORDER*\n\n👤 ${customer.nama || wa_number}\n📦 ${product?.nama || '-'} × ${qty}\n📍 ${alamatStr || '-'}\n💳 ${bayarLabel}\n💰 ${totalStr}\n📞 ${wa_number}\n📅 ${tgl}`;
-          await sendWA(waSession, userGroupJid, notif, true).catch(() => {});
+          // Notif ke grup WA
+          if (userGroupJid) {
+            const tgl = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+            const notif = `🔄 *REPEAT ORDER*\n\n👤 ${customer.nama || wa_number}\n📦 ${product?.nama || '-'} × ${qty}\n📍 ${alamatStr || '-'}\n💳 ${bayarLabel}\n💰 ${totalStr}\n📞 ${wa_number}\n📅 ${tgl}`;
+            await sendWA(waSession, userGroupJid, notif, true).catch(() => {});
+          }
         }
       } catch(e) {
         console.error('[REPEAT_ORDER] Error:', e.message);

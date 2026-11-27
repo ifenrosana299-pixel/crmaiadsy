@@ -5,6 +5,13 @@ const ANTHROPIC_KEY     = process.env.ANTHROPIC_KEY;
 const SUPABASE_URL      = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
+const ANTHROPIC_BASE = 'https://api.anthropic.com';
+const PROVIDER_BASE  = { mwapi: 'https://api.mwapi.dev', fableai: 'https://api.fableaiapi.com' };
+
+function resolveAIBase(product) {
+  return PROVIDER_BASE[product?.ai_provider] || ANTHROPIC_BASE;
+}
+
 /* ── FETCH WITH TIMEOUT ───────────────────────────────────── */
 async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
   const controller = new AbortController();
@@ -179,7 +186,7 @@ Tulis pesannya langsung, tanpa penjelasan.`;
       : prompt;
 
     try {
-      const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+      const response = await fetchWithTimeout(`${resolveAIBase(product)}/v1/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
@@ -224,7 +231,7 @@ Tulis pesannya langsung, tanpa penjelasan.`;
     try {
       // Fetch semua conversations untuk statistik akurat (tanpa limit)
       const conversations = await sbGet2('conversations',
-        `?user_id=eq.${userId}&product_id=eq.${productId}&select=id,status,customers(nama,id)&limit=2000`
+        `?user_id=eq.${userId}&product_id=eq.${productId}&select=id,status,customer_id,customers(nama,id)&limit=2000`
       );
       if (!conversations.length) return res.status(200).json({ ok: true, message: 'Belum ada percakapan' });
 
@@ -287,7 +294,7 @@ Balas HANYA JSON:
 {"cr_saat_ini":${crPct},"target_cr":<angka>,"ringkasan":"<1-2 kalimat>","taktik_berhasil":["<taktik1>","<taktik2>","<taktik3>"],"kesalahan_umum":["<kesalahan1>","<kesalahan2>"],"tips_baru":[{"situasi":"<kapan>","cara":"<apa>","contoh":"<kalimat>"}],"skrip_objeksi_custom":[{"objeksi":"<keberatan>","counter":"<cara respons>"}]}`;
 
       const apiKey = ANTHROPIC_KEY;
-      const cr = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+      const cr = await fetchWithTimeout(`${resolveAIBase(product)}/v1/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
@@ -324,7 +331,7 @@ Balas HANYA JSON:
     const { prompt: insightPrompt } = body;
     if (!insightPrompt) return res.status(400).json({ error: 'prompt wajib' });
     try {
-      const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+      const response = await fetchWithTimeout(`${resolveAIBase(product)}/v1/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: insightPrompt }] }),
@@ -480,7 +487,7 @@ Rules:
 - Baca seluruh konteks percakapan dan buat balasan yang RELEVAN dengan pesan terakhir${ongkirContext}`;
 
   try {
-    const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithTimeout(`${resolveAIBase(product)}/v1/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

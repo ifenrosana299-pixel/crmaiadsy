@@ -63,17 +63,24 @@ async function sendWA(sessionId, to, text, imageUrl = null) {
   return d;
 }
 
+const ANTHROPIC_BASE = 'https://api.anthropic.com';
+const PROVIDER_BASE  = { mwapi: 'https://api.mwapi.dev', fableai: 'https://api.fableaiapi.com' };
+
 async function getAnthropicKey(userId) {
   const rows = await sb('users', `id=eq.${userId}&select=anthropic_key`);
   return rows[0]?.anthropic_key || process.env.ANTHROPIC_KEY;
 }
 
+function resolveAIBase(product) {
+  return PROVIDER_BASE[product?.ai_provider] || ANTHROPIC_BASE;
+}
+
 // AI auto-vary: rephrase pesan supaya tiap customer dapat kalimat unik
-async function rephraseWithAI(text, apiKey) {
+async function rephraseWithAI(text, apiKey, baseUrl) {
   if (!apiKey || !text) return text;
   try {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({ apiKey, baseURL: baseUrl || ANTHROPIC_BASE });
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 200,
@@ -91,11 +98,11 @@ async function rephraseWithAI(text, apiKey) {
 
 // Re-engagement: ubah pesan menjadi versi yang memancing balasan
 // Untuk customer yang sudah beberapa kali tidak membalas FU
-async function reEngageWithAI(text, customer, noReplyCount, apiKey) {
+async function reEngageWithAI(text, customer, noReplyCount, apiKey, baseUrl) {
   if (!apiKey) return text;
   try {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({ apiKey, baseURL: baseUrl || ANTHROPIC_BASE });
 
     // Pilih strategi berdasarkan sudah berapa kali tidak balas
     const strategies = [
@@ -120,7 +127,7 @@ async function reEngageWithAI(text, customer, noReplyCount, apiKey) {
   }
 }
 
-async function generatePesan(rule, customer, order, apiKey, reEngage = false) {
+async function generatePesan(rule, customer, order, apiKey, reEngage = false, baseUrl = null) {
   const hari = rule.hari_sebelum_deliv ?? rule.hari_setelah_delivered ?? '';
   const templates = rule.templates || [];
 
@@ -132,9 +139,9 @@ async function generatePesan(rule, customer, order, apiKey, reEngage = false) {
     // Rephrase dulu sebelum isi variabel — supaya AI tidak mangle nilai spesifik seperti Rp{total_cod}
     let rephrased;
     if (reEngage && rawText.length > 20) {
-      rephrased = await reEngageWithAI(rawText, customer, customer.fu_no_reply_count || MAX_NO_REPLY, apiKey);
+      rephrased = await reEngageWithAI(rawText, customer, customer.fu_no_reply_count || MAX_NO_REPLY, apiKey, baseUrl);
     } else if (rawText.length > 20) {
-      rephrased = await rephraseWithAI(rawText, apiKey);
+      rephrased = await rephraseWithAI(rawText, apiKey, baseUrl);
     } else {
       rephrased = rawText;
     }
@@ -157,7 +164,7 @@ async function generatePesan(rule, customer, order, apiKey, reEngage = false) {
   // Fallback: AI generate full
   if (!apiKey) return null;
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, baseURL: baseUrl || ANTHROPIC_BASE });
 
   const prompt = reEngage
     ? `Buat 1 pesan WA singkat yang memancing balasan untuk customer ${customer.nama || 'Kak'} yang beli ${customer.produk || 'produk'} — dia sudah ${customer.fu_no_reply_count || MAX_NO_REPLY}x tidak balas pesan sebelumnya. Ini pesan reorder reminder. Buat pertanyaan yang mudah dijawab, max 2 kalimat. Balas hanya teks pesannya.`
@@ -223,13 +230,13 @@ export default async function handler(req, res) {
   const results   = { sent: 0, failed: 0, skipped: 0, skipped_timing: 0, details: [], force: forceMode };
 
   try {
-    // Reorder otomatis dihapus — terlalu banyak bug duplikasi, bikin WA kebanned
+    // Reorder otomatis via products.templates_reorder — dedup_key mencegah duplikasi
 
     const schedules = await sb('followup_schedule',
       `scheduled_date=lte.${today}&status=eq.pending` +
       `&select=*,send_after,customers(nama,wa_number,produk,product_id,optimal_send_hour,response_count,send_minute_slot,fu_status,fu_no_reply_count,fu_sent_count)` +
       `,followup_rules(nama,templates,hari_setelah_delivered,hari_sebelum_deliv,buffer_reorder_hari,tipe)` +
-      `,products(templates_reorder,wa_session_id)&limit=5000`);
+      `,products(templates_reorder,wa_session_id,ai_provider,ai_api_key)&limit=5000`);
 
     if (!schedules.length) {
       return res.json({ ...results, message: 'Tidak ada jadwal hari ini' });
@@ -342,7 +349,8 @@ export default async function handler(req, res) {
         }
 
         const reEngage = customer.fu_status === 'tidak_responsif';
-        const hasil = await generatePesan(rule, customer, order, apiKey, reEngage);
+        const prodBaseUrl = resolveAIBase(s.products);
+        const hasil = await generatePesan(rule, customer, order, apiKey, reEngage, prodBaseUrl);
         if (!hasil) {
           await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
           results.skipped++;
@@ -510,7 +518,8 @@ export default async function handler(req, res) {
             }
 
             const reEngage = customer.fu_status === 'tidak_responsif';
-            const hasil = await generatePesan(rule, customer, order, apiKey, reEngage);
+            const pelBaseUrl = resolveAIBase(s.products);
+            const hasil = await generatePesan(rule, customer, order, apiKey, reEngage, pelBaseUrl);
             if (!hasil) {
               await sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
               results.skipped++;
@@ -673,8 +682,9 @@ async function handleClosingFU(req, res) {
 
       try {
         const apiKey = await getAnthropicKey(conv.user_id);
+        const closingBaseUrl = resolveAIBase(product);
         const { default: Anthropic } = await import('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey });
+        const client = new Anthropic({ apiKey, baseURL: closingBaseUrl });
 
         const hargaInfo = product?.harga
           ? `Harga: Rp ${Number(product.harga).toLocaleString('id-ID')}`

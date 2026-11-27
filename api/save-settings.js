@@ -3,6 +3,12 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const ANTHROPIC_BASE = 'https://api.anthropic.com';
+const PROVIDER_BASE  = { mwapi: 'https://api.mwapi.dev', fableai: 'https://api.fableaiapi.com' };
+
+function resolveAIBase(provider) {
+  return PROVIDER_BASE[provider] || ANTHROPIC_BASE;
+}
 
 async function sb(table, params = '', opts = {}) {
   const url = `${SB_URL}/rest/v1/${table}${params ? '?' + params : ''}`;
@@ -20,9 +26,17 @@ async function sb(table, params = '', opts = {}) {
   try { return JSON.parse(text); } catch { return text; }
 }
 
-async function getAnthropicKey(userId) {
+async function getAIConfig(userId, productId) {
+  // Kalau ada product_id, cek provider di product dulu
+  if (productId) {
+    const prods = await sb('products', `id=eq.${productId}&select=ai_provider,ai_api_key`).catch(() => []);
+    const p = prods[0];
+    if (p?.ai_api_key) {
+      return { key: p.ai_api_key, base: resolveAIBase(p.ai_provider) };
+    }
+  }
   const rows = await sb('users', `id=eq.${userId}&select=anthropic_key`);
-  return rows[0]?.anthropic_key || process.env.ANTHROPIC_KEY;
+  return { key: rows[0]?.anthropic_key || process.env.ANTHROPIC_KEY, base: ANTHROPIC_BASE };
 }
 
 export default async function handler(req, res) {
@@ -75,9 +89,9 @@ export default async function handler(req, res) {
 
     // ---- GENERATE FU TEMPLATES ----
     if (action === 'generate-templates') {
-      const { rule_nama, hari, user_id } = body;
-      const apiKey = await getAnthropicKey(user_id);
-      const client = new Anthropic({ apiKey });
+      const { rule_nama, hari, user_id, product_id } = body;
+      const { key: apiKey, base: aiBase } = await getAIConfig(user_id, product_id);
+      const client = new Anthropic({ apiKey, baseURL: aiBase });
 
       const msg = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
@@ -113,8 +127,8 @@ Balas HANYA JSON array: ["pesan1", "pesan2", "pesan3", "pesan4", "pesan5"]`
 
     // ---- GENERATE FU PESAN (per customer) ----
     if (action === 'generate-fu-pesan') {
-      const { customer_id, rule_nama, user_id } = body;
-      const apiKey = await getAnthropicKey(user_id);
+      const { customer_id, rule_nama, user_id, product_id } = body;
+      const { key: apiKey, base: aiBase } = await getAIConfig(user_id, product_id);
 
       const [cust, rules] = await Promise.all([
         sb('customers', `id=eq.${customer_id}&select=nama,produk,tgl_delivered,catatan`),
@@ -135,7 +149,7 @@ Balas HANYA JSON array: ["pesan1", "pesan2", "pesan3", "pesan4", "pesan5"]`
       }
 
       // Fallback: generate via AI
-      const client = new Anthropic({ apiKey });
+      const client = new Anthropic({ apiKey, baseURL: aiBase });
       const msg = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 256,
@@ -156,9 +170,9 @@ Balas HANYA teks pesan WA-nya saja (tidak perlu penjelasan).`
 
     // ---- AI SUGGEST (in-chat) ----
     if (action === 'ai-suggest') {
-      const { conv_id, user_id, prompt: directPrompt } = body;
-      const apiKey = await getAnthropicKey(user_id);
-      const client = new Anthropic({ apiKey });
+      const { conv_id, user_id, product_id, prompt: directPrompt } = body;
+      const { key: apiKey, base: aiBase } = await getAIConfig(user_id, product_id);
+      const client = new Anthropic({ apiKey, baseURL: aiBase });
 
       // Kalau ada prompt langsung (dari analytics), pakai itu
       if (directPrompt) {

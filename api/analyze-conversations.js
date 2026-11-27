@@ -10,6 +10,8 @@ const SB_URL      = process.env.SUPABASE_URL;
 const SB_KEY      = process.env.SUPABASE_SERVICE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET || 'adsysukses2026';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
+const ANTHROPIC_BASE = 'https://api.anthropic.com';
+const PROVIDER_BASE  = { mwapi: 'https://api.mwapi.dev', fableai: 'https://api.fableaiapi.com' };
 
 async function sb(table, params = '', opts = {}) {
   const r = await fetch(`${SB_URL}/rest/v1/${table}${params ? '?' + params : ''}`, {
@@ -72,7 +74,7 @@ async function determineOutcome(conv, userId) {
   }
 }
 
-async function analyzeWithClaude(conversations, apiKey) {
+async function analyzeWithClaude(conversations, apiKey, baseUrl) {
   const key = apiKey || ANTHROPIC_KEY;
   if (!key) throw new Error('ANTHROPIC_KEY belum diset');
 
@@ -87,7 +89,7 @@ async function analyzeWithClaude(conversations, apiKey) {
   }).join('\n\n');
 
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: key });
+  const client = new Anthropic({ apiKey: key, baseURL: baseUrl || ANTHROPIC_BASE });
 
   const msg = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -235,7 +237,7 @@ export default async function handler(req, res) {
 
   // Auth: cron secret atau user via session
   const cronSecret = req.headers['x-cron-secret'];
-  const { user_id, limit = 30, force = false } = req.body || {};
+  const { user_id, product_id: productId, limit = 30, force = false } = req.body || {};
 
   if (cronSecret !== CRON_SECRET && !user_id) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -269,9 +271,14 @@ export default async function handler(req, res) {
       return res.json({ analyzed: 0, insights_saved: 0, message: 'Tidak ada percakapan dengan minimal 4 pesan' });
     }
 
-    // Ambil API key user
-    const userRow = await sb('users', `id=eq.${userId}&select=anthropic_key`);
-    const apiKey = userRow[0]?.anthropic_key || ANTHROPIC_KEY;
+    // Ambil API key user + product provider
+    const [userRow, prodRow] = await Promise.all([
+      sb('users', `id=eq.${userId}&select=anthropic_key`),
+      productId ? sb('products', `id=eq.${productId}&select=ai_provider,ai_api_key`).catch(() => []) : Promise.resolve([]),
+    ]);
+    const prod = prodRow[0] || {};
+    const apiKey = prod.ai_api_key || userRow[0]?.anthropic_key || ANTHROPIC_KEY;
+    const baseUrl = PROVIDER_BASE[prod.ai_provider] || ANTHROPIC_BASE;
 
     // Analisis dalam batch (maks 10 conv per Claude call)
     const batchSize = 10;
@@ -281,7 +288,7 @@ export default async function handler(req, res) {
     for (let i = 0; i < meaningful.length; i += batchSize) {
       const batch = meaningful.slice(i, i + batchSize);
       try {
-        const insights = await analyzeWithClaude(batch, apiKey);
+        const insights = await analyzeWithClaude(batch, apiKey, baseUrl);
         const saved = await upsertInsights(userId, insights);
         totalInsights += saved;
         analyzedCount += batch.length;
