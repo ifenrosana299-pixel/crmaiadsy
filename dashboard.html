@@ -828,10 +828,31 @@ async function renderInbox() {
   else if (_activeCardFilter === 'selesai')   convs = convs.filter(c => c.status === 'selesai');
 
   if (searchFilter) {
-    convs = convs.filter(c => {
+    // Cari dari cached dulu
+    const localMatch = new Set();
+    convs.forEach(c => {
       const cust = custMapCache[c.customer_id];
-      return !cust || cust.nama?.toLowerCase().includes(searchFilter) || cust.wa_number?.includes(searchFilter);
+      if (!cust || cust.nama?.toLowerCase().includes(searchFilter) || cust.wa_number?.includes(searchFilter))
+        localMatch.add(c.id);
     });
+    // Juga cari langsung di Supabase — tangkap conversation yang last_msg_at-nya stale (di luar top 300)
+    try {
+      const searchCusts = await _sbGet('customers',
+        `?user_id=eq.${userId}&or=(nama.ilike.*${encodeURIComponent(searchFilter)}*,wa_number.ilike.*${encodeURIComponent(searchFilter)}*)&select=id&limit=20`
+      );
+      if (searchCusts.length) {
+        const custIds2 = searchCusts.map(c => c.id);
+        let sq = `?user_id=eq.${userId}&customer_id=in.(${custIds2.join(',')})&order=last_msg_at.desc.nullslast&limit=50&select=*,customers(product_id,fu_status,response_count)`;
+        if (_prodFilter) sq += `&product_id=eq.${_prodFilter}`;
+        const extraConvs = await _sbGet('conversations', sq);
+        const existingIds = new Set(convs.map(c => c.id));
+        for (const ec of extraConvs) {
+          if (!existingIds.has(ec.id)) { convs.push(ec); localMatch.add(ec.id); }
+          else localMatch.add(ec.id);
+        }
+      }
+    } catch(e) { console.warn('[search] extra query gagal:', e.message); }
+    convs = convs.filter(c => localMatch.has(c.id));
   }
 
   const el = document.getElementById('conv-list');
@@ -959,6 +980,11 @@ async function renderChat() {
     `?conversation_id=eq.${activeConvId}&order=created_at.asc&limit=200&select=id,role,isi,wamid,created_at`);
   lastMsgCount = msgs.length;
   lastMsgTimestamp = msgs.length ? msgs[msgs.length - 1].created_at : null;
+
+  // Self-heal: sinkronkan last_msg_at kalau pesan terakhir lebih baru
+  if (lastMsgTimestamp && activeConv.last_msg_at && new Date(lastMsgTimestamp) > new Date(activeConv.last_msg_at)) {
+    _sbPatch('conversations', `?id=eq.${activeConvId}`, { last_msg_at: lastMsgTimestamp }).catch(()=>{});
+  }
 
   area.innerHTML = '';
   let lastDateLabel = null;
