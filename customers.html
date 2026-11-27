@@ -1332,8 +1332,8 @@ async function doImport() {
     closeImportModal();
     await loadOrders();
     // Auto-track semua yang punya resi, lalu generate jadwal FU setelah tracking selesai
-    await autoTrackPending();
-    // Generate jadwal juga untuk order tanpa resi (sebelum_deliv rules)
+    await autoTrackPending().catch(e => console.warn('[autoTrackPending]', e));
+    // SELALU generate jadwal setelah import — baik tracking sukses maupun gagal
     autoGenerateSchedules();
   } catch(e) {
     document.getElementById('import-err').textContent   = e.message;

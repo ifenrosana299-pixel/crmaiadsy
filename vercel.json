@@ -7,7 +7,8 @@
     "api/save-settings.js": { "maxDuration": 30 },
     "api/baileys-proxy.js": { "maxDuration": 30 },
     "api/config.js": { "maxDuration": 10 },
-    "api/generate-schedules.js": { "maxDuration": 30 }
+    "api/generate-schedules.js": { "maxDuration": 60 },
+    "api/generate-schedules-pelanggan.js": { "maxDuration": 60 }
   },
   "crons": [
     {
