@@ -263,17 +263,32 @@ Segera hubungi customer untuk koordinasi pengiriman ulang sebelum paket dikembal
         </div>
       </div>
 
-      <!-- ── ANTHROPIC API KEY ── -->
+      <!-- ── AI PROVIDER ── -->
       <div class="settings-section" id="sec-ai">
-        <div class="section-title">🤖 Anthropic API Key</div>
-        <div class="section-desc">API key Anthropic milikmu sendiri. Dipakai untuk semua fitur AI di CRM ini (generate FU, AI suggest, insights).</div>
+        <div class="section-title">🤖 AI Provider</div>
+        <div class="section-desc">Atur provider AI dan API key. Bisa dipakai untuk semua produk sekaligus, atau sebagai fallback kalau key produk error.</div>
         <div style="margin-top:12px">
           <div class="form-group">
+            <label>Provider</label>
+            <select id="f-ai-provider" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-size:13px">
+              <option value="">Anthropic (Default)</option>
+              <option value="mwapi">MWAPI</option>
+              <option value="fableai">FableAI</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>API Key</label>
-            <input type="password" id="f-anthropic-key" placeholder="sk-ant-api03-..." autocomplete="off" style="font-family:monospace">
+            <input type="password" id="f-anthropic-key" placeholder="sk-..." autocomplete="off" style="font-family:monospace">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg)">
+            <label style="display:flex;align-items:center;cursor:pointer;gap:8px;margin:0;flex:1">
+              <input type="checkbox" id="f-ai-global-override" style="width:16px;height:16px;cursor:pointer">
+              <span style="font-size:13px;font-weight:600">Pakai untuk semua produk</span>
+            </label>
+            <span id="ai-override-hint" style="font-size:11px;color:#64748b">OFF = fallback saja (kalau key produk error)</span>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="saveAnthropicKey()" style="flex:1">Simpan API Key</button>
+            <button class="btn btn-primary" onclick="saveAnthropicKey()" style="flex:1">Simpan AI Settings</button>
             <button class="btn" onclick="document.getElementById('f-anthropic-key').type = document.getElementById('f-anthropic-key').type === 'password' ? 'text' : 'password'" style="padding:8px 14px">👁</button>
           </div>
           <div id="anthropic-key-status" style="font-size:12px;color:#64748b;margin-top:8px"></div>
@@ -651,35 +666,55 @@ async function saveRekening() {
   } catch(e) { toastLocal('❌ Gagal simpan: ' + e.message); }
 }
 
-// ── AI KEY ───────────────────────────────────────────────
+// ── AI PROVIDER ───────────────────────────────────────────────
 async function loadAnthropicKey() {
   const userId = getUser()?.id;
   try {
-    const data = await sbGet('users', `id=eq.${userId}&select=anthropic_key&limit=1`);
-    const key = data[0]?.anthropic_key || '';
-    const el = document.getElementById('f-anthropic-key');
-    if (el) {
-      el.value = key;
-      document.getElementById('anthropic-key-status').textContent = key ? '✅ API key tersimpan' : 'Belum ada API key — bot pakai key default sistem';
-    }
+    const data = await sbGet('users', `id=eq.${userId}&select=anthropic_key,ai_provider,ai_api_key,ai_global_override&limit=1`);
+    const u = data[0] || {};
+    // API key — prioritas: ai_api_key (baru) > anthropic_key (lama)
+    const key = u.ai_api_key || u.anthropic_key || '';
+    const provider = u.ai_provider || '';
+    const override = u.ai_global_override || false;
+    document.getElementById('f-anthropic-key').value = key;
+    document.getElementById('f-ai-provider').value = provider;
+    document.getElementById('f-ai-global-override').checked = override;
+    updateOverrideHint();
+    const provLabel = provider ? provider.toUpperCase() : 'Anthropic';
+    document.getElementById('anthropic-key-status').textContent = key
+      ? `✅ ${provLabel} API key tersimpan${override ? ' — aktif untuk semua produk' : ' — fallback mode'}`
+      : 'Belum ada API key — bot pakai key default sistem';
   } catch(e) { console.error('loadAnthropicKey:', e.message); }
 }
+
+function updateOverrideHint() {
+  const on = document.getElementById('f-ai-global-override').checked;
+  document.getElementById('ai-override-hint').textContent = on
+    ? 'ON = key ini dipakai semua produk (override key produk)'
+    : 'OFF = fallback saja (kalau key produk error)';
+}
+document.getElementById('f-ai-global-override')?.addEventListener('change', updateOverrideHint);
 
 async function saveAnthropicKey() {
   const userId = getUser()?.id;
   const key = document.getElementById('f-anthropic-key').value.trim();
+  const provider = document.getElementById('f-ai-provider').value;
+  const override = document.getElementById('f-ai-global-override').checked;
   const status = document.getElementById('anthropic-key-status');
   status.textContent = 'Menyimpan...';
   try {
     const res = await fetch('/api/save-settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'save-ai-key', user_id: userId, anthropic_key: key }),
+      body: JSON.stringify({ action: 'save-ai-key', user_id: userId, anthropic_key: key, ai_provider: provider, ai_global_override: override }),
     });
     const json = await res.json();
     if (!res.ok || json.error) throw new Error(json.error || 'Gagal');
-    status.textContent = key ? '✅ API key berhasil disimpan' : '✅ API key dihapus, pakai key default';
-    toastLocal(key ? '✅ Anthropic API key tersimpan' : '✅ API key dihapus');
+    const provLabel = provider ? provider.toUpperCase() : 'Anthropic';
+    status.textContent = key
+      ? `✅ ${provLabel} API key berhasil disimpan${override ? ' — aktif untuk semua produk' : ' — fallback mode'}`
+      : '✅ API key dihapus, pakai key default';
+    toastLocal(key ? `✅ ${provLabel} AI settings tersimpan` : '✅ API key dihapus');
   } catch(e) { status.textContent = '⚠️ Gagal: ' + e.message; }
 }
 
