@@ -27,16 +27,28 @@ async function sb(table, params = '', opts = {}) {
 }
 
 async function getAIConfig(userId, productId) {
-  // Kalau ada product_id, cek provider di product dulu
+  // Ambil user settings dulu
+  const rows = await sb('users', `id=eq.${userId}&select=anthropic_key,ai_api_key,ai_provider,ai_global_override`);
+  const user = rows[0] || {};
+  const userKey  = user.ai_api_key || user.anthropic_key || process.env.ANTHROPIC_KEY;
+  const userBase = resolveAIBase(user.ai_provider);
+
+  // Kalau global override ON → langsung pakai user settings untuk semua produk
+  if (user.ai_global_override && userKey) {
+    return { key: userKey, base: userBase };
+  }
+
+  // Cek product-level provider
   if (productId) {
     const prods = await sb('products', `id=eq.${productId}&select=ai_provider,ai_api_key`).catch(() => []);
     const p = prods[0];
     if (p?.ai_api_key) {
-      return { key: p.ai_api_key, base: resolveAIBase(p.ai_provider) };
+      return { key: p.ai_api_key, base: resolveAIBase(p.ai_provider), fallbackKey: userKey, fallbackBase: userBase };
     }
   }
-  const rows = await sb('users', `id=eq.${userId}&select=anthropic_key`);
-  return { key: rows[0]?.anthropic_key || process.env.ANTHROPIC_KEY, base: ANTHROPIC_BASE };
+
+  // Fallback ke user key
+  return { key: userKey, base: userBase };
 }
 
 export default async function handler(req, res) {
@@ -50,9 +62,10 @@ export default async function handler(req, res) {
 
     // ---- SAVE AI KEY ----
     if (action === 'save-ai-key') {
-      const { user_id, anthropic_key } = body;
+      const { user_id, anthropic_key, ai_provider, ai_global_override } = body;
       if (!user_id) return res.status(400).json({ error: 'user_id wajib' });
-      await sb('users', `id=eq.${user_id}`, { method: 'PATCH', body: { anthropic_key } });
+      const patch = { anthropic_key, ai_api_key: anthropic_key, ai_provider: ai_provider || null, ai_global_override: !!ai_global_override };
+      await sb('users', `id=eq.${user_id}`, { method: 'PATCH', body: patch });
       return res.json({ ok: true });
     }
 

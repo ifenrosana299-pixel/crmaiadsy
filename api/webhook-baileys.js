@@ -591,17 +591,22 @@ const FABLEAI_BASE = 'https://api.fableaiapi.com';
 const ANTHROPIC_BASE = 'https://api.anthropic.com';
 const PROVIDER_BASE = { mwapi: MWAPI_BASE, fableai: FABLEAI_BASE };
 
-function resolveAI(product, userAnthropicKey) {
+function resolveAI(product, userRow) {
+  const userKey  = userRow?.ai_api_key || userRow?.anthropic_key || null;
+  const userBase = PROVIDER_BASE[userRow?.ai_provider] || ANTHROPIC_BASE;
+
+  // Global override ON → pakai user settings untuk semua produk
+  if (userRow?.ai_global_override && userKey) {
+    return { key: userKey, base: userBase };
+  }
+  // Product-level provider
   if (product?.ai_api_key) {
     const base = PROVIDER_BASE[product.ai_provider] || ANTHROPIC_BASE;
     return { key: product.ai_api_key, base };
   }
-  if (product?.anthropic_key) {
-    const base = PROVIDER_BASE[product.ai_provider] || ANTHROPIC_BASE;
-    return { key: product.anthropic_key, base };
-  }
-  if (userAnthropicKey) {
-    return { key: userAnthropicKey, base: ANTHROPIC_BASE };
+  // User-level fallback
+  if (userKey) {
+    return { key: userKey, base: userBase };
   }
   return { key: ANTHROPIC_KEY, base: ANTHROPIC_BASE };
 }
@@ -1526,17 +1531,28 @@ module.exports = async function handler(req, res) {
         console.log(`[from_me] Customer ${wa_number} tidak ditemukan — skip`);
         return res.status(200).json({ ok: true, skipped: 'from_me_no_customer' });
       }
-      // Cari conversation aktif
-      const fmConvs = await sbGet('conversations',
+      // Cari conversation (termasuk selesai — CS bisa chat ke siapapun dari HP)
+      let fmConvs = await sbGet('conversations',
         `?user_id=eq.${fmUserId}&customer_id=eq.${fmCust[0].id}&status=neq.selesai&order=created_at.desc&limit=1`
       ).catch(() => []);
+      // Fallback: cari conversation selesai juga
       if (!fmConvs.length) {
-        console.log(`[from_me] Tidak ada conversation aktif untuk ${wa_number} — skip`);
+        fmConvs = await sbGet('conversations',
+          `?user_id=eq.${fmUserId}&customer_id=eq.${fmCust[0].id}&order=created_at.desc&limit=1`
+        ).catch(() => []);
+      }
+      if (!fmConvs.length) {
+        console.log(`[from_me] Tidak ada conversation untuk ${wa_number} — skip`);
         return res.status(200).json({ ok: true, skipped: 'from_me_no_conv' });
       }
       const fmConv = fmConvs[0];
-      // Simpan pesan sebagai CS + update last_msg_at bersamaan
+      // Simpan pesan sebagai CS + update last_msg_at + reopen kalau selesai
       const fmNow = new Date().toISOString();
+      const convPatch = { last_msg_at: fmNow };
+      if (fmConv.status === 'selesai') {
+        convPatch.status = 'diproses';
+        console.log(`[from_me] Reopen conv ${fmConv.id} dari selesai → diproses`);
+      }
       await Promise.all([
         sbPost('conv_messages', {
           conversation_id: fmConv.id,
@@ -1544,9 +1560,8 @@ module.exports = async function handler(req, res) {
           isi: message,
           wamid: msgId || null,
         }),
-        sbPatch('conversations', `?id=eq.${fmConv.id}`, {
-          last_msg_at: fmNow,
-        }).catch(e => console.warn(`[from_me] last_msg_at update gagal:`, e.message)),
+        sbPatch('conversations', `?id=eq.${fmConv.id}`, convPatch)
+          .catch(e => console.warn(`[from_me] conv update gagal:`, e.message)),
       ]);
       console.log(`[from_me] Tersimpan di conv ${fmConv.id} sebagai CS`);
       return res.status(200).json({ ok: true, from_me: true, saved: true });
@@ -1589,9 +1604,9 @@ module.exports = async function handler(req, res) {
     const waSession = product?.wa_session_id || userId;
 
     // ── Ambil rekening dari users table ───────────────────────
-    const userRows = await sbGet('users', `?id=eq.${userId}&select=rekening,anthropic_key,group_jid,default_sumber&limit=1`).catch(() => []);
+    const userRows = await sbGet('users', `?id=eq.${userId}&select=rekening,anthropic_key,ai_api_key,ai_provider,ai_global_override,group_jid,default_sumber&limit=1`).catch(() => []);
     const userRekening      = userRows[0]?.rekening      || null;
-    const { key: aiKey, base: aiBase } = resolveAI(product, userRows[0]?.anthropic_key);
+    const { key: aiKey, base: aiBase } = resolveAI(product, userRows[0]);
     const userGroupJid      = product?.group_jid || userRows[0]?.group_jid || WA_GROUP_JID;
     const userDefaultSumber = userRows[0]?.default_sumber || null;
     console.log(`Produk: ${product?.nama || 'tidak diketahui'} (${sumber})`);

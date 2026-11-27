@@ -66,13 +66,35 @@ async function sendWA(sessionId, to, text, imageUrl = null) {
 const ANTHROPIC_BASE = 'https://api.anthropic.com';
 const PROVIDER_BASE  = { mwapi: 'https://api.mwapi.dev', fableai: 'https://api.fableaiapi.com' };
 
-async function getAnthropicKey(userId) {
-  const rows = await sb('users', `id=eq.${userId}&select=anthropic_key`);
-  return rows[0]?.anthropic_key || process.env.ANTHROPIC_KEY;
+// Cache user AI config per request (di-reset tiap invocation)
+let _userAICache = {};
+
+async function getUserAIConfig(userId) {
+  if (_userAICache[userId]) return _userAICache[userId];
+  const rows = await sb('users', `id=eq.${userId}&select=anthropic_key,ai_api_key,ai_provider,ai_global_override`);
+  const u = rows[0] || {};
+  _userAICache[userId] = {
+    key: u.ai_api_key || u.anthropic_key || process.env.ANTHROPIC_KEY,
+    provider: u.ai_provider || null,
+    base: PROVIDER_BASE[u.ai_provider] || ANTHROPIC_BASE,
+    override: !!u.ai_global_override,
+  };
+  return _userAICache[userId];
 }
 
-function resolveAIBase(product) {
-  return PROVIDER_BASE[product?.ai_provider] || ANTHROPIC_BASE;
+async function getAnthropicKey(userId) {
+  const cfg = await getUserAIConfig(userId);
+  return cfg.key;
+}
+
+function resolveAIBase(product, userCfg) {
+  // Kalau user global override ON → pakai user settings
+  if (userCfg?.override && userCfg?.key) return userCfg.base;
+  // Kalau produk punya provider sendiri → pakai produk
+  if (product?.ai_provider) return PROVIDER_BASE[product.ai_provider] || ANTHROPIC_BASE;
+  // Fallback ke user settings
+  if (userCfg) return userCfg.base;
+  return ANTHROPIC_BASE;
 }
 
 // AI auto-vary: rephrase pesan supaya tiap customer dapat kalimat unik
@@ -216,6 +238,7 @@ function randomDelay() {
 }
 
 export default async function handler(req, res) {
+  _userAICache = {}; // Reset cache tiap invocation
   const secret = req.headers['x-cron-secret'];
   if (secret !== CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
   if (req.method !== 'POST') return res.status(405).end();
@@ -333,7 +356,8 @@ export default async function handler(req, res) {
       }
 
       try {
-        const apiKey = await getAnthropicKey(s.user_id);
+        const userAI = await getUserAIConfig(s.user_id);
+        const apiKey = userAI.key;
 
         const orders = await sb('orders',
           `nomer_hp=eq.${customer.wa_number}&user_id=eq.${s.user_id}&order=created_at.desc&limit=1&select=produk,nomer_resi,ekspedisi,status_resi,alamat,jumlah_cod`
@@ -349,7 +373,7 @@ export default async function handler(req, res) {
         }
 
         const reEngage = customer.fu_status === 'tidak_responsif';
-        const prodBaseUrl = resolveAIBase(s.products);
+        const prodBaseUrl = resolveAIBase(s.products, userAI);
         const hasil = await generatePesan(rule, customer, order, apiKey, reEngage, prodBaseUrl);
         if (!hasil) {
           await sb('followup_schedule', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
@@ -504,7 +528,8 @@ export default async function handler(req, res) {
           }
 
           try {
-            const apiKey = await getAnthropicKey(s.user_id);
+            const pelUserAI = await getUserAIConfig(s.user_id);
+            const apiKey = pelUserAI.key;
 
             const orders = await sb('orders',
               `nomer_hp=eq.${customer.wa_number}&user_id=eq.${s.user_id}&order=created_at.desc&limit=1&select=produk,nomer_resi,ekspedisi,status_resi,alamat,jumlah_cod`
@@ -518,7 +543,7 @@ export default async function handler(req, res) {
             }
 
             const reEngage = customer.fu_status === 'tidak_responsif';
-            const pelBaseUrl = resolveAIBase(s.products);
+            const pelBaseUrl = resolveAIBase(s.products, pelUserAI);
             const hasil = await generatePesan(rule, customer, order, apiKey, reEngage, pelBaseUrl);
             if (!hasil) {
               await sb('followup_schedule_pelanggan', `id=eq.${s.id}`, { method: 'PATCH', body: { status: 'skipped' } });
@@ -681,8 +706,9 @@ async function handleClosingFU(req, res) {
       const tone = toneMap[fuCount] || toneMap[4];
 
       try {
-        const apiKey = await getAnthropicKey(conv.user_id);
-        const closingBaseUrl = resolveAIBase(product);
+        const closingUserAI = await getUserAIConfig(conv.user_id);
+        const apiKey = closingUserAI.key;
+        const closingBaseUrl = resolveAIBase(product, closingUserAI);
         const { default: Anthropic } = await import('@anthropic-ai/sdk');
         const client = new Anthropic({ apiKey, baseURL: closingBaseUrl });
 
