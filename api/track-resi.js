@@ -1,4 +1,27 @@
+// api/track-resi.js
+// GET  /api/track-resi?resi=&ekspedisi=  → polling status dari Mengantar
+// POST /api/track-resi (x-webhook-secret) → terima forward dari akuisisitracking webhook
+
 const { trackShipment, trackPos } = require('../lib/mengantar');
+
+const SB_URL = process.env.SUPABASE_URL;
+const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const WEBHOOK_SECRET = process.env.TRACKING_WEBHOOK_SECRET || 'adsy-crm-track-2026';
+
+async function sb(table, params = '', opts = {}) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}${params ? '?' + params : ''}`, {
+    method: opts.method || 'GET',
+    headers: {
+      apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: opts.prefer || (opts.method === 'POST' ? 'return=representation' : 'return=minimal')
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const text = await r.text();
+  if (!r.ok) throw new Error(text);
+  try { return JSON.parse(text); } catch { return text; }
+}
 
 const COURIER_MAP = {
   'JNE': 'JNE', 'JNT': 'JT', 'JT': 'JT', 'J&T': 'JT',
@@ -80,11 +103,85 @@ function normalizeCourier(raw) {
   return COURIER_MAP[key] || raw;
 }
 
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+// ── POST: webhook receiver dari akuisisitracking ─────────────────────────────
+async function handleWebhook(req, res) {
+  const secret = req.headers['x-webhook-secret'];
+  if (secret !== WEBHOOK_SECRET) {
+    return res.status(401).json({ error: 'Invalid secret' });
+  }
 
+  const { resi, stage, step, ekspedisi, status_category } = req.body || {};
+  if (!resi || !stage) {
+    return res.status(400).json({ error: 'resi dan stage wajib' });
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    // Cari orders yang punya resi ini
+    const orders = await sb('orders',
+      `nomer_resi=eq.${encodeURIComponent(resi)}&select=id,user_id,product_id,status_resi,nomer_hp`
+    );
+
+    if (!orders.length) {
+      return res.json({ ok: true, matched: 0, message: 'Resi tidak ditemukan di CRM' });
+    }
+
+    // Update semua order yang match
+    const patch = {
+      status_resi: stage,
+      status_resi_step: step || null,
+      last_tracked_at: now,
+    };
+    if (stage === 'SAMPAI') patch.tgl_delivered = now.slice(0, 10);
+    if (ekspedisi) patch.ekspedisi = ekspedisi;
+
+    await sb('orders', `nomer_resi=eq.${encodeURIComponent(resi)}`, {
+      method: 'PATCH', body: patch
+    });
+
+    // Update customers juga
+    for (const order of orders) {
+      if (!order.nomer_hp) continue;
+      const custPatch = { updated_at: now };
+      if (stage === 'SAMPAI') custPatch.tgl_delivered = now.slice(0, 10);
+      await sb('customers',
+        `wa_number=eq.${encodeURIComponent(order.nomer_hp)}&user_id=eq.${order.user_id}`,
+        { method: 'PATCH', body: custPatch }
+      ).catch(() => {});
+    }
+
+    // Kalau SAMPAI → trigger generate-schedules
+    if (stage === 'SAMPAI') {
+      const userIds = [...new Set(orders.map(o => o.user_id).filter(Boolean))];
+      const baseUrl = req.headers['x-forwarded-proto'] && req.headers['x-forwarded-host']
+        ? `${req.headers['x-forwarded-proto']}://${req.headers['x-forwarded-host']}`
+        : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+
+      if (baseUrl) {
+        for (const uid of userIds) {
+          const pids = [...new Set(orders.filter(o => o.user_id === uid).map(o => o.product_id).filter(Boolean))];
+          for (const pid of (pids.length ? pids : [null])) {
+            fetch(`${baseUrl}/api/generate-schedules`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: uid, product_id: pid })
+            }).catch(e => console.warn('[track-resi webhook] generate-schedules failed:', e.message));
+          }
+        }
+      }
+    }
+
+    console.log(`[track-resi webhook] ${resi} → ${stage} (${status_category || '-'}), matched ${orders.length}`);
+    return res.json({ ok: true, resi, stage, matched: orders.length });
+  } catch (e) {
+    console.error('[track-resi webhook] Error:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+// ── GET: polling status dari Mengantar ────────────────────────────────────────
+async function handleGet(req, res) {
   const { resi, ekspedisi } = req.query;
   if (!resi || !ekspedisi) {
     return res.status(400).json({ error: 'resi and ekspedisi required' });
@@ -107,4 +204,14 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'POST') return handleWebhook(req, res);
+  if (req.method === 'GET')  return handleGet(req, res);
+  return res.status(405).json({ error: 'Method not allowed' });
 };
