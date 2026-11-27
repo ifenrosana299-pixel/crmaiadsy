@@ -319,14 +319,28 @@ export default async function handler(req, res) {
     }
 
     // 8. Insert batch — DB UNIQUE constraint on dedup_key prevents duplicates
-    // resolution=ignore-duplicates → kalau dedup_key sudah ada, skip (no error)
+    // on_conflict=dedup_key + resolution=ignore-duplicates → skip yang sudah ada
     let created = 0;
     for (let i = 0; i < toInsert.length; i += 200) {
-      await sb('followup_schedule', '', {
-        method: 'POST', prefer: 'return=minimal,resolution=ignore-duplicates',
-        body: toInsert.slice(i, i + 200)
-      });
-      created += Math.min(200, toInsert.length - i);
+      try {
+        await sb('followup_schedule', 'on_conflict=dedup_key', {
+          method: 'POST', prefer: 'return=minimal,resolution=ignore-duplicates',
+          body: toInsert.slice(i, i + 200)
+        });
+        created += toInsert.slice(i, i + 200).length;
+      } catch (e) {
+        console.warn('[generate-schedules] batch insert error:', e.message);
+        // Fallback: insert satu-satu supaya yang baru tetap masuk
+        for (const row of toInsert.slice(i, i + 200)) {
+          try {
+            await sb('followup_schedule', 'on_conflict=dedup_key', {
+              method: 'POST', prefer: 'return=minimal,resolution=ignore-duplicates',
+              body: row
+            });
+            created++;
+          } catch { /* duplicate — skip */ }
+        }
+      }
     }
 
     const skipped = Object.values(skipReasons).reduce((a, b) => a + b, 0);
