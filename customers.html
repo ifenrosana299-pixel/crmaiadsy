@@ -820,16 +820,17 @@ async function trackAllPending() {
 }
 
 async function autoTrackPending() {
-  // Auto-track max 10 order yang belum pernah di-track (last_tracked_at null)
+  // Auto-track SEMUA order yang belum pernah di-track (last_tracked_at null)
   const queue = allOrders
-    .filter(o => o.nomer_resi && o.ekspedisi && !isDone(o.status_resi) && !o.last_tracked_at)
-    .slice(0, 10);
+    .filter(o => o.nomer_resi && o.ekspedisi && !isDone(o.status_resi) && !o.last_tracked_at);
   if (!queue.length) return;
   queue.forEach(o => trackingInProgress.add(o.id));
   renderTable();
   for (let i = 0; i < queue.length; i += 5) {
     await Promise.all(queue.slice(i, i+5).map(o => trackOne(o.id).catch(()=>{})));
   }
+  // Setelah semua selesai tracking → generate jadwal FU
+  autoGenerateSchedules();
 }
 
 // ── Detail modal ────────────────────────────────────────────────────
@@ -1330,9 +1331,9 @@ async function doImport() {
     toast(`✅ ${custPayload.length} order berhasil diimport!`, 'success');
     closeImportModal();
     await loadOrders();
-    // Auto-track yang punya resi
-    setTimeout(autoTrackPending, 1000);
-    // Auto-generate jadwal FU (non-blocking)
+    // Auto-track semua yang punya resi, lalu generate jadwal FU setelah tracking selesai
+    await autoTrackPending();
+    // Generate jadwal juga untuk order tanpa resi (sebelum_deliv rules)
     autoGenerateSchedules();
   } catch(e) {
     document.getElementById('import-err').textContent   = e.message;
