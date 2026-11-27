@@ -56,14 +56,17 @@ export default async function handler(req, res) {
     const rules = await sb('followup_rules', ruleQ);
     // Tidak return early kalau rules kosong — reorder_auto tetap jalan tanpa followup_rules
 
-    // 2. Semua orders user
-    const orders = await sb('orders',
-      `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,tgl_delivered,product_id,qty,jumlah_produk&order=created_at.desc&limit=2000`);
+    // 2. Orders user — filter by product_id kalau ada (hemat waktu)
+    let orderQ = `user_id=eq.${user_id}&select=id,nomer_hp,nama_customer,produk,tanggal,created_at,status_resi,last_tracked_at,tgl_delivered,product_id,qty,jumlah_produk&order=created_at.desc&limit=2000`;
+    if (product_id) orderQ += `&product_id=eq.${product_id}`;
+    const orders = await sb('orders', orderQ);
     if (!orders.length) return res.json({ created: 0, skipped: 0, message: 'Tidak ada order' });
 
-    // 3. Customers + products (limit=10000, Supabase default cuma 1000!)
+    // 3. Customers + products — filter customers by product_id kalau ada
+    let custQ = `user_id=eq.${user_id}&select=id,wa_number,product_id&limit=10000`;
+    if (product_id) custQ += `&product_id=eq.${product_id}`;
     const [customers, products] = await Promise.all([
-      sb('customers', `user_id=eq.${user_id}&select=id,wa_number,product_id&limit=10000`),
+      sb('customers', custQ),
       sb('products',  `user_id=eq.${user_id}&select=id,konsumsi_hari,buffer_reorder_hari,templates_reorder&limit=1000`)
     ]);
     const productMap = {};
@@ -113,21 +116,21 @@ export default async function handler(req, res) {
     // Coba fetch dedup_key dulu; kalau kolom belum ada, fallback ke composite key
     let existKeys = new Set();
     let hasDedupCol = false;
+    const dedupProdQ = product_id ? `&product_id=eq.${product_id}` : '';
     try {
       const existRows = await sb('followup_schedule',
-        `user_id=eq.${user_id}&select=dedup_key&limit=50000`);
+        `user_id=eq.${user_id}${dedupProdQ}&select=dedup_key&limit=50000`);
       existKeys = new Set(existRows.map(e => e.dedup_key).filter(Boolean));
       hasDedupCol = true;
     } catch {
-      // Kolom dedup_key belum ada — fallback: fetch customer_id+rule_nama+product_id
       const existRows = await sb('followup_schedule',
-        `user_id=eq.${user_id}&select=customer_id,rule_nama,product_id&limit=50000`);
+        `user_id=eq.${user_id}${dedupProdQ}&select=customer_id,rule_nama,product_id&limit=50000`);
       existKeys = new Set(existRows.map(e => `${e.customer_id}:${e.rule_nama}:${e.product_id || 'ALL'}`));
     }
 
     // 5a. Existing pending untuk auto-skip sebelum_deliv yang paketnya SAMPAI
     const existPending = await sb('followup_schedule',
-      `user_id=eq.${user_id}&status=eq.pending&select=id,customer_id,rule_id&limit=10000`);
+      `user_id=eq.${user_id}${dedupProdQ}&status=eq.pending&select=id,customer_id,rule_id&limit=10000`);
 
     const today = new Date().toISOString().slice(0, 10);
     const toInsert = [];
