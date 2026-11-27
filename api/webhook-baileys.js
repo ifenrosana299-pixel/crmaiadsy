@@ -1535,17 +1535,19 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ok: true, skipped: 'from_me_no_conv' });
       }
       const fmConv = fmConvs[0];
-      // Simpan pesan sebagai CS
-      await sbPost('conv_messages', {
-        conversation_id: fmConv.id,
-        role: 'cs',
-        isi: message,
-        wamid: msgId || null,
-      });
-      // Update last_msg_at
-      await sbPatch('conversations', `?id=eq.${fmConv.id}`, {
-        last_msg_at: new Date().toISOString(),
-      });
+      // Simpan pesan sebagai CS + update last_msg_at bersamaan
+      const fmNow = new Date().toISOString();
+      await Promise.all([
+        sbPost('conv_messages', {
+          conversation_id: fmConv.id,
+          role: 'cs',
+          isi: message,
+          wamid: msgId || null,
+        }),
+        sbPatch('conversations', `?id=eq.${fmConv.id}`, {
+          last_msg_at: fmNow,
+        }).catch(e => console.warn(`[from_me] last_msg_at update gagal:`, e.message)),
+      ]);
       console.log(`[from_me] Tersimpan di conv ${fmConv.id} sebagai CS`);
       return res.status(200).json({ ok: true, from_me: true, saved: true });
     }
