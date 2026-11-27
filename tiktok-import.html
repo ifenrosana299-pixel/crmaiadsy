@@ -522,7 +522,23 @@ async function saveOrder() {
       status_resi:    nomerResi ? 'DIKIRIM' : 'MENUNGGU_RESI',
     });
 
-    // Auto-generate jadwal FU (H+0 dst) — sama seperti customers.html
+    // Auto-track resi dulu (kalau ada) → baru generate jadwal FU
+    if (nomerResi && row.ekspedisi) {
+      try {
+        const tr = await fetch(`/api/track-resi?resi=${encodeURIComponent(nomerResi)}&ekspedisi=${encodeURIComponent(row.ekspedisi)}`);
+        if (tr.ok) {
+          const { stage, step } = await tr.json();
+          await sbPatch('orders', `nomer_resi=eq.${encodeURIComponent(nomerResi)}&user_id=eq.${window.__currentUser?.id}`, {
+            status_resi: stage,
+            status_resi_step: step,
+            last_tracked_at: new Date().toISOString(),
+            ...(stage === 'SAMPAI' ? { tgl_delivered: new Date().toISOString().slice(0, 10) } : {})
+          });
+        }
+      } catch(e) { console.warn('[track-resi tiktok]', e); }
+    }
+
+    // Generate jadwal FU setelah tracking selesai
     fetch('/api/generate-schedules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
